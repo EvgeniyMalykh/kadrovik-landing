@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Кадровый автопилот — кадровые документы без юриста и 1С</title>
+  <meta name="description" content="Оформите сотрудника, отпуск или увольнение за 2 минуты. Все приказы по ТК РФ генерируются автоматически. Для ИП и малого бизнеса." />
+
+  <!-- Fonts -->
+  <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800,900&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="/" class="logo" aria-label="Кадровый автопилот">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
+          <path d="M9 10h8a5 5 0 0 1 0 10H9V10Z" fill="white" opacity="0.9"/>
+          <rect x="9" y="23" width="14" height="2.5" rx="1.25" fill="white" opacity="0.5"/>
+          <circle cx="22" cy="15" r="2" fill="white"/>
+        </svg>
+        <span class="logo__text">Кадровый автопилот</span>
+      </a>
+      <nav class="nav" aria-label="Основная навигация">
+        <a href="#features">Возможности</a>
+        <a href="#docs">Документы</a>
+        <a href="#pricing">Тарифы</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="header__actions">
+        <button data-theme-toggle aria-label="Переключить тему" class="theme-toggle">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <a href="#waitlist" class="btn btn--primary btn--sm">Ранний доступ</a>
+      </div>
+      <button class="burger" id="burger" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MOBILE MENU -->
+  <div class="mobile-menu" id="mobileMenu">
+    <nav>
+      <a href="#features" class="mobile-menu__link">Возможности</a>
+      <a href="#docs" class="mobile-menu__link">Документы</a>
+      <a href="#pricing" class="mobile-menu__link">Тарифы</a>
+      <a href="#faq" class="mobile-menu__link">FAQ</a>
+      <a href="#waitlist" class="btn btn--primary" style="margin-top:var(--space-4)">Ранний доступ</a>
+    </nav>
+  </div>
+
+  <main>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="container hero__inner">
+        <div class="hero__badge">Для ИП и малого бизнеса в РФ</div>
+        <h1 class="hero__title">Кадровые документы<br><span class="hero__accent">без юриста и 1С</span></h1>
+        <p class="hero__sub">Приём, увольнение, отпуск — любой приказ по ТК РФ за 2 минуты.<br>Сервис сам следит за сроками и напомнит до штрафа.</p>
+        <div class="hero__cta">
+          <a href="#waitlist" class="btn btn--primary btn--lg">Получить ранний доступ</a>
+          <p class="hero__cta-note">Бесплатно первые 30 дней · Без карты</p>
+        </div>
+        <div class="hero__stats">
+          <div class="stat">
+            <span class="stat__num">200 000 ₽</span>
+            <span class="stat__label">максимальный штраф за неправильный приказ</span>
+          </div>
+          <div class="stat__divider"></div>
+          <div class="stat">
+            <span class="stat__num">2 мин</span>
+            <span class="stat__label">на оформление любого кадрового документа</span>
+          </div>
+          <div class="stat__divider"></div>
+          <div class="stat">
+            <span class="stat__num">11 форм</span>
+            <span class="stat__label">по унифицированным формам ТК РФ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- HERO MOCKUP -->
+      <div class="hero__mockup-wrap">
+        <div class="container">
+          <div class="hero__mockup">
+            <div class="mockup-bar">
+              <div class="mockup-dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span class="mockup-url">kadrovik.ru/documents</span>
+            </div>
+            <div class="mockup-content">
+              <div class="mockup-sidebar">
+                <div class="mockup-nav-item mockup-nav-item--active">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Сотрудники
+                </div>
+                <div class="mockup-nav-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Документы
+                </div>
+                <div class="mockup-nav-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  Табель
+                </div>
+                <div class="mockup-nav-item">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  События
+                </div>
+              </div>
+              <div class="mockup-main">
+                <div class="mockup-header-row">
+                  <span class="mockup-title">Документы</span>
+                  <button class="mockup-btn">+ Создать</button>
+                </div>
+                <div class="mockup-doc-list">
+                  <div class="mockup-doc mockup-doc--new">
+                    <div class="mockup-doc__icon mockup-doc__icon--hire">Т-1</div>
+                    <div class="mockup-doc__info">
+                      <span class="mockup-doc__name">Приказ о приёме — Иванов И.И.</span>
+                      <span class="mockup-doc__date">14 апреля 2026</span>
+                    </div>
+                    <span class="mockup-doc__badge mockup-doc__badge--new">Готов</span>
+                  </div>
+                  <div class="mockup-doc">
+                    <div class="mockup-doc__icon mockup-doc__icon--vacation">Т-6</div>
+                    <div class="mockup-doc__info">
+                      <span class="mockup-doc__name">Приказ об отпуске — Петрова А.С.</span>
+                      <span class="mockup-doc__date">10 апреля 2026</span>
+                    </div>
+                    <span class="mockup-doc__badge">Скачан</span>
+                  </div>
+                  <div class="mockup-doc">
+                    <div class="mockup-doc__icon mockup-doc__icon--fire">Т-8</div>
+                    <div class="mockup-doc__info">
+                      <span class="mockup-doc__name">Приказ об увольнении — Сидоров В.П.</span>
+                      <span class="mockup-doc__date">2 апреля 2026</span>
+                    </div>
+                    <span class="mockup-doc__badge">Скачан</span>
+                  </div>
+                </div>
+                <div class="mockup-alert">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  У Козловой М.А. заканчивается испытательный срок через <strong>7 дней</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAIN SECTION -->
+    <section class="pain" id="pain">
+      <div class="container">
+        <div class="section-label">Звучит знакомо?</div>
+        <h2 class="section-title">Кадровые документы —<br>главная головная боль малого бизнеса</h2>
+        <div class="pain__grid">
+          <div class="pain-card">
+            <div class="pain-card__emoji">😰</div>
+            <p>«Заполняю приказы вручную в Word, каждый раз боюсь ошибиться в формулировке»</p>
+          </div>
+          <div class="pain-card">
+            <div class="pain-card__emoji">📋</div>
+            <p>«1С стоит дорого и требует настройки. Нанять кадровика — ещё дороже»</p>
+          </div>
+          <div class="pain-card">
+            <div class="pain-card__emoji">⏰</div>
+            <p>«Забыл продлить срочный договор — узнал от сотрудника, когда уже поздно»</p>
+          </div>
+          <div class="pain-card">
+            <div class="pain-card__emoji">🔍</div>
+            <p>«Проверка ГИТ нашла ошибки в приказах — штраф 50 000 ₽ за первое нарушение»</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features" id="features">
+      <div class="container">
+        <div class="section-label">Возможности</div>
+        <h2 class="section-title">Всё что нужно кадровику<br>в одном окне</h2>
+        <div class="features__grid">
+          <div class="feature-card feature-card--large">
+            <div class="feature-card__icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+            <h3>Генерация документов по ТК РФ</h3>
+            <p>Заполните форму — получите готовый PDF-приказ по унифицированной форме. Приём, увольнение, отпуск, перевод, изменение оклада и другие.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card__icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <h3>Умные напоминания</h3>
+            <p>Истекает договор, заканчивается испытательный срок, пора в отпуск — сервис предупреждает заранее в Telegram или на почту.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card__icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <h3>Табель учёта рабочего времени</h3>
+            <p>Форма Т-13, выгрузка в Excel. Отмечайте явки, больничные, отпуска — табель готов к сдаче в бухгалтерию.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card__icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <h3>Карточки сотрудников</h3>
+            <p>Все данные, документы и история в одном месте. Паспорт, СНИЛС, ИНН, трудовой договор — ничего не потеряется.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-card__icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            </div>
+            <h3>Оплата через ЮKassa и СБП</h3>
+            <p>Никаких зарубежных платёжных систем. Оплачивайте рублями через привычные российские сервисы.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOCUMENTS -->
+    <section class="docs-section" id="docs">
+      <div class="container">
+        <div class="section-label">Документы</div>
+        <h2 class="section-title">11 форм по ТК РФ<br>из коробки</h2>
+        <div class="docs__grid">
+          <div class="doc-item">
+            <span class="doc-item__form">Т-1</span>
+            <span class="doc-item__name">Приказ о приёме на работу</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">Т-8</span>
+            <span class="doc-item__name">Приказ об увольнении</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">Т-6</span>
+            <span class="doc-item__name">Приказ об отпуске</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">Т-5</span>
+            <span class="doc-item__name">Приказ о переводе</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">Т-13</span>
+            <span class="doc-item__name">Табель рабочего времени</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">Т-2</span>
+            <span class="doc-item__name">Личная карточка сотрудника</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">—</span>
+            <span class="doc-item__name">Трудовой договор</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">—</span>
+            <span class="doc-item__name">Договор ГПХ</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">—</span>
+            <span class="doc-item__name">Справка с места работы</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">—</span>
+            <span class="doc-item__name">Приказ об изменении оклада</span>
+          </div>
+          <div class="doc-item">
+            <span class="doc-item__form">—</span>
+            <span class="doc-item__name">Акт выполненных работ (ГПХ)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="how" id="how">
+      <div class="container">
+        <div class="section-label">Как это работает</div>
+        <h2 class="section-title">Три шага до готового<br>приказа</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step__num">01</div>
+            <h3>Добавьте компанию и сотрудников</h3>
+            <p>Заполните реквизиты один раз — они автоматически подставятся во все документы. Данные хранятся в зашифрованном виде.</p>
+          </div>
+          <div class="step__arrow">→</div>
+          <div class="step">
+            <div class="step__num">02</div>
+            <h3>Выберите тип документа</h3>
+            <p>Нажмите «Создать», выберите нужный тип приказа и заполните минимальные данные. Сервис сам знает, какие поля обязательны по ТК.</p>
+          </div>
+          <div class="step__arrow">→</div>
+          <div class="step">
+            <div class="step__num">03</div>
+            <h3>Скачайте готовый PDF</h3>
+            <p>Документ готов к подписанию и хранению. Все номера, даты и формулировки соответствуют требованиям трудового законодательства.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section class="pricing" id="pricing">
+      <div class="container">
+        <div class="section-label">Тарифы</div>
+        <h2 class="section-title">Понятная цена<br>без скрытых платежей</h2>
+        <div class="pricing__grid">
+          <div class="pricing-card">
+            <div class="pricing-card__name">Старт</div>
+            <div class="pricing-card__price">790 <span>₽/мес</span></div>
+            <div class="pricing-card__desc">Для ИП и микробизнеса</div>
+            <ul class="pricing-card__features" role="list">
+              <li>До 10 сотрудников</li>
+              <li>Все 11 документов</li>
+              <li>Напоминания в Telegram</li>
+              <li>Табель Т-13</li>
+            </ul>
+            <a href="#waitlist" class="btn btn--outline">Попробовать</a>
+          </div>
+          <div class="pricing-card pricing-card--featured">
+            <div class="pricing-card__popular">Популярный</div>
+            <div class="pricing-card__name">Бизнес</div>
+            <div class="pricing-card__price">1 990 <span>₽/мес</span></div>
+            <div class="pricing-card__desc">Для малых ООО</div>
+            <ul class="pricing-card__features" role="list">
+              <li>До 50 сотрудников</li>
+              <li>Все 11 документов</li>
+              <li>Напоминания + email</li>
+              <li>Многопользовательский доступ</li>
+              <li>Экспорт в Excel</li>
+            </ul>
+            <a href="#waitlist" class="btn btn--primary">Получить доступ</a>
+          </div>
+          <div class="pricing-card">
+            <div class="pricing-card__name">Про</div>
+            <div class="pricing-card__price">4 900 <span>₽/мес</span></div>
+            <div class="pricing-card__desc">Для среднего бизнеса</div>
+            <ul class="pricing-card__features" role="list">
+              <li>До 200 сотрудников</li>
+              <li>Все документы + кастомные шаблоны</li>
+              <li>Приоритетная поддержка</li>
+              <li>API-интеграции</li>
+              <li>Выгрузка для СФР</li>
+            </ul>
+            <a href="#waitlist" class="btn btn--outline">Попробовать</a>
+          </div>
+        </div>
+        <p class="pricing__note">Все тарифы включают 30 дней бесплатного пробного периода без привязки карты</p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq" id="faq">
+      <div class="container">
+        <div class="section-label">Вопросы</div>
+        <h2 class="section-title">Часто спрашивают</h2>
+        <div class="faq__list">
+          <details class="faq-item">
+            <summary>Документы соответствуют актуальным требованиям ТК РФ?</summary>
+            <p>Да. Все шаблоны составлены по унифицированным формам Постановления Госкомстата и актуальным нормам Трудового кодекса РФ. При изменении законодательства шаблоны обновляются автоматически.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Нужно ли устанавливать программу?</summary>
+            <p>Нет. Кадровый автопилот — это веб-сервис, он работает в браузере. Подходит для Windows, Mac и Linux. Никаких установок и настроек 1С.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Как хранятся данные сотрудников?</summary>
+            <p>Данные хранятся на серверах в России и защищены шифрованием. Мы соблюдаем требования 152-ФЗ о персональных данных. Вы в любой момент можете экспортировать или удалить свои данные.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Можно ли работать нескольким пользователям?</summary>
+            <p>Да, начиная с тарифа «Бизнес». Вы можете добавить бухгалтера или директора — каждый получит свои права доступа.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Что будет после пробного периода?</summary>
+            <p>За 3 дня до окончания придёт напоминание. Если не хотите продолжать — просто не оплачивайте. Ваши данные сохраняются ещё 30 дней.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Есть ли интеграция с 1С или бухгалтерией?</summary>
+            <p>На тарифе «Про» доступен API и выгрузка данных в форматах, совместимых с 1С. Прямая интеграция — в roadmap на второй квартал.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- WAITLIST / CTA -->
+    <section class="waitlist" id="waitlist">
+      <div class="container">
+        <div class="waitlist__inner">
+          <div class="waitlist__content">
+            <div class="section-label section-label--light">Ранний доступ</div>
+            <h2 class="waitlist__title">Запустимся скоро.<br>Займите место первым.</h2>
+            <p class="waitlist__sub">Первые 100 компаний получат 3 месяца бесплатно и доступ к закрытому бета-тестированию.</p>
+            <ul class="waitlist__perks" role="list">
+              <li>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                3 месяца бесплатно для первых 100
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Прямой доступ к разработчику
+              </li>
+              <li>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Влияйте на функциональность продукта
+              </li>
+            </ul>
+          </div>
+          <div class="waitlist__form-wrap">
+            <form class="waitlist__form" id="waitlistForm">
+              <div class="form-group">
+                <label for="name">Ваше имя</label>
+                <input type="text" id="name" name="name" placeholder="Иван Иванов" required />
+              </div>
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="ivan@company.ru" required />
+              </div>
+              <div class="form-group">
+                <label for="telegram">Telegram (необязательно)</label>
+                <input type="text" id="telegram" name="telegram" placeholder="@username" />
+              </div>
+              <div class="form-group">
+                <label for="employees">Сколько сотрудников в компании?</label>
+                <select id="employees" name="employees">
+                  <option value="">Выберите</option>
+                  <option value="1-5">1–5 человек</option>
+                  <option value="6-15">6–15 человек</option>
+                  <option value="16-50">16–50 человек</option>
+                  <option value="50+">Более 50</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn--primary btn--full">
+                Записаться в список
+              </button>
+              <p class="form-note">Никакого спама. Только уведомление о запуске.</p>
+            </form>
+            <div class="waitlist__success" id="formSuccess" style="display:none;">
+              <div class="success-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <h3>Вы в списке!</h3>
+              <p>Мы напишем вам первыми, как только откроем доступ. Следите за обновлениями.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
+          <path d="M9 10h8a5 5 0 0 1 0 10H9V10Z" fill="white" opacity="0.9"/>
+          <rect x="9" y="23" width="14" height="2.5" rx="1.25" fill="white" opacity="0.5"/>
+          <circle cx="22" cy="15" r="2" fill="white"/>
+        </svg>
+        <span class="logo__text">Кадровый автопилот</span>
+      </div>
+      <p class="footer__copy">© 2026 Кадровый автопилот · Для ИП и малого бизнеса в РФ</p>
+      <div class="footer__links">
+        <a href="#">Политика конфиденциальности</a>
+        <a href="#">Оферта</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
