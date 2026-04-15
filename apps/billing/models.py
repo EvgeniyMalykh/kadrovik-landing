@@ -4,21 +4,21 @@ from apps.companies.models import Company
 
 class Subscription(models.Model):
     class Plan(models.TextChoices):
-        TRIAL = 'trial', 'Пробный'
-        START = 'start', 'Старт'
+        TRIAL    = 'trial',    'Пробный'
+        START    = 'start',    'Старт'
         BUSINESS = 'business', 'Бизнес'
-        PRO = 'pro', 'Про'
+        PRO      = 'pro',      'Корпоратив'
 
     class Status(models.TextChoices):
-        ACTIVE = 'active', 'Активна'
-        EXPIRED = 'expired', 'Истекла'
+        ACTIVE    = 'active',    'Активна'
+        EXPIRED   = 'expired',   'Истекла'
         CANCELLED = 'cancelled', 'Отменена'
 
-    company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='subscription', verbose_name='Компания')
-    plan = models.CharField('Тариф', max_length=20, choices=Plan.choices, default=Plan.TRIAL)
-    status = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.ACTIVE)
-    started_at = models.DateTimeField('Начало', auto_now_add=True)
-    expires_at = models.DateTimeField('Истекает', null=True, blank=True)
+    company       = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='subscription')
+    plan          = models.CharField('Тариф', max_length=20, choices=Plan.choices, default=Plan.TRIAL)
+    status        = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    started_at    = models.DateTimeField(auto_now_add=True)
+    expires_at    = models.DateTimeField('Истекает', null=True, blank=True)
     max_employees = models.PositiveIntegerField('Макс. сотрудников', default=10)
 
     class Meta:
@@ -28,19 +28,29 @@ class Subscription(models.Model):
     def __str__(self):
         return f'{self.company} — {self.get_plan_display()}'
 
+    @property
+    def is_active(self):
+        from django.utils import timezone
+        if self.status != self.Status.ACTIVE:
+            return False
+        if self.expires_at and self.expires_at < timezone.now():
+            return False
+        return True
+
 
 class Payment(models.Model):
     class Status(models.TextChoices):
-        PENDING = 'pending', 'Ожидает'
-        SUCCESS = 'success', 'Успешно'
-        FAILED = 'failed', 'Ошибка'
+        PENDING  = 'pending',  'Ожидает'
+        SUCCESS  = 'success',  'Успешно'
+        FAILED   = 'failed',   'Ошибка'
         REFUNDED = 'refunded', 'Возврат'
 
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='payments', verbose_name='Компания')
-    amount = models.DecimalField('Сумма', max_digits=10, decimal_places=2)
-    status = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.PENDING)
+    company            = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='payments')
+    plan               = models.CharField('Тариф', max_length=20, default='start')
+    amount             = models.DecimalField('Сумма', max_digits=10, decimal_places=2)
+    status             = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.PENDING)
     yukassa_payment_id = models.CharField('ID платежа ЮKassa', max_length=255, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at         = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = 'Платёж'

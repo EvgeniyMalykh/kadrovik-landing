@@ -80,7 +80,16 @@ def download_t1(request, employee_id):
 
 @login_required
 def subscription(request):
-    return render(request, "dashboard/subscription.html")
+    member = CompanyMember.objects.filter(user=request.user).first()
+    sub = None
+    payments = []
+    if member:
+        sub = getattr(member.company, "subscription", None)
+        payments = member.company.payments.all()[:10]
+    return render(request, "dashboard/subscription.html", {
+        "sub": sub,
+        "payments": payments,
+    })
 
 
 def login_view(request):

@@ -2,14 +2,32 @@
 {% block title %}Подписка — Кадровый автопилот{% endblock %}
 {% block nav_subscription %}active{% endblock %}
 {% block content %}
+
 <div class="page-header">
     <div>
         <h1 class="page-title">Подписка</h1>
-        <p class="page-subtitle">Управление тарифом</p>
+        <p class="page-subtitle">
+            {% if sub and sub.is_active and sub.plan != "trial" %}
+                Активен тариф «{{ sub.get_plan_display }}»
+                {% if sub.expires_at %}— до {{ sub.expires_at|date:"d.m.Y" }}{% endif %}
+            {% else %}
+                Пробный период — до 10 сотрудников
+            {% endif %}
+        </p>
     </div>
 </div>
+
+{% if messages %}
+<div class="alert alert-success">
+    {% for msg in messages %}{{ msg }}{% endfor %}
+</div>
+{% endif %}
+
 <div class="pricing-grid">
-    <div class="pricing-card">
+
+    <!-- СТАРТ -->
+    <div class="pricing-card {% if sub.plan == "start" and sub.is_active %}pricing-card--active{% endif %}">
+        {% if sub.plan == "start" and sub.is_active %}<div class="pricing-badge pricing-badge--active">Ваш тариф</div>{% endif %}
         <div class="pricing-name">Старт</div>
         <div class="pricing-price">790 <span>₽/мес</span></div>
         <ul class="pricing-features">
@@ -18,10 +36,20 @@
             <li>✓ Уведомления в Telegram</li>
             <li>✗ Отпуска и больничные</li>
         </ul>
-        <button class="btn-disabled" disabled>Скоро — ЮKassa</button>
+        {% if sub.plan == "start" and sub.is_active %}
+            <button class="btn-disabled" disabled>Активен</button>
+        {% else %}
+            <a href="{% url billing:checkout start %}" class="btn-primary btn-block">Подключить — 790 ₽</a>
+        {% endif %}
     </div>
-    <div class="pricing-card pricing-card--featured">
-        <div class="pricing-badge">Популярный</div>
+
+    <!-- БИЗНЕС -->
+    <div class="pricing-card pricing-card--featured {% if sub.plan == "business" and sub.is_active %}pricing-card--active{% endif %}">
+        {% if sub.plan == "business" and sub.is_active %}
+            <div class="pricing-badge pricing-badge--active">Ваш тариф</div>
+        {% else %}
+            <div class="pricing-badge">Популярный</div>
+        {% endif %}
         <div class="pricing-name">Бизнес</div>
         <div class="pricing-price">1 990 <span>₽/мес</span></div>
         <ul class="pricing-features">
@@ -30,9 +58,16 @@
             <li>✓ Уведомления в Telegram</li>
             <li>✓ Отпуска и больничные</li>
         </ul>
-        <button class="btn-disabled" disabled>Скоро — ЮKassa</button>
+        {% if sub.plan == "business" and sub.is_active %}
+            <button class="btn-disabled" disabled>Активен</button>
+        {% else %}
+            <a href="{% url billing:checkout business %}" class="btn-primary btn-block">Подключить — 1 990 ₽</a>
+        {% endif %}
     </div>
-    <div class="pricing-card">
+
+    <!-- КОРПОРАТИВ -->
+    <div class="pricing-card {% if sub.plan == "pro" and sub.is_active %}pricing-card--active{% endif %}">
+        {% if sub.plan == "pro" and sub.is_active %}<div class="pricing-badge pricing-badge--active">Ваш тариф</div>{% endif %}
         <div class="pricing-name">Корпоратив</div>
         <div class="pricing-price">4 900 <span>₽/мес</span></div>
         <ul class="pricing-features">
@@ -41,7 +76,43 @@
             <li>✓ Приоритетная поддержка</li>
             <li>✓ API доступ</li>
         </ul>
-        <button class="btn-disabled" disabled>Скоро — ЮKassa</button>
+        {% if sub.plan == "pro" and sub.is_active %}
+            <button class="btn-disabled" disabled>Активен</button>
+        {% else %}
+            <a href="{% url billing:checkout pro %}" class="btn-primary btn-block">Подключить — 4 900 ₽</a>
+        {% endif %}
     </div>
+
 </div>
+
+{% if payments %}
+<div class="card" style="margin-top: 2rem;">
+    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">История платежей</h3>
+    <table class="employees-table">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Тариф</th>
+                <th>Сумма</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.created_at|date:"d.m.Y H:i" }}</td>
+                <td>{{ p.get_plan_display|default:p.plan }}</td>
+                <td>{{ p.amount }} ₽</td>
+                <td>
+                    <span class="status-badge status-{{ p.status }}">
+                        {{ p.get_status_display }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 {% endblock %}
