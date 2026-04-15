@@ -89,7 +89,11 @@ def employee_edit(request, employee_id):
         employee.save()
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
-    return render(request, "dashboard/partials/employee_edit_form.html", {"emp": employee})
+    return render(request, "dashboard/partials/employee_edit_form.html", {
+        "emp": employee,
+        "birth_date_str": employee.birth_date.strftime("%Y-%m-%d") if employee.birth_date else "",
+        "hire_date_str": employee.hire_date.strftime("%Y-%m-%d") if employee.hire_date else "",
+    })
 
 
 @login_required

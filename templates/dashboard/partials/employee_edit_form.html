@@ -1,8 +1,8 @@
 <div class="modal-header">
     <h3>Редактировать сотрудника</h3>
-    <button class="modal-close" onclick="closeModal()">✕</button>
+    <button type="button" class="modal-close" onclick="closeModal()">x</button>
 </div>
-<form hx-post="{% url dashboard:employee_edit emp.id %}"
+<form hx-post="{% url 'dashboard:employee_edit' emp.id %}"
       hx-target="#employees-table"
       hx-swap="innerHTML"
       hx-on::after-request="closeModal()">
@@ -27,40 +27,33 @@
             <input type="text" name="position" value="{{ emp.position }}" required>
         </div>
         <div class="form-group">
-            <label>Оклад (₽)</label>
+            <label>Оклад (руб.)</label>
             <input type="number" name="salary" value="{{ emp.salary }}">
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
             <label>Дата рождения</label>
-            <input type="date" name="birth_date" value="{{ emp.birth_date|date:Y-m-d }}">
+            <input type="date" name="birth_date" value="{{ birth_date_str }}">
         </div>
         <div class="form-group">
             <label>Дата приёма *</label>
-            <input type="date" name="hire_date" value="{{ emp.hire_date|date:Y-m-d }}" required>
+            <input type="date" name="hire_date" value="{{ hire_date_str }}" required>
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
             <label>Телефон</label>
-            <input type="text" name="phone" value="{{ emp.phone }}" placeholder="+7 900 000 00 00">
+            <input type="text" name="phone" value="{{ emp.phone }}">
         </div>
         <div class="form-group">
             <label>ИНН</label>
-            <input type="text" name="inn" value="{{ emp.inn }}" placeholder="123456789012">
+            <input type="text" name="inn" value="{{ emp.inn }}">
         </div>
     </div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>СНИЛС</label>
-            <input type="text" name="snils" value="{{ emp.snils }}" placeholder="000-000-000 00">
-        </div>
-        <div class="form-group">
-            <label>Паспорт (серия / номер)</label>
-            <input type="text" name="passport_series" value="{{ emp.passport_series }}" placeholder="0000" style="width:48%;display:inline-block">
-            <input type="text" name="passport_number" value="{{ emp.passport_number }}" placeholder="000000" style="width:48%;display:inline-block">
-        </div>
+    <div class="form-group">
+        <label>СНИЛС</label>
+        <input type="text" name="snils" value="{{ emp.snils }}">
     </div>
     <div class="form-group">
         <label>Кем выдан паспорт</label>
