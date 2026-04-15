@@ -1,4 +1,9 @@
 {% if employees %}
+<div style="margin-bottom:1rem;">
+    <a href="{% url 'dashboard:download_t13' %}" class="btn-secondary" style="font-size:0.85rem;padding:6px 14px;text-decoration:none;">
+        📋 Табель Т-13 (весь отдел)
+    </a>
+</div>
 <table class="data-table">
     <thead>
         <tr>
@@ -18,20 +23,32 @@
             <td>{{ emp.hire_date|date:"d.m.Y"|default:"—" }}</td>
             <td>{% if emp.probation_end_date %}{{ emp.probation_end_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
             <td class="docs-cell">
-                <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-doc">Т-1</a>
-                <a href="{% url 'dashboard:download_t2' emp.id %}" class="btn-doc">Т-2</a>
-                <a href="{% url 'dashboard:download_t8' emp.id %}?order=У-001" class="btn-doc">Т-8</a>
-                <a href="{% url 'dashboard:download_t6' emp.id %}?order=О-001&start={{ today }}&end={{ today }}" class="btn-doc">Т-6</a>
+                <div style="margin-bottom:3px;">
+                    <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-doc" title="Приказ о приёме">Т-1</a>
+                    <a href="{% url 'dashboard:download_t2' emp.id %}" class="btn-doc" title="Личная карточка">Т-2</a>
+                    <a href="{% url 'dashboard:download_t5' emp.id %}" class="btn-doc" title="Перевод">Т-5</a>
+                    <a href="{% url 'dashboard:download_t6' emp.id %}?order=О-001&start={{ today }}&end={{ today }}" class="btn-doc" title="Отпуск">Т-6</a>
+                    <a href="{% url 'dashboard:download_t8' emp.id %}?order=У-001" class="btn-doc" title="Увольнение">Т-8</a>
+                </div>
+                <div>
+                    <a href="{% url 'dashboard:download_labor_contract' emp.id %}" class="btn-doc" title="Трудовой договор">ТД</a>
+                    <a href="{% url 'dashboard:download_gph_contract' emp.id %}" class="btn-doc" title="Договор ГПХ">ГПХ</a>
+                    <a href="{% url 'dashboard:download_gph_act' emp.id %}" class="btn-doc" title="Акт ГПХ">Акт</a>
+                    <a href="{% url 'dashboard:download_certificate' emp.id %}" class="btn-doc" title="Справка с места работы">Справка</a>
+                    <a href="{% url 'dashboard:download_salary_change' emp.id %}" class="btn-doc" title="Изменение оклада">Оклад</a>
+                </div>
             </td>
             <td class="actions-cell">
-                <button class="btn-icon" title="Редактировать"
+                <button type="button" class="btn-icon" title="Редактировать"
                     hx-get="{% url 'dashboard:employee_edit' emp.id %}"
                     hx-target="#modal-content"
-                    hx-swap="innerHTML">✏️</button>
-                <button class="btn-icon btn-danger" title="Удалить"
+                    hx-swap="innerHTML"
+                    hx-trigger="click">✏️</button>
+                <button type="button" class="btn-icon btn-danger" title="Удалить"
                     hx-post="{% url 'dashboard:employee_delete' emp.id %}"
                     hx-target="#employees-table"
                     hx-swap="innerHTML"
+                    hx-trigger="click"
                     hx-confirm="Удалить сотрудника?">🗑️</button>
             </td>
         </tr>
@@ -43,7 +60,7 @@
     <div class="empty-icon">👥</div>
     <h3>Сотрудников пока нет</h3>
     <p>Добавьте первого сотрудника, чтобы начать формировать документы</p>
-    <button class="btn-primary"
+    <button type="button" class="btn-primary"
         hx-get="{% url 'dashboard:employee_add' %}"
         hx-target="#modal-content"
         hx-swap="innerHTML">

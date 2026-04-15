@@ -194,3 +194,90 @@ def register_view(request):
 def logout_view(request):
     logout(request)
     return redirect("dashboard:login")
+
+
+@login_required
+def download_t5(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_t5_pdf
+    new_position = request.GET.get("position", employee.position or "Новая должность")
+    new_salary   = request.GET.get("salary")
+    pdf = generate_t5_pdf(employee, new_position, new_salary, request.GET.get("order", "ПР-001"))
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"T5_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+def download_salary_change(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_salary_change_pdf
+    new_salary = request.GET.get("salary", str(employee.salary or "0"))
+    pdf = generate_salary_change_pdf(employee, new_salary, request.GET.get("order", "З-001"))
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"SalaryChange_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+def download_work_certificate(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_work_certificate_pdf
+    pdf = generate_work_certificate_pdf(employee)
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"Certificate_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+def download_labor_contract(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_labor_contract_pdf
+    pdf = generate_labor_contract_pdf(employee)
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"LaborContract_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+def download_gph_contract(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_gph_contract_pdf
+    pdf = generate_gph_contract_pdf(employee)
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"GPH_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+def download_gph_act(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_gph_act_pdf
+    pdf = generate_gph_act_pdf(employee)
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"GPH_Act_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+def download_t13(request):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    from apps.documents.services import generate_t13_pdf
+    employees = list(Employee.objects.filter(company=member.company))
+    if not employees:
+        return HttpResponse("Нет сотрудников", status=400)
+    from datetime import date
+    today = date.today()
+    pdf = generate_t13_pdf(employees, today.year, today.month)
+    r = HttpResponse(pdf, content_type="application/pdf")
+    fname = today.strftime("%Y_%m")
+    r["Content-Disposition"] = "attachment; filename=T13_" + fname + ".pdf"
+    return r
