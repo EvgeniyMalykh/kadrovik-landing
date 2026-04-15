@@ -5,21 +5,34 @@
             <th>ФИО</th>
             <th>Должность</th>
             <th>Дата приёма</th>
-            <th>Испытательный срок</th>
-            <th>Действия</th>
+            <th>Исп. срок до</th>
+            <th>Документы</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
         {% for emp in employees %}
-        <tr>
+        <tr id="emp-row-{{ emp.id }}">
             <td><strong>{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</strong></td>
             <td>{{ emp.position|default:"—" }}</td>
             <td>{{ emp.hire_date|date:"d.m.Y"|default:"—" }}</td>
-            <td>{% if emp.probation_months %}{{ emp.probation_months }} мес.{% else %}Без ИС{% endif %}</td>
-            <td>
-                <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-secondary btn-sm">
-                    📄 Скачать Т-1
-                </a>
+            <td>{% if emp.probation_end_date %}{{ emp.probation_end_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+            <td class="docs-cell">
+                <a href="{% url dashboard:download_t1 emp.id %}?order=П-001" class="btn-doc" title="Приказ о приёме Т-1">Т-1</a>
+                <a href="{% url dashboard:download_t2 emp.id %}" class="btn-doc" title="Личная карточка Т-2">Т-2</a>
+                <a href="{% url dashboard:download_t8 emp.id %}?order=У-001" class="btn-doc" title="Приказ об увольнении Т-8">Т-8</a>
+                <a href="{% url dashboard:download_t6 emp.id %}?order=О-001&start={{ today }}&end={{ today }}" class="btn-doc" title="Приказ об отпуске Т-6">Т-6</a>
+            </td>
+            <td class="actions-cell">
+                <button class="btn-icon" title="Редактировать"
+                    hx-get="{% url dashboard:employee_edit emp.id %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML">✏️</button>
+                <button class="btn-icon btn-danger" title="Удалить"
+                    hx-post="{% url dashboard:employee_delete emp.id %}"
+                    hx-target="#employees-table"
+                    hx-swap="innerHTML"
+                    hx-confirm="Удалить сотрудника {{ emp.last_name }} {{ emp.first_name }}?">🗑️</button>
             </td>
         </tr>
         {% endfor %}
@@ -31,7 +44,7 @@
     <h3>Сотрудников пока нет</h3>
     <p>Добавьте первого сотрудника, чтобы начать формировать документы</p>
     <button class="btn-primary"
-        hx-get="{% url 'dashboard:employee_add' %}"
+        hx-get="{% url dashboard:employee_add %}"
         hx-target="#modal-content"
         hx-swap="innerHTML">
         + Добавить сотрудника

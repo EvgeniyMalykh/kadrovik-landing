@@ -1,0 +1,77 @@
+<div class="modal-header">
+    <h3>Редактировать сотрудника</h3>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+</div>
+<form hx-post="{% url dashboard:employee_edit emp.id %}"
+      hx-target="#employees-table"
+      hx-swap="innerHTML"
+      hx-on::after-request="closeModal()">
+    {% csrf_token %}
+    <div class="form-row">
+        <div class="form-group">
+            <label>Фамилия *</label>
+            <input type="text" name="last_name" value="{{ emp.last_name }}" required>
+        </div>
+        <div class="form-group">
+            <label>Имя *</label>
+            <input type="text" name="first_name" value="{{ emp.first_name }}" required>
+        </div>
+        <div class="form-group">
+            <label>Отчество</label>
+            <input type="text" name="middle_name" value="{{ emp.middle_name }}">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Должность *</label>
+            <input type="text" name="position" value="{{ emp.position }}" required>
+        </div>
+        <div class="form-group">
+            <label>Оклад (₽)</label>
+            <input type="number" name="salary" value="{{ emp.salary }}">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Дата рождения</label>
+            <input type="date" name="birth_date" value="{{ emp.birth_date|date:Y-m-d }}">
+        </div>
+        <div class="form-group">
+            <label>Дата приёма *</label>
+            <input type="date" name="hire_date" value="{{ emp.hire_date|date:Y-m-d }}" required>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Телефон</label>
+            <input type="text" name="phone" value="{{ emp.phone }}" placeholder="+7 900 000 00 00">
+        </div>
+        <div class="form-group">
+            <label>ИНН</label>
+            <input type="text" name="inn" value="{{ emp.inn }}" placeholder="123456789012">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>СНИЛС</label>
+            <input type="text" name="snils" value="{{ emp.snils }}" placeholder="000-000-000 00">
+        </div>
+        <div class="form-group">
+            <label>Паспорт (серия / номер)</label>
+            <input type="text" name="passport_series" value="{{ emp.passport_series }}" placeholder="0000" style="width:48%;display:inline-block">
+            <input type="text" name="passport_number" value="{{ emp.passport_number }}" placeholder="000000" style="width:48%;display:inline-block">
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Кем выдан паспорт</label>
+        <input type="text" name="passport_issued_by" value="{{ emp.passport_issued_by }}">
+    </div>
+    <div class="form-group">
+        <label>Адрес регистрации</label>
+        <input type="text" name="passport_registration" value="{{ emp.passport_registration }}">
+    </div>
+    <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+    </div>
+</form>
