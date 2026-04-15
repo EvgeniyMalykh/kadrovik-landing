@@ -24,6 +24,9 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       - db
       - redis
@@ -34,6 +37,9 @@ services:
     volumes:
       - .:/app
     env_file: .env
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       - db
       - redis
@@ -44,6 +50,9 @@ services:
     volumes:
       - .:/app
     env_file: .env
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       - db
       - redis
