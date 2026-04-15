@@ -4,13 +4,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 # WeasyPrint dependencies
-RUN apt-get update && apt-get install -y \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libcairo2 \
-    libgdk-pixbuf2.0-0 \
+RUN apt-get update --fix-missing && apt-get install -y \
+    libpango1.0-dev \
+    libcairo2-dev \
+    libgdk-pixbuf-2.0-dev \
     libffi-dev \
     shared-mime-info \
+    fonts-liberation \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
