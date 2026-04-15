@@ -23,6 +23,7 @@ urlpatterns = [
     # Табель — на всю компанию
     path("t13/", views.download_t13, name="download_t13"),
     # Подписка и auth
+    path("company/", views.company_profile, name="company"),
     path("subscription/", views.subscription, name="subscription"),
     path("login/", views.login_view, name="login"),
     path("register/", views.register_view, name="register"),

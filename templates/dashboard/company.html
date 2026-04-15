@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Профиль компании — Кадровый автопилот{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Профиль компании</h1>
+        <p class="page-subtitle">Реквизиты подставляются в документы автоматически</p>
+    </div>
+</div>
+
+{% if saved %}
+<div class="alert alert-success">Данные сохранены — реквизиты обновлены во всех документах</div>
+{% endif %}
+
+<div class="card" style="max-width:700px;">
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-section">
+            <h3 class="form-section-title">Основные данные</h3>
+            <div class="form-row">
+                <div class="form-group form-group--full">
+                    <label>Название организации *</label>
+                    <input type="text" name="name" value="{{ company.name }}" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ИНН</label>
+                    <input type="text" name="inn" value="{{ company.inn }}" placeholder="123456789012">
+                </div>
+                <div class="form-group">
+                    <label>ОГРН</label>
+                    <input type="text" name="ogrn" value="{{ company.ogrn }}" placeholder="1234567890123">
+                </div>
+                <div class="form-group">
+                    <label>КПП</label>
+                    <input type="text" name="kpp" value="{{ company.kpp }}" placeholder="123456789">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title">Адреса</h3>
+            <div class="form-group form-group--full">
+                <label>Юридический адрес</label>
+                <input type="text" name="legal_address" value="{{ company.legal_address }}">
+            </div>
+            <div class="form-group form-group--full">
+                <label>Фактический адрес <span style="color:var(--text-muted);font-size:0.8rem;">(если отличается)</span></label>
+                <input type="text" name="actual_address" value="{{ company.actual_address }}">
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title">Руководитель</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>ФИО руководителя</label>
+                    <input type="text" name="director_name" value="{{ company.director_name }}" placeholder="Иванов Иван Иванович">
+                </div>
+                <div class="form-group">
+                    <label>Должность</label>
+                    <input type="text" name="director_position" value="{{ company.director_position }}" placeholder="Директор">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title">Контакты</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Телефон</label>
+                    <input type="text" name="phone" value="{{ company.phone }}" placeholder="+7 900 000 00 00">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ company.email }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:1.5rem;">
+            <button type="submit" class="btn-primary">Сохранить реквизиты</button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

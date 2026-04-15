@@ -281,3 +281,26 @@ def download_t13(request):
     fname = today.strftime("%Y_%m")
     r["Content-Disposition"] = "attachment; filename=T13_" + fname + ".pdf"
     return r
+
+
+@login_required
+def company_profile(request):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:employees")
+    company = member.company
+    saved = False
+    if request.method == "POST":
+        company.name             = request.POST.get("name", company.name)
+        company.inn              = request.POST.get("inn", company.inn)
+        company.ogrn             = request.POST.get("ogrn", company.ogrn)
+        company.kpp              = request.POST.get("kpp", company.kpp)
+        company.legal_address    = request.POST.get("legal_address", company.legal_address)
+        company.actual_address   = request.POST.get("actual_address", company.actual_address)
+        company.director_name    = request.POST.get("director_name", company.director_name)
+        company.director_position = request.POST.get("director_position", company.director_position)
+        company.phone            = request.POST.get("phone", company.phone)
+        company.email            = request.POST.get("email", company.email)
+        company.save()
+        saved = True
+    return render(request, "dashboard/company.html", {"company": company, "saved": saved})

@@ -26,6 +26,43 @@ def _register_fonts():
     return 'Helvetica'
 
 
+
+def _get_company_info(employee):
+    """Возвращает словарь с реквизитами компании из модели."""
+    if not hasattr(employee, "company") or not employee.company:
+        return {"name": "", "inn": "", "ogrn": "", "kpp": "",
+                "legal_address": "", "director_name": "", "director_position": "Директор",
+                "phone": "", "email": ""}
+    c = employee.company
+    return {
+        "name":              c.name or "",
+        "inn":               getattr(c, "inn",               "") or "",
+        "ogrn":              getattr(c, "ogrn",              "") or "",
+        "kpp":               getattr(c, "kpp",               "") or "",
+        "legal_address":     getattr(c, "legal_address",     "") or "",
+        "director_name":     getattr(c, "director_name",     "") or "",
+        "director_position": getattr(c, "director_position", "Директор") or "Директор",
+        "phone":             getattr(c, "phone",             "") or "",
+        "email":             getattr(c, "email",             "") or "",
+    }
+
+def _get_ru_holidays(year):
+    """Производственный календарь РФ — нерабочие праздничные дни."""
+    from datetime import date
+    # Перенесённые выходные учитываются в базовом списке
+    fixed = [
+        (1, 1), (1, 2), (1, 3), (1, 4), (1, 5),  # Новый год
+        (1, 7),                                      # Рождество
+        (2, 23),                                     # День защитника
+        (3, 8),                                      # 8 Марта
+        (5, 1),                                      # Праздник труда
+        (5, 9),                                      # День Победы
+        (6, 12),                                     # День России
+        (11, 4),                                     # День народного единства
+    ]
+    return {date(year, m, d) for m, d in fixed}
+
+
 def generate_t1_pdf(employee, order_number='П-001') -> bytes:
     """Generate T-1 HR order PDF for an employee."""
     font_name = _register_fonts()
@@ -73,12 +110,14 @@ def generate_t1_pdf(employee, order_number='П-001') -> bytes:
 
     story = []
 
-    # Header — organization name
-    company_name = ''
-    if hasattr(employee, 'company') and employee.company:
-        company_name = employee.company.name
-    
-    story.append(Paragraph(company_name or 'Наименование организации', normal))
+    # Header — organization name + реквизиты
+    co = _get_company_info(employee)
+    company_name = co['name']
+    header_parts = [company_name or 'Наименование организации']
+    if co['inn']:          header_parts.append('ИНН: ' + co['inn'])
+    if co['ogrn']:         header_parts.append('ОГРН: ' + co['ogrn'])
+    if co['legal_address']:header_parts.append(co['legal_address'])
+    story.append(Paragraph(' | '.join(header_parts), normal))
     story.append(Paragraph('(наименование организации)', small))
     story.append(Spacer(1, 3*mm))
 
@@ -191,7 +230,11 @@ def generate_t2_pdf(employee) -> bytes:
     title  = ParagraphStyle("T", fontName=font_name, fontSize=11, leading=14, alignment=TA_CENTER)
 
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else ""
+    co = _get_company_info(employee)
+    company_name = co["name"]
+    director = co["director_name"]
+    inn_co = co["inn"]
+    address_co = co["legal_address"]
     story.append(Paragraph(company_name or "Наименование организации", normal))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
@@ -252,7 +295,11 @@ def generate_t8_pdf(employee, order_number="У-001") -> bytes:
     title  = ParagraphStyle("T", fontName=font_name, fontSize=11, leading=14, alignment=TA_CENTER)
 
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else ""
+    co = _get_company_info(employee)
+    company_name = co["name"]
+    director = co["director_name"]
+    inn_co = co["inn"]
+    address_co = co["legal_address"]
     story.append(Paragraph(company_name or "Наименование организации", normal))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
@@ -336,7 +383,11 @@ def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_numb
     title  = ParagraphStyle("T", fontName=font_name, fontSize=11, leading=14, alignment=TA_CENTER)
 
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else ""
+    co = _get_company_info(employee)
+    company_name = co["name"]
+    director = co["director_name"]
+    inn_co = co["inn"]
+    address_co = co["legal_address"]
     story.append(Paragraph(company_name or "Наименование организации", normal))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
@@ -413,7 +464,11 @@ def generate_t5_pdf(employee, new_position, new_salary=None, order_number="ПР-
     today = dt_date.today()
     today_str = today.strftime("%d.%m.%Y")
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else ""
+    co = _get_company_info(employee)
+    company_name = co["name"]
+    director = co["director_name"]
+    inn_co = co["inn"]
+    address_co = co["legal_address"]
     story.append(Paragraph(company_name or "Наименование организации", normal))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
@@ -473,7 +528,11 @@ def generate_salary_change_pdf(employee, new_salary, order_number="З-001") -> b
     today = dt_date.today()
     today_str = today.strftime("%d.%m.%Y")
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else ""
+    co = _get_company_info(employee)
+    company_name = co["name"]
+    director = co["director_name"]
+    inn_co = co["inn"]
+    address_co = co["legal_address"]
     story.append(Paragraph(company_name or "Наименование организации", normal))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
@@ -511,7 +570,10 @@ def generate_work_certificate_pdf(employee) -> bytes:
     today = dt_date.today()
     today_str = today.strftime("%d.%m.%Y")
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else "Организация"
+    co = _get_company_info(employee)
+    company_name = co["name"] or "Организация"
+    director = co["director_name"]
+    inn_co = co["inn"]
     story.append(Paragraph(company_name, title))
     story.append(Spacer(1, 5*mm))
     story.append(Paragraph("СПРАВКА", title))
@@ -546,7 +608,11 @@ def generate_labor_contract_pdf(employee) -> bytes:
     today = dt_date.today()
     today_str = today.strftime("%d.%m.%Y")
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else "Работодатель"
+    co = _get_company_info(employee)
+    company_name = co["name"] or "Работодатель"
+    director = co["director_name"]
+    inn_co = co["inn"]
+    address_co = co["legal_address"]
     full_name = (employee.last_name + " " + employee.first_name + " " + employee.middle_name).strip()
     hire = employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else today_str
     position = employee.position or "-"
@@ -596,9 +662,16 @@ def generate_labor_contract_pdf(employee) -> bytes:
         for item in items:
             story.append(Paragraph(item, normal))
     story.append(Spacer(1, 8*mm))
+    employer_details = company_name
+    if inn_co:
+        employer_details += "\nИНН: " + inn_co
+    if address_co:
+        employer_details += "\n" + address_co
+    if director:
+        employer_details += "\nРуководитель: " + director
     sig = [
         ["РАБОТОДАТЕЛЬ:", "РАБОТНИК:"],
-        [company_name, full_name],
+        [employer_details, full_name],
         ["", "Паспорт: " + passport],
         ["Подпись: ________________", "Подпись: ________________"],
         ["Дата: " + today_str, "Дата: " + today_str],
@@ -625,7 +698,11 @@ def generate_gph_contract_pdf(employee) -> bytes:
     today = dt_date.today()
     today_str = today.strftime("%d.%m.%Y")
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else "Заказчик"
+    co = _get_company_info(employee)
+    company_name = co["name"] or "Заказчик"
+    director = co["director_name"]
+    inn_co = co["inn"]
+    address_co = co["legal_address"]
     full_name = (employee.last_name + " " + employee.first_name + " " + employee.middle_name).strip()
     hire = employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else today_str
     position = employee.position or "-"
@@ -662,9 +739,14 @@ def generate_gph_contract_pdf(employee) -> bytes:
         for item in items:
             story.append(Paragraph(item, normal))
     story.append(Spacer(1, 8*mm))
+    zakazchik_details = company_name
+    if inn_co:
+        zakazchik_details += "\nИНН: " + inn_co
+    if director:
+        zakazchik_details += "\nРуководитель: " + director
     sig = [
         ["ЗАКАЗЧИК:", "ИСПОЛНИТЕЛЬ:"],
-        [company_name, full_name],
+        [zakazchik_details, full_name],
         ["", "ИНН: " + inn],
         ["Подпись: ________________", "Подпись: ________________"],
         ["Дата: " + today_str, "Дата: " + today_str],
@@ -691,7 +773,11 @@ def generate_gph_act_pdf(employee, work_description=None, amount=None) -> bytes:
     today = dt_date.today()
     today_str = today.strftime("%d.%m.%Y")
     story = []
-    company_name = employee.company.name if hasattr(employee, "company") and employee.company else "Заказчик"
+    co = _get_company_info(employee)
+    company_name = co["name"] or "Заказчик"
+    director = co["director_name"]
+    inn_co = co["inn"]
+    address_co = co["legal_address"]
     full_name = (employee.last_name + " " + employee.first_name + " " + employee.middle_name).strip()
     work_desc = work_description or employee.position or "Услуги согласно договору ГПХ"
     act_amount = str(amount or employee.salary or "-")
@@ -761,6 +847,18 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
     header = ["N", "ФИО / должность"] + [str(d) for d in range(1, days_in_month+1)] + ["Дней", "Часов"]
     col_widths = [7*mm, 48*mm] + [5.5*mm]*days_in_month + [11*mm, 11*mm]
     rows = [header]
+    holidays = _get_ru_holidays(y)
+    # Определяем типы дней для подсветки (colspan не нужен — используем стили)
+    day_types = []  # 'work', 'weekend', 'holiday'
+    for d in range(1, days_in_month+1):
+        date_d = dt_date(y, m, d)
+        if date_d in holidays:
+            day_types.append('holiday')
+        elif date_d.weekday() >= 5:
+            day_types.append('weekend')
+        else:
+            day_types.append('work')
+
     for i, emp in enumerate(employees, 1):
         ln = emp.last_name or ""
         fn = (emp.first_name[:1] + ".") if emp.first_name else ""
@@ -769,24 +867,36 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
         row = [str(i), short_name.strip() + "\n" + (emp.position or "")]
         work_days = 0
         for d in range(1, days_in_month+1):
-            date = dt_date(y, m, d)
-            if date.weekday() < 5:
+            dtype = day_types[d-1]
+            if dtype == 'work':
                 row.append("8")
                 work_days += 1
+            elif dtype == 'holiday':
+                row.append("П")
             else:
                 row.append("В")
         row.append(str(work_days))
         row.append(str(work_days * 8))
         rows.append(row)
     t = Table(rows, colWidths=col_widths)
-    t.setStyle(TableStyle([
+    # Базовые стили
+    style_cmds = [
         ("FONTNAME",(0,0),(-1,-1),font_name),("FONTSIZE",(0,0),(-1,-1),6),
         ("GRID",(0,0),(-1,-1),0.3,colors.black),
         ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
         ("ALIGN",(0,0),(-1,-1),"CENTER"),
         ("ALIGN",(1,0),(1,-1),"LEFT"),
         ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
-    ]))
+    ]
+    # Подсветка выходных (серый) и праздников (светло-красный) в заголовке и ячейках
+    for d_idx, dtype in enumerate(day_types):
+        col = d_idx + 2  # смещение: 0=N, 1=ФИО, затем дни
+        if dtype == 'weekend':
+            style_cmds.append(("BACKGROUND", (col, 0), (col, -1), colors.Color(0.85, 0.85, 0.85)))
+        elif dtype == 'holiday':
+            style_cmds.append(("BACKGROUND", (col, 0), (col, -1), colors.Color(1.0, 0.75, 0.75)))
+            style_cmds.append(("TEXTCOLOR", (col, 1), (col, -1), colors.Color(0.8, 0, 0)))
+    t.setStyle(TableStyle(style_cmds))
     story.append(t)
     story.append(Spacer(1, 5*mm))
     story.append(Paragraph("Ответственный: ________________  /___________________/", normal))
