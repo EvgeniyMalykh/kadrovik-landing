@@ -1,0 +1,21 @@
+{% extends "base_auth.html" %}
+{% block title %}Вход — Кадровый автопилот{% endblock %}
+{% block content %}
+<h2 class="auth-title">Войти в кабинет</h2>
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+<form method="post" action="{% url 'dashboard:login' %}">
+    {% csrf_token %}
+    <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@company.ru" required autofocus>
+    </div>
+    <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" name="password" placeholder="••••••••" required>
+    </div>
+    <button type="submit" class="btn-primary btn-full">Войти</button>
+</form>
+<p class="auth-switch">Нет аккаунта? <a href="{% url 'dashboard:register' %}">Зарегистрироваться</a></p>
+{% endblock %}

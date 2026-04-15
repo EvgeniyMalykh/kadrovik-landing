@@ -1,0 +1,54 @@
+<div class="modal-header">
+    <h3>Новый сотрудник</h3>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+</div>
+<form hx-post="{% url 'dashboard:employee_add' %}"
+      hx-target="#employees-table"
+      hx-swap="innerHTML"
+      hx-on::after-request="closeModal()">
+    {% csrf_token %}
+    <div class="form-row">
+        <div class="form-group">
+            <label>Фамилия *</label>
+            <input type="text" name="last_name" placeholder="Иванов" required>
+        </div>
+        <div class="form-group">
+            <label>Имя *</label>
+            <input type="text" name="first_name" placeholder="Иван" required>
+        </div>
+        <div class="form-group">
+            <label>Отчество</label>
+            <input type="text" name="middle_name" placeholder="Иванович">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Должность *</label>
+            <input type="text" name="position" placeholder="Менеджер" required>
+        </div>
+        <div class="form-group">
+            <label>Оклад (₽)</label>
+            <input type="number" name="salary" placeholder="50000">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Дата рождения</label>
+            <input type="date" name="birth_date">
+        </div>
+        <div class="form-group">
+            <label>Дата приёма на работу *</label>
+            <input type="date" name="hire_date" required>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Испытательный срок (мес.)</label>
+            <input type="number" name="probation_months" placeholder="3" min="0" max="6">
+        </div>
+    </div>
+    <div class="modal-actions">
+        <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+    </div>
+</form>

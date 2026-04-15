@@ -121,11 +121,12 @@ def generate_t1_pdf(employee, order_number='П-001') -> bytes:
     details = [
         ['Принять на работу:', hire_date],
         ['Фамилия, имя, отчество:', full_name],
+        ['Дата рождения:', employee.birth_date.strftime('%d.%m.%Y') if employee.birth_date else ''],
         ['Табельный номер:', str(employee.id)],
         ['Структурное подразделение:', employee.department.name if hasattr(employee, 'department') and employee.department else ''],
         ['Профессия (должность):', employee.position or ''],
         ['Тарифная ставка (оклад):', '{} руб.'.format(employee.salary) if employee.salary else ''],
-        ['Испытательный срок:', '{} мес.'.format(employee.probation_months) if hasattr(employee, 'probation_months') and employee.probation_months else 'Без испытания'],
+        ['Испытательный срок (до):', employee.probation_end_date.strftime('%d.%m.%Y') if employee.probation_end_date else 'Без испытания'],
     ]
 
     details_table = Table(details, colWidths=[90*mm, 80*mm])
@@ -151,7 +152,7 @@ def generate_t1_pdf(employee, order_number='П-001') -> bytes:
         ['должность', '', 'подпись', 'расшифровка подписи'],
         ['', '', '', ''],
         ['С приказом (распоряжением)', '', '', ''],
-        ['работник ознакомлен:', '', '____________', hire_date],
+        ['работник ознакомлен:', '', '____________', '___.___.______'],
         ['', '', 'подпись', 'дата'],
     ]
     sig_table = Table(sig_data, colWidths=[55*mm, 40*mm, 35*mm, 45*mm])

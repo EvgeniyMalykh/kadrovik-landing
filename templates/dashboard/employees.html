@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Сотрудники — Кадровый автопилот{% endblock %}
+{% block nav_employees %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Сотрудники</h1>
+        <p class="page-subtitle">{{ company.name|default:"Ваша компания" }}</p>
+    </div>
+    <button class="btn-primary"
+        hx-get="{% url 'dashboard:employee_add' %}"
+        hx-target="#modal-content"
+        hx-swap="innerHTML">
+        + Добавить сотрудника
+    </button>
+</div>
+<div class="card">
+    <div id="employees-table">
+        {% include "dashboard/partials/employees_table.html" %}
+    </div>
+</div>
+{% endblock %}

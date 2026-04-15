@@ -1,0 +1,40 @@
+{% if employees %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>ФИО</th>
+            <th>Должность</th>
+            <th>Дата приёма</th>
+            <th>Испытательный срок</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for emp in employees %}
+        <tr>
+            <td><strong>{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</strong></td>
+            <td>{{ emp.position|default:"—" }}</td>
+            <td>{{ emp.hire_date|date:"d.m.Y"|default:"—" }}</td>
+            <td>{% if emp.probation_months %}{{ emp.probation_months }} мес.{% else %}Без ИС{% endif %}</td>
+            <td>
+                <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-secondary btn-sm">
+                    📄 Скачать Т-1
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">👥</div>
+    <h3>Сотрудников пока нет</h3>
+    <p>Добавьте первого сотрудника, чтобы начать формировать документы</p>
+    <button class="btn-primary"
+        hx-get="{% url 'dashboard:employee_add' %}"
+        hx-target="#modal-content"
+        hx-swap="innerHTML">
+        + Добавить сотрудника
+    </button>
+</div>
+{% endif %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Подписка — Кадровый автопилот{% endblock %}
+{% block nav_subscription %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Подписка</h1>
+        <p class="page-subtitle">Управление тарифом</p>
+    </div>
+</div>
+<div class="pricing-grid">
+    <div class="pricing-card">
+        <div class="pricing-name">Старт</div>
+        <div class="pricing-price">790 <span>₽/мес</span></div>
+        <ul class="pricing-features">
+            <li>✓ До 10 сотрудников</li>
+            <li>✓ Приказ Т-1</li>
+            <li>✓ Уведомления в Telegram</li>
+            <li>✗ Отпуска и больничные</li>
+        </ul>
+        <button class="btn-disabled" disabled>Скоро — ЮKassa</button>
+    </div>
+    <div class="pricing-card pricing-card--featured">
+        <div class="pricing-badge">Популярный</div>
+        <div class="pricing-name">Бизнес</div>
+        <div class="pricing-price">1 990 <span>₽/мес</span></div>
+        <ul class="pricing-features">
+            <li>✓ До 50 сотрудников</li>
+            <li>✓ Все кадровые документы</li>
+            <li>✓ Уведомления в Telegram</li>
+            <li>✓ Отпуска и больничные</li>
+        </ul>
+        <button class="btn-disabled" disabled>Скоро — ЮKassa</button>
+    </div>
+    <div class="pricing-card">
+        <div class="pricing-name">Корпоратив</div>
+        <div class="pricing-price">4 900 <span>₽/мес</span></div>
+        <ul class="pricing-features">
+            <li>✓ Неограниченно сотрудников</li>
+            <li>✓ Все кадровые документы</li>
+            <li>✓ Приоритетная поддержка</li>
+            <li>✓ API доступ</li>
+        </ul>
+        <button class="btn-disabled" disabled>Скоро — ЮKassa</button>
+    </div>
+</div>
+{% endblock %}
