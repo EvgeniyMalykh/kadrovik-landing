@@ -1,4 +1,3 @@
 -r base.txt
-ipython
-black
-ruff
+django-debug-toolbar==4.4.6
+ipython==8.30.0
