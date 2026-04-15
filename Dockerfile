@@ -16,7 +16,7 @@ RUN apt-get update --fix-missing && apt-get install -y \
 
 WORKDIR /app
 
-COPY requirements/local.txt requirements/local.txt
+COPY requirements/ requirements/
 RUN pip install --no-cache-dir -r requirements/local.txt
 
 COPY . .
