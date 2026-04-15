@@ -276,9 +276,16 @@ def download_t13(request):
         return HttpResponse("Нет сотрудников", status=400)
     from datetime import date
     today = date.today()
-    pdf = generate_t13_pdf(employees, today.year, today.month)
+    try:
+        y = int(request.GET.get("year", today.year))
+        m = int(request.GET.get("month", today.month))
+        if not (1 <= m <= 12): m = today.month
+        if not (2000 <= y <= 2100): y = today.year
+    except (ValueError, TypeError):
+        y, m = today.year, today.month
+    pdf = generate_t13_pdf(employees, y, m)
     r = HttpResponse(pdf, content_type="application/pdf")
-    fname = today.strftime("%Y_%m")
+    fname = "%04d_%02d" % (y, m)
     r["Content-Disposition"] = "attachment; filename=T13_" + fname + ".pdf"
     return r
 

@@ -1,9 +1,42 @@
 {% if employees %}
-<div style="margin-bottom:1rem;">
-    <a href="{% url 'dashboard:download_t13' %}" class="btn-secondary" style="font-size:0.85rem;padding:6px 14px;text-decoration:none;">
-        📋 Табель Т-13 (весь отдел)
-    </a>
+<div style="margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:0.9rem;font-weight:500;color:#374151;">📋 Табель Т-13:</span>
+    <select id="t13-month" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;">
+        <option value="1">Январь</option>
+        <option value="2">Февраль</option>
+        <option value="3">Март</option>
+        <option value="4">Апрель</option>
+        <option value="5">Май</option>
+        <option value="6">Июнь</option>
+        <option value="7">Июль</option>
+        <option value="8">Август</option>
+        <option value="9">Сентябрь</option>
+        <option value="10">Октябрь</option>
+        <option value="11">Ноябрь</option>
+        <option value="12">Декабрь</option>
+    </select>
+    <select id="t13-year" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026">2026</option>
+        <option value="2027">2027</option>
+    </select>
+    <button type="button" onclick="downloadT13()" class="btn-secondary" style="font-size:0.85rem;padding:6px 14px;">
+        Скачать
+    </button>
 </div>
+<script>
+(function(){
+    var now = new Date();
+    document.getElementById('t13-month').value = now.getMonth() + 1;
+    document.getElementById('t13-year').value = now.getFullYear();
+})();
+function downloadT13() {
+    var m = document.getElementById('t13-month').value;
+    var y = document.getElementById('t13-year').value;
+    window.location.href = '{% url "dashboard:download_t13" %}?month=' + m + '&year=' + y;
+}
+</script>
 <table class="data-table">
     <thead>
         <tr>
