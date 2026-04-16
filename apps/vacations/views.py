@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse
-from apps.companies.models import CompanyMember
+from apps.companies.models import Company, CompanyMember
 from apps.employees.models import Employee
 from .models import Vacation
 import re
@@ -119,4 +119,109 @@ def vacation_print(request, vacation_id):
     return render(request, "dashboard/vacation_print.html", {
         "v": v,
         "company": company,
+    })
+
+
+# ─── ПУБЛИЧНАЯ ФОРМА ДЛЯ РАБОТНИКА ──────────────────────────────────────────
+
+VACATION_TYPE_LABELS = {
+    'annual':      'Ежегодный оплачиваемый',
+    'unpaid':      'За свой счёт (без сохранения зарплаты)',
+    'educational': 'Учебный',
+    'maternity':   'Декретный',
+}
+
+def vacation_request_public(request, company_id):
+    """Публичная форма заявления на отпуск для работника (без авторизации)."""
+    company = get_object_or_404(Company, id=company_id)
+
+    if request.method == "POST":
+        last_name   = request.POST.get("last_name", "").strip()
+        first_name  = request.POST.get("first_name", "").strip()
+        middle_name = request.POST.get("middle_name", "").strip()
+        position    = request.POST.get("position", "").strip()
+        vtype       = request.POST.get("vacation_type", "annual")
+        start_str   = request.POST.get("start_date", "").strip()
+        end_str     = request.POST.get("end_date", "").strip()
+        reason      = request.POST.get("reason", "").strip()
+
+        form_data = {
+            "last_name": last_name, "first_name": first_name,
+            "middle_name": middle_name, "position": position,
+            "start_date": start_str, "end_date": end_str, "reason": reason,
+        }
+
+        # Validation
+        if not last_name or not first_name or not position:
+            return render(request, "dashboard/vacation_request_form.html", {
+                "company": company,
+                "error": "Пожалуйста, заполните обязательные поля: Фамилия, Имя, Должность.",
+                "form_data": form_data,
+            })
+
+        start = _parse_date(start_str)
+        end   = _parse_date(end_str)
+        if not start or not end:
+            return render(request, "dashboard/vacation_request_form.html", {
+                "company": company,
+                "error": "Пожалуйста, введите даты в формате ДД.ММ.ГГГГ.",
+                "form_data": form_data,
+            })
+        if end < start:
+            return render(request, "dashboard/vacation_request_form.html", {
+                "company": company,
+                "error": "Дата окончания не может быть раньше даты начала.",
+                "form_data": form_data,
+            })
+
+        # Ищем сотрудника по ФИО в данной компании
+        emp_qs = Employee.objects.filter(
+            company=company,
+            last_name__iexact=last_name,
+            first_name__iexact=first_name,
+        )
+        if middle_name:
+            emp_qs = emp_qs.filter(middle_name__iexact=middle_name)
+
+        emp = emp_qs.first()
+
+        if not emp:
+            # Создаём временную запись сотрудника если не найден
+            # (или можно отклонить — но лучше создать черновик)
+            from apps.employees.models import Department
+            emp = Employee.objects.create(
+                company=company,
+                last_name=last_name,
+                first_name=first_name,
+                middle_name=middle_name,
+                position=position,
+                status='working',
+            )
+
+        v = Vacation.objects.create(
+            employee=emp,
+            vacation_type=vtype,
+            start_date=start,
+            end_date=end,
+            reason=reason,
+        )
+
+        days = (end - start).days + 1
+        return render(request, "dashboard/vacation_request_success.html", {
+            "company": company,
+            "last_name": last_name,
+            "first_name": first_name,
+            "middle_name": middle_name,
+            "vacation_type_display": VACATION_TYPE_LABELS.get(vtype, vtype),
+            "start_date": start.strftime("%d.%m.%Y"),
+            "end_date": end.strftime("%d.%m.%Y"),
+            "days_count": days,
+            "reason": reason,
+            "company_id": company_id,
+        })
+
+    # GET
+    return render(request, "dashboard/vacation_request_form.html", {
+        "company": company,
+        "form_data": {},
     })
