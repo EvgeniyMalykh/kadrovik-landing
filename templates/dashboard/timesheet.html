@@ -1,5 +1,5 @@
-{% load ts_tags %}
 {% extends "base.html" %}
+{% load ts_tags %}
 {% block title %}Табель Т-13 — {{ month_name }} {{ year }}{% endblock %}
 {% block nav_employees %}active{% endblock %}
 {% block content %}
@@ -62,8 +62,8 @@
     <thead>
         <tr>
             <th style="min-width:160px;">Сотрудник</th>
-            {% for d in days %}
-            <th class="ts-day-hdr ts-hdr-{{ day_types|index:forloop.index0 }}" title="{{ d }}">{{ d }}</th>
+            {% for d, dtype in days_with_types %}
+            <th class="ts-day-hdr ts-hdr-{{ dtype }}" title="{{ d }}">{{ d }}</th>
             {% endfor %}
             <th style="min-width:50px;">Дней</th>
             <th style="min-width:50px;">Часов</th>
@@ -76,8 +76,8 @@
                 <div style="font-weight:600;font-size:0.8rem;">{{ emp.last_name }} {{ emp.first_name|first }}.{% if emp.middle_name %} {{ emp.middle_name|first }}.{% endif %}</div>
                 <div style="font-size:0.7rem;color:var(--text-muted);">{{ emp.position }}</div>
             </td>
-            {% for d in days %}
-            <td class="ts-cell ts-{{ day_types|index:forloop.index0 }}"
+            {% for d, dtype in days_with_types %}
+            <td class="ts-cell ts-{{ dtype }}"
                 data-emp="{{ emp.id }}"
                 data-day="{{ d }}"
                 data-date="{{ year }}-{{ month|stringformat:'02d' }}-{{ d|stringformat:'02d' }}"

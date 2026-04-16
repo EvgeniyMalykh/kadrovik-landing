@@ -478,6 +478,7 @@ def timesheet_edit(request):
         else:
             day_types.append('work')
 
+    days_with_types = list(zip(days, day_types))
     CODES = [
         ('Я','Явка'), ('ОТ','Отпуск'), ('ОД','Доп.отпуск'),
         ('Б','Больничный'), ('К','Командировка'), ('НН','Неявка'),
@@ -491,6 +492,7 @@ def timesheet_edit(request):
         "employees": employees,
         "days": days,
         "day_types": day_types,
+        "days_with_types": days_with_types,
         "rec_map_json": _rec_map_to_json(rec_map),
         "year": y,
         "month": m,
