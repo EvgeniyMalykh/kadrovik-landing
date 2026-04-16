@@ -55,5 +55,5 @@ LOGGING = {
 EMAIL_BACKEND = "apps.accounts.email_backend.RedisRelayEmailBackend"
 REDIS_RELAY_URL = os.environ.get("REDIS_RELAY_URL", "redis://redis:6379/2")
 EMAIL_RELAY_QUEUE_KEY = "email_relay_queue"
-DEFAULT_FROM_EMAIL = "Кадровый автопилот <zhenyamalykh@narod.ru>"
-SERVER_EMAIL = "zhenyamalykh@narod.ru"
+DEFAULT_FROM_EMAIL = "zhenyamalykh@yandex.ru"
+SERVER_EMAIL = "zhenyamalykh@yandex.ru"
