@@ -70,12 +70,15 @@ def employees_list(request):
         from django.contrib import messages
         messages.error(request, "Ваша подписка истекла. Выберите тариф для продолжения работы.")
         return redirect("dashboard:subscription")
+    from apps.billing.services import get_subscription_context
+    sub_ctx = get_subscription_context(company)
     return render(request, "dashboard/employees.html", {
         "employees": employees,
         "company": company,
         "today": _date.today().isoformat(),
         "sub": sub,
         "trial_days_left": trial_days_left,
+        **sub_ctx,
     })
 
 
@@ -173,21 +176,36 @@ def _save_employee_from_post(post, employee):
 @login_required
 @subscription_required
 def employee_add(request):
+    from apps.billing.services import get_subscription_context
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    sub_ctx = get_subscription_context(member.company)
+
     if request.method == "POST":
-        member = CompanyMember.objects.filter(user=request.user).first()
-        if not member:
-            return HttpResponse("Нет компании", status=400)
+        # Проверяем лимит сотрудников по тарифу
+        if not sub_ctx["can_add_employee"]:
+            return HttpResponse(
+                f'<div class="alert alert-error" style="padding:12px 16px;border-radius:8px;background:#fee2e2;color:#991b1b;margin:8px 0;">'
+                f'Достигнут лимит тарифа — <strong>{sub_ctx["max_employees"]} сотрудников</strong>. '
+                f'<a href="/dashboard/subscription/" style="color:#991b1b;font-weight:600;">Обновите тариф</a> для добавления новых.</div>',
+                status=200
+            )
         emp = Employee(company=member.company)
         _save_employee_from_post(request.POST, emp)
         emp.save()
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
-    member = CompanyMember.objects.filter(user=request.user).first()
-    departments = []
-    if member:
-        from apps.employees.models import Department as _Dept
-        departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
-    return render(request, "dashboard/partials/employee_form.html", {"departments": departments})
+
+    departments = list(member.company.departments.values('id', 'name')) if hasattr(member.company, 'departments') else []
+    from apps.employees.models import Department as _Dept
+    departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
+    return render(request, "dashboard/partials/employee_form.html", {
+        "departments": departments,
+        "can_add_employee": sub_ctx["can_add_employee"],
+        "max_employees": sub_ctx["max_employees"],
+        "employee_count": sub_ctx["employee_count"],
+    })
 
 
 @login_required

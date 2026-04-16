@@ -100,6 +100,28 @@
 </div>
 {% endif %}
 
+<!-- ИСПОЛЬЗОВАНИЕ СОТРУДНИКОВ -->
+{% if sub %}
+<div class="card" style="margin-bottom:1.5rem;padding:1.25rem 1.5rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <span style="font-size:0.85rem;color:var(--text-muted);">Сотрудников</span>
+    <span style="font-weight:700;color:var(--text-primary);">
+      {{ employee_count }} / {% if sub.max_employees >= 9999 %}∞{% else %}{{ sub.max_employees }}{% endif %}
+    </span>
+  </div>
+  <div style="height:6px;background:var(--border-color);border-radius:4px;overflow:hidden;">
+    {% if sub.max_employees >= 9999 %}
+      <div style="height:100%;width:10%;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:4px;"></div>
+    {% else %}
+      <div style="height:100%;width:{% widthratio employee_count sub.max_employees 100 %}%;background:{% if employee_count >= sub.max_employees %}#ef4444{% else %}linear-gradient(90deg,#3b82f6,#60a5fa){% endif %};border-radius:4px;transition:width 0.3s;"></div>
+    {% endif %}
+  </div>
+  {% if employee_count >= sub.max_employees and sub.max_employees < 9999 %}
+  <p style="margin:8px 0 0;font-size:0.78rem;color:#dc2626;">⚠️ Лимит достигнут. Обновите тариф чтобы добавить новых сотрудников.</p>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- ТАРИФЫ -->
 <h2 style="font-size:1rem;font-weight:700;color:var(--text-primary);margin-bottom:1rem;">
   {% if sub and sub.is_active and sub.plan != "trial" %}Сменить тариф{% else %}Выбрать тариф{% endif %}
@@ -117,6 +139,9 @@
       <li>✓ Все 11 кадровых документов</li>
       <li>✓ Уведомления в Telegram</li>
       <li>✓ Табель Т-13</li>
+      <li class="feature-locked-item">— Email-уведомления</li>
+      <li class="feature-locked-item">— Многопользовательский доступ</li>
+      <li class="feature-locked-item">— Экспорт в Excel</li>
     </ul>
     {% if sub.plan == "start" and sub.is_active %}
       <button class="btn-disabled" disabled>Активен</button>
@@ -142,6 +167,9 @@
       <li>✓ Все кадровые документы</li>
       <li>✓ Email + Telegram уведомления</li>
       <li>✓ Многопользовательский доступ</li>
+      <li>✓ Экспорт в Excel</li>
+      <li class="feature-locked-item">— Кастомные шаблоны</li>
+      <li class="feature-locked-item">— API + выгрузка для СФР</li>
     </ul>
     {% if sub.plan == "business" and sub.is_active %}
       <button class="btn-disabled" disabled>Активен</button>
@@ -159,10 +187,14 @@
     <div class="pricing-name">Корпоратив</div>
     <div class="pricing-price">4 900 <span>₽/мес</span></div>
     <ul class="pricing-features">
-      <li>✓ Без ограничений сотрудников</li>
+      <li>✓ До 200 сотрудников</li>
       <li>✓ Все кадровые документы</li>
+      <li>✓ Email + Telegram уведомления</li>
+      <li>✓ Многопользовательский доступ</li>
+      <li>✓ Экспорт в Excel</li>
+      <li>✓ Кастомные шаблоны</li>
       <li>✓ Приоритетная поддержка</li>
-      <li>✓ API доступ + выгрузка для СФР</li>
+      <li>✓ API + выгрузка для СФР</li>
     </ul>
     {% if sub.plan == "pro" and sub.is_active %}
       <button class="btn-disabled" disabled>Активен</button>

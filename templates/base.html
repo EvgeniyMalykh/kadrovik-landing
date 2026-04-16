@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Кадровый автопилот{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=10">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=11">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         // CSRF для HTMX POST запросов
@@ -59,6 +59,10 @@
             <a href="{% url 'dashboard:subscription' %}" class="nav-item {% block nav_subscription %}{% endblock %}" onclick="closeSidebar()">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                 Подписка
+                {% if plan_key == 'trial' %}<span class="plan-badge plan-badge--trial">Trial</span>{% endif %}
+                {% if plan_key == 'start' %}<span class="plan-badge plan-badge--start">Старт</span>{% endif %}
+                {% if plan_key == 'business' %}<span class="plan-badge plan-badge--business">Бизнес</span>{% endif %}
+                {% if plan_key == 'pro' %}<span class="plan-badge plan-badge--pro">Про</span>{% endif %}
             </a>
         </nav>
         <div class="sidebar-footer">

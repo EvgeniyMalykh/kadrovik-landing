@@ -8,11 +8,120 @@ from apps.billing.models import Payment, Subscription
 
 YUKASSA_API_URL = "https://api.yookassa.ru/v3/payments"
 
+# Лимиты и фичи по тарифам
 PLANS = {
-    "start":    {"name": "Старт",      "price": 790,  "max_employees": 10,  "months": 1},
-    "business": {"name": "Бизнес",     "price": 1990, "max_employees": 50,  "months": 1},
-    "pro":      {"name": "Корпоратив", "price": 4900, "max_employees": 9999,"months": 1},
+    "trial": {
+        "name": "Пробный",
+        "price": 0,
+        "max_employees": 50,  # trial = как Бизнес
+        "months": 0,
+        "features": {
+            "documents":         True,
+            "telegram":          True,
+            "timesheet":         True,
+            "email_notify":      True,
+            "multi_user":        True,
+            "export_excel":      True,
+            "custom_templates":  False,
+            "priority_support":  False,
+            "api":               False,
+            "sfr_export":        False,
+        },
+    },
+    "start": {
+        "name": "Старт",
+        "price": 790,
+        "max_employees": 10,
+        "months": 1,
+        "features": {
+            "documents":         True,
+            "telegram":          True,
+            "timesheet":         True,
+            "email_notify":      False,
+            "multi_user":        False,
+            "export_excel":      False,
+            "custom_templates":  False,
+            "priority_support":  False,
+            "api":               False,
+            "sfr_export":        False,
+        },
+    },
+    "business": {
+        "name": "Бизнес",
+        "price": 1990,
+        "max_employees": 50,
+        "months": 1,
+        "features": {
+            "documents":         True,
+            "telegram":          True,
+            "timesheet":         True,
+            "email_notify":      True,
+            "multi_user":        True,
+            "export_excel":      True,
+            "custom_templates":  False,
+            "priority_support":  False,
+            "api":               False,
+            "sfr_export":        False,
+        },
+    },
+    "pro": {
+        "name": "Корпоратив",
+        "price": 4900,
+        "max_employees": 200,
+        "months": 1,
+        "features": {
+            "documents":         True,
+            "telegram":          True,
+            "timesheet":         True,
+            "email_notify":      True,
+            "multi_user":        True,
+            "export_excel":      True,
+            "custom_templates":  True,
+            "priority_support":  True,
+            "api":               True,
+            "sfr_export":        True,
+        },
+    },
 }
+
+# Названия тарифов для тултипов
+FEATURE_PLAN_LABEL = {
+    "email_notify":     "Бизнес",
+    "multi_user":       "Бизнес",
+    "export_excel":     "Бизнес",
+    "custom_templates": "Корпоратив",
+    "priority_support": "Корпоратив",
+    "api":              "Корпоратив",
+    "sfr_export":       "Корпоратив",
+}
+
+
+def get_plan_features(plan_key):
+    """Возвращает словарь фич для тарифа."""
+    plan = PLANS.get(plan_key, PLANS["start"])
+    return plan["features"]
+
+
+def get_subscription_context(company):
+    """
+    Возвращает словарь для шаблона:
+      sub, plan_features, plan_key, max_employees, employee_count, can_add_employee
+    """
+    from apps.employees.models import Employee
+    sub = getattr(company, "subscription", None) if company else None
+    plan_key = sub.plan if sub else "start"
+    features = get_plan_features(plan_key)
+    max_emp = sub.max_employees if sub else 10
+    emp_count = Employee.objects.filter(company=company).count() if company else 0
+    return {
+        "sub": sub,
+        "plan_key": plan_key,
+        "plan_features": features,
+        "max_employees": max_emp,
+        "employee_count": emp_count,
+        "can_add_employee": emp_count < max_emp,
+        "feature_plan_label": FEATURE_PLAN_LABEL,
+    }
 
 
 def create_payment(company, plan_key, return_url):
@@ -24,7 +133,6 @@ def create_payment(company, plan_key, return_url):
     shop_id = getattr(settings, "YUKASSA_SHOP_ID", "")
     secret_key = getattr(settings, "YUKASSA_SECRET_KEY", "")
 
-    # Создаём запись платежа в БД
     payment = Payment.objects.create(
         company=company,
         amount=plan["price"],
@@ -33,7 +141,6 @@ def create_payment(company, plan_key, return_url):
     )
 
     if not shop_id or not secret_key:
-        # Режим заглушки — ключи не настроены
         return payment, None
 
     idempotence_key = str(uuid.uuid4())
