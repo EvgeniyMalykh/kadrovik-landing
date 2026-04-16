@@ -39,7 +39,7 @@
         <option value="2026" {% if year == 2026 %}selected{% endif %}>2026</option>
         <option value="2027" {% if year == 2027 %}selected{% endif %}>2027</option>
     </select>
-    <button onclick="changeMonth()" class="btn-secondary">Перейти</button>
+    <button onclick="changeMonth()" class="btn-secondary" data-url="{% url 'dashboard:timesheet_edit' %}">Перейти</button>
 </div>
 
 <!-- Легенда кодов -->
@@ -149,7 +149,7 @@
 <script>
 // Данные из сервера
 var INITIAL = {{ rec_map_json|safe }};
-var DAY_TYPES = {{ day_types|safe_json }};
+var DAY_TYPES = {{ day_types_json }};
 var YEAR = {{ year }};
 var MONTH = {{ month }};
 
@@ -303,7 +303,9 @@ function saveTimesheet() {
 function changeMonth() {
     var m = document.getElementById('sel-month').value;
     var y = document.getElementById('sel-year').value;
-    window.location.href = '{% url "dashboard:timesheet_edit" %}?year=' + y + '&month=' + m;
+    var btn = document.querySelector('[data-url]');
+    var baseUrl = btn ? btn.dataset.url : '/dashboard/timesheet/';
+    window.location.href = baseUrl + '?year=' + y + '&month=' + m;
 }
 
 // Инициализация

@@ -488,10 +488,14 @@ def timesheet_edit(request):
     month_names = ["Январь","Февраль","Март","Апрель","Май","Июнь",
                    "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"]
 
+    import json as _json
+    from django.utils.safestring import mark_safe
+    day_types_json = mark_safe(_json.dumps(day_types, ensure_ascii=False))
     return render(request, "dashboard/timesheet.html", {
         "employees": employees,
         "days": days,
         "day_types": day_types,
+        "day_types_json": day_types_json,
         "days_with_types": days_with_types,
         "rec_map_json": _rec_map_to_json(rec_map),
         "year": y,
