@@ -37,7 +37,7 @@ def checkout(request, plan_key):
         activate_subscription(member.company, plan_key)
         payment.status = Payment.Status.SUCCESS
         payment.save(update_fields=["status"])
-        return redirect("dashboard:payment_success")
+        return redirect("billing:payment_success")
 
 
 @login_required
