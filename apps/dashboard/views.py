@@ -338,6 +338,7 @@ def company_profile(request):
         company.inn              = request.POST.get("inn", company.inn)
         company.ogrn             = request.POST.get("ogrn", company.ogrn)
         company.kpp              = request.POST.get("kpp", company.kpp)
+        company.okpo             = request.POST.get("okpo", company.okpo)
         company.legal_address    = request.POST.get("legal_address", company.legal_address)
         company.actual_address   = request.POST.get("actual_address", company.actual_address)
         company.director_name    = request.POST.get("director_name", company.director_name)

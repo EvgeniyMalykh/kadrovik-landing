@@ -30,7 +30,7 @@ def _register_fonts():
 def _get_company_info(employee):
     """Возвращает словарь с реквизитами компании из модели."""
     if not hasattr(employee, "company") or not employee.company:
-        return {"name": "", "inn": "", "ogrn": "", "kpp": "",
+        return {"name": "", "inn": "", "ogrn": "", "kpp": "", "okpo": "",
                 "legal_address": "", "director_name": "", "director_position": "Директор",
                 "phone": "", "email": ""}
     c = employee.company
@@ -44,6 +44,7 @@ def _get_company_info(employee):
         "director_position": getattr(c, "director_position", "Директор") or "Директор",
         "phone":             getattr(c, "phone",             "") or "",
         "email":             getattr(c, "email",             "") or "",
+        "okpo":              getattr(c, "okpo",              "") or "",
     }
 
 def _get_ru_holidays(year):
@@ -122,7 +123,7 @@ def generate_t1_pdf(employee, order_number='П-001') -> bytes:
     story.append(Spacer(1, 3*mm))
 
     # OKPO
-    story.append(Paragraph('Код по ОКПО: ___________', normal))
+    story.append(Paragraph('Код по ОКПО: ' + (co.get('okpo') or '___________'), normal))
     story.append(Spacer(1, 3*mm))
 
     # Form number and title
@@ -324,8 +325,8 @@ def generate_t8_pdf(employee, order_number="У-001") -> bytes:
     full_name = f"{employee.last_name} {employee.first_name} {employee.middle_name}".strip()
     hire = employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else ""
     rows = [
-        ["Прекратить действие трудового договора:", hire],
-        ["Уволить:", today],
+        ["Прекратить действие трудового договора:", today],
+        ["Уволить (дата):", today],
         ["Фамилия, имя, отчество:", full_name],
         ["Табельный номер:", str(employee.id)],
         ["Профессия (должность):", employee.position or ""],
@@ -340,11 +341,13 @@ def generate_t8_pdf(employee, order_number="У-001") -> bytes:
     ]))
     story.append(t)
     story.append(Spacer(1, 6*mm))
-    story.append(Paragraph("Основание: заявление работника от ___________ г.", normal))
+    story.append(Paragraph("Основание прекращения договора (ст. ТК РФ): п. 3 ч. 1 ст. 77 ТК РФ", normal))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph("Документ-основание: заявление работника от ___________ г.", normal))
     story.append(Spacer(1, 6*mm))
     sig_data = [
-        ["Руководитель организации:", "", "", ""],
-        ["должность", "", "подпись", "расшифровка подписи"],
+        ["Руководитель:", co["director_position"] or "Директор", "", ""],
+        [co["director_name"] or "", "", "подпись", "расшифровка подписи"],
         ["", "", "", ""],
         ["С приказом работник ознакомлен:", "", "____________", "___.___.______"],
         ["", "", "подпись", "дата"],
@@ -430,8 +433,8 @@ def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_numb
     story.append(t)
     story.append(Spacer(1, 6*mm))
     sig_data = [
-        ["Руководитель организации:", "", "", ""],
-        ["должность", "", "подпись", "расшифровка подписи"],
+        ["Руководитель:", co["director_position"] or "Директор", "", ""],
+        [co["director_name"] or "", "", "подпись", "расшифровка подписи"],
         ["", "", "", ""],
         ["С приказом работник ознакомлен:", "", "____________", "___.___.______"],
         ["", "", "подпись", "дата"],
@@ -490,14 +493,19 @@ def generate_t5_pdf(employee, new_position, new_salary=None, order_number="ПР-
     full_name = (employee.last_name + " " + employee.first_name + " " + employee.middle_name).strip()
     old_position = employee.position or "-"
     salary_text = (str(new_salary) + " руб.") if new_salary else "Без изменений"
+    old_salary_str = (str(employee.salary) + " руб.") if employee.salary else "—"
     rows = [
         ["Фамилия, имя, отчество:", full_name],
         ["Табельный номер:", str(employee.id)],
+        ["Вид перевода:", "Постоянный"],
+        ["Прежнее структурное подразделение:", employee.department.name if employee.department else "—"],
         ["Прежняя должность:", old_position],
+        ["Прежний оклад:", old_salary_str],
+        ["Новое структурное подразделение:", employee.department.name if employee.department else "—"],
         ["Новая должность:", new_position],
         ["Новый оклад:", salary_text],
         ["Дата перевода:", today_str],
-        ["Основание:", "Заявление работника"],
+        ["Основание:", "Заявление работника / доп. соглашение к ТД"],
     ]
     t = Table(rows, colWidths=[90*mm, 80*mm])
     t.setStyle(TableStyle([
@@ -543,16 +551,20 @@ def generate_salary_change_pdf(employee, new_salary, order_number="З-001") -> b
     full_name = (employee.last_name + " " + employee.first_name + " " + employee.middle_name).strip()
     position = employee.position or "должность"
     old_salary_text = (" Прежний оклад: " + str(employee.salary) + " руб.") if employee.salary else ""
-    story.append(Paragraph("В связи с производственной необходимостью <b>ПРИКАЗЫВАЮ:</b>", normal))
+    story.append(Paragraph("Основание: дополнительное соглашение к трудовому договору N ______ от ___________ г. (ст. 72 ТК РФ)", normal))
+    story.append(Spacer(1, 3*mm))
+    story.append(Paragraph("В связи с соглашением сторон <b>ПРИКАЗЫВАЮ:</b>", normal))
     story.append(Spacer(1, 3*mm))
     story.append(Paragraph(
-        "Установить " + full_name + ", " + position +
-        ", оклад в размере <b>" + str(new_salary) + " (рублей)</b> в месяц с " + today_str + " г." + old_salary_text,
+        "1. Установить " + full_name + ", " + position +
+        ", должностной оклад в размере <b>" + str(new_salary) + " (рублей)</b> в месяц с " + today_str + " г." + old_salary_text,
         normal))
+    story.append(Paragraph(
+        "2. Бухгалтерии производить начисление заработной платы в соответствии с настоящим приказом.", normal))
     story.append(Spacer(1, 8*mm))
     story.append(Paragraph("Руководитель организации: ________________  /___________________/", normal))
     story.append(Spacer(1, 4*mm))
-    story.append(Paragraph("С приказом ознакомлен: ________________  ___.___.______", normal))
+    story.append(Paragraph("С приказом ознакомлен: ________________  " + today_str, normal))
     doc.build(story)
     return buffer.getvalue()
 
@@ -652,8 +664,17 @@ def generate_labor_contract_pdf(employee) -> bytes:
         ("5. ИСПЫТАТЕЛЬНЫЙ СРОК", [
             "5.1. Работнику установлен испытательный срок до: " + probation + ".",
         ]),
-        ("6. ПРОЧИЕ УСЛОВИЯ", [
-            "6.1. Настоящий договор составлен в 2 экземплярах, по одному для каждой из сторон.",
+        ("6. ГАРАНТИИ И КОМПЕНСАЦИИ", [
+            "6.1. Работник подлежит обязательному социальному страхованию в соответствии с ФЗ от 29.12.2006 N 255-ФЗ, ФЗ от 15.12.2001 N 167-ФЗ.",
+            "6.2. Условия труда на рабочем месте: допустимые (класс 2) — в соответствии с ФЗ от 28.12.2013 N 426-ФЗ.",
+            "6.3. Работнику гарантируется ежегодный основной оплачиваемый отпуск продолжительностью 28 календарных дней (ст. 115 ТК РФ).",
+        ]),
+        ("7. ОТВЕТСТВЕННОСТЬ СТОРОН", [
+            "7.1. Стороны несут ответственность за неисполнение обязательств по настоящему договору в соответствии с законодательством РФ.",
+        ]),
+        ("8. ПРОЧИЕ УСЛОВИЯ", [
+            "8.1. Настоящий договор составлен в 2 экземплярах, по одному для каждой из сторон.",
+            "8.2. Конкретные даты выплаты заработной платы: 5-е и 20-е число каждого месяца (ст. 136 ТК РФ).",
         ]),
     ]
     for section_title, items in paragraphs:
@@ -728,9 +749,14 @@ def generate_gph_contract_pdf(employee) -> bytes:
             "3.1. Исполнитель обязан оказывать услуги лично и в согласованные сроки.",
             "3.2. Заказчик обязан принять и оплатить надлежащим образом оказанные услуги.",
         ]),
-        ("4. ПРОЧИЕ УСЛОВИЯ", [
-            "4.1. Договор составлен в 2 экземплярах, имеющих одинаковую юридическую силу.",
-            "4.2. Исполнитель является плательщиком НПД (самозанятый) / НДФЛ удерживается Заказчиком.",
+        ("4. ОТВЕТСТВЕННОСТЬ СТОРОН", [
+            "4.1. За неисполнение или ненадлежащее исполнение обязательств стороны несут ответственность в соответствии с законодательством РФ.",
+            "4.2. Заказчик вправе отказаться от договора при нарушении Исполнителем сроков оказания услуг.",
+        ]),
+        ("5. ПРОЧИЕ УСЛОВИЯ", [
+            "5.1. Договор составлен в 2 экземплярах, имеющих одинаковую юридическую силу.",
+            "5.2. Исполнитель является плательщиком НПД (самозанятый) / НДФЛ удерживается Заказчиком.",
+            "5.3. Настоящий договор не является трудовым договором и не порождает трудовых отношений (ст. 15 ТК РФ).",
         ]),
     ]
     for section_title, items in sections:
@@ -784,9 +810,12 @@ def generate_gph_act_pdf(employee, work_description=None, amount=None) -> bytes:
     story.append(Paragraph("АКТ ВЫПОЛНЕННЫХ РАБОТ (ОКАЗАННЫХ УСЛУГ)", title))
     story.append(Paragraph("N АКТ-" + str(employee.id) + " от " + today_str + " г.", title))
     story.append(Spacer(1, 5*mm))
+    contract_ref = "N ГПХ-" + str(employee.id)
     story.append(Paragraph(
         "<b>" + company_name + "</b> (Заказчик) и <b>" + full_name + "</b> (Исполнитель) "
-        "составили настоящий акт о том, что Исполнитель выполнил следующие работы (услуги):", normal))
+        "составили настоящий акт в соответствии с договором оказания услуг "
+        + contract_ref + " о том, что Исполнитель выполнил следующие работы (услуги) "
+        "в полном объёме и надлежащего качества:", normal))
     story.append(Spacer(1, 3*mm))
     work_rows = [
         ["N", "Наименование услуги", "Сумма (руб.)"],
