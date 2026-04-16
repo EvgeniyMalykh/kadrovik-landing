@@ -4,118 +4,218 @@
 {% block content %}
 
 <div class="page-header">
-    <div>
-        <h1 class="page-title">Подписка</h1>
-        <p class="page-subtitle">
-            {% if sub and sub.is_active and sub.plan != "trial" %}
-                Активен тариф «{{ sub.get_plan_display }}»
-                {% if sub.expires_at %}— до {{ sub.expires_at|date:"d.m.Y" }}{% endif %}
-            {% else %}
-                Пробный период — до 10 сотрудников
-            {% endif %}
-        </p>
-    </div>
+  <div>
+    <h1 class="page-title">Подписка</h1>
+    <p class="page-subtitle">Управление тарифом и оплатой</p>
+  </div>
 </div>
 
 {% if messages %}
-<div class="alert alert-success">
-    {% for msg in messages %}{{ msg }}{% endfor %}
+<div class="alert alert-success">{% for msg in messages %}{{ msg }}{% endfor %}</div>
+{% endif %}
+
+<!-- БЛОК ТЕКУЩЕЙ ПОДПИСКИ -->
+{% if sub %}
+<div class="card" style="margin-bottom:2rem;padding:1.5rem 2rem;">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px;">Текущий тариф</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span style="font-size:1.4rem;font-weight:800;color:var(--text-primary);">
+          {% if sub.plan == "trial" %}Пробный период
+          {% elif sub.plan == "start" %}Старт
+          {% elif sub.plan == "business" %}Бизнес
+          {% elif sub.plan == "pro" %}Корпоратив
+          {% else %}{{ sub.get_plan_display }}{% endif %}
+        </span>
+        {% if sub.is_active %}
+          <span style="background:#dcfce7;color:#166534;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;">Активна</span>
+        {% else %}
+          <span style="background:#fee2e2;color:#991b1b;font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;">Истекла</span>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if sub.expires_at %}
+    <div style="text-align:right;">
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px;">Действует до</div>
+      <div style="font-size:1.15rem;font-weight:700;color:var(--text-primary);">{{ sub.expires_at|date:"d.m.Y" }}</div>
+      {% with days_left=sub.expires_at|timeuntil %}
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px;">{{ days_left }}</div>
+      {% endwith %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if sub.expires_at %}
+  <!-- Прогресс-бар -->
+  <div style="margin-top:1.25rem;">
+    <div style="height:6px;background:var(--border-color);border-radius:4px;overflow:hidden;">
+      {% now "U" as now_ts %}
+      <div style="height:100%;border-radius:4px;
+        {% if sub.is_active %}background:linear-gradient(90deg,#3b82f6,#60a5fa);width:60%;
+        {% else %}background:#ef4444;width:100%;{% endif %}
+      "></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Детали тарифа -->
+  <div style="display:flex;gap:2rem;margin-top:1.25rem;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:3px;">Макс. сотрудников</div>
+      <div style="font-weight:700;color:var(--text-primary);">
+        {% if sub.max_employees >= 9999 %}Без ограничений{% else %}{{ sub.max_employees }}{% endif %}
+      </div>
+    </div>
+    <div>
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:3px;">Подписка с</div>
+      <div style="font-weight:700;color:var(--text-primary);">{{ sub.started_at|date:"d.m.Y" }}</div>
+    </div>
+    {% if sub.plan != "trial" %}
+    <div>
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:3px;">Стоимость</div>
+      <div style="font-weight:700;color:var(--text-primary);">
+        {% if sub.plan == "start" %}790 ₽/мес
+        {% elif sub.plan == "business" %}1 990 ₽/мес
+        {% elif sub.plan == "pro" %}4 900 ₽/мес{% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if not sub.is_active %}
+  <div style="margin-top:1.25rem;padding:12px 16px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
+    <p style="color:#991b1b;font-size:0.85rem;margin:0;">
+      ⚠️ Подписка истекла. Ваши данные сохраняются ещё 30 дней. Продлите тариф ниже чтобы восстановить доступ.
+    </p>
+  </div>
+  {% elif sub.plan == "trial" %}
+  <div style="margin-top:1.25rem;padding:12px 16px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe;">
+    <p style="color:#1e40af;font-size:0.85rem;margin:0;">
+      🎁 У вас пробный период. Выберите тариф ниже, чтобы продолжить работу после его окончания.
+    </p>
+  </div>
+  {% endif %}
 </div>
 {% endif %}
+
+<!-- ТАРИФЫ -->
+<h2 style="font-size:1rem;font-weight:700;color:var(--text-primary);margin-bottom:1rem;">
+  {% if sub and sub.is_active and sub.plan != "trial" %}Сменить тариф{% else %}Выбрать тариф{% endif %}
+</h2>
 
 <div class="pricing-grid">
 
-    <!-- СТАРТ -->
-    <div class="pricing-card {% if sub.plan == "start" and sub.is_active %}pricing-card--active{% endif %}">
-        {% if sub.plan == "start" and sub.is_active %}<div class="pricing-badge pricing-badge--active">Ваш тариф</div>{% endif %}
-        <div class="pricing-name">Старт</div>
-        <div class="pricing-price">790 <span>₽/мес</span></div>
-        <ul class="pricing-features">
-            <li>✓ До 10 сотрудников</li>
-            <li>✓ Приказ Т-1</li>
-            <li>✓ Уведомления в Telegram</li>
-            <li>✗ Отпуска и больничные</li>
-        </ul>
-        {% if sub.plan == "start" and sub.is_active %}
-            <button class="btn-disabled" disabled>Активен</button>
-            {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
-        {% else %}
-            <a href="{% url 'billing:checkout' 'start' %}" class="btn-primary btn-block">Подключить — 790 ₽</a>
-        {% endif %}
-    </div>
+  <!-- СТАРТ -->
+  <div class="pricing-card {% if sub.plan == "start" and sub.is_active %}pricing-card--active{% endif %}">
+    {% if sub.plan == "start" and sub.is_active %}<div class="pricing-badge pricing-badge--active">Ваш тариф</div>{% endif %}
+    <div class="pricing-name">Старт</div>
+    <div class="pricing-price">790 <span>₽/мес</span></div>
+    <ul class="pricing-features">
+      <li>✓ До 10 сотрудников</li>
+      <li>✓ Все 11 кадровых документов</li>
+      <li>✓ Уведомления в Telegram</li>
+      <li>✓ Табель Т-13</li>
+    </ul>
+    {% if sub.plan == "start" and sub.is_active %}
+      <button class="btn-disabled" disabled>Активен</button>
+      {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
+    {% else %}
+      <a href="{% url 'billing:checkout' 'start' %}" class="btn-primary btn-block">
+        {% if sub and sub.is_active and sub.plan != "trial" %}Перейти на Старт{% else %}Подключить — 790 ₽{% endif %}
+      </a>
+    {% endif %}
+  </div>
 
-    <!-- БИЗНЕС -->
-    <div class="pricing-card pricing-card--featured {% if sub.plan == "business" and sub.is_active %}pricing-card--active{% endif %}">
-        {% if sub.plan == "business" and sub.is_active %}
-            <div class="pricing-badge pricing-badge--active">Ваш тариф</div>
-        {% else %}
-            <div class="pricing-badge">Популярный</div>
-        {% endif %}
-        <div class="pricing-name">Бизнес</div>
-        <div class="pricing-price">1 990 <span>₽/мес</span></div>
-        <ul class="pricing-features">
-            <li>✓ До 50 сотрудников</li>
-            <li>✓ Все кадровые документы</li>
-            <li>✓ Уведомления в Telegram</li>
-            <li>✓ Отпуска и больничные</li>
-        </ul>
-        {% if sub.plan == "business" and sub.is_active %}
-            <button class="btn-disabled" disabled>Активен</button>
-            {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
-        {% else %}
-            <a href="{% url 'billing:checkout' 'business' %}" class="btn-primary btn-block">Подключить — 1 990 ₽</a>
-        {% endif %}
-    </div>
+  <!-- БИЗНЕС -->
+  <div class="pricing-card pricing-card--featured {% if sub.plan == "business" and sub.is_active %}pricing-card--active{% endif %}">
+    {% if sub.plan == "business" and sub.is_active %}
+      <div class="pricing-badge pricing-badge--active">Ваш тариф</div>
+    {% else %}
+      <div class="pricing-badge">Популярный</div>
+    {% endif %}
+    <div class="pricing-name">Бизнес</div>
+    <div class="pricing-price">1 990 <span>₽/мес</span></div>
+    <ul class="pricing-features">
+      <li>✓ До 50 сотрудников</li>
+      <li>✓ Все кадровые документы</li>
+      <li>✓ Email + Telegram уведомления</li>
+      <li>✓ Многопользовательский доступ</li>
+    </ul>
+    {% if sub.plan == "business" and sub.is_active %}
+      <button class="btn-disabled" disabled>Активен</button>
+      {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
+    {% else %}
+      <a href="{% url 'billing:checkout' 'business' %}" class="btn-primary btn-block">
+        {% if sub and sub.is_active and sub.plan != "trial" %}Перейти на Бизнес{% else %}Подключить — 1 990 ₽{% endif %}
+      </a>
+    {% endif %}
+  </div>
 
-    <!-- КОРПОРАТИВ -->
-    <div class="pricing-card {% if sub.plan == "pro" and sub.is_active %}pricing-card--active{% endif %}">
-        {% if sub.plan == "pro" and sub.is_active %}<div class="pricing-badge pricing-badge--active">Ваш тариф</div>{% endif %}
-        <div class="pricing-name">Корпоратив</div>
-        <div class="pricing-price">4 900 <span>₽/мес</span></div>
-        <ul class="pricing-features">
-            <li>✓ Неограниченно сотрудников</li>
-            <li>✓ Все кадровые документы</li>
-            <li>✓ Приоритетная поддержка</li>
-            <li>✓ API доступ</li>
-        </ul>
-        {% if sub.plan == "pro" and sub.is_active %}
-            <button class="btn-disabled" disabled>Активен</button>
-            {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
-        {% else %}
-            <a href="{% url 'billing:checkout' 'pro' %}" class="btn-primary btn-block">Подключить — 4 900 ₽</a>
-        {% endif %}
-    </div>
+  <!-- КОРПОРАТИВ -->
+  <div class="pricing-card {% if sub.plan == "pro" and sub.is_active %}pricing-card--active{% endif %}">
+    {% if sub.plan == "pro" and sub.is_active %}<div class="pricing-badge pricing-badge--active">Ваш тариф</div>{% endif %}
+    <div class="pricing-name">Корпоратив</div>
+    <div class="pricing-price">4 900 <span>₽/мес</span></div>
+    <ul class="pricing-features">
+      <li>✓ Без ограничений сотрудников</li>
+      <li>✓ Все кадровые документы</li>
+      <li>✓ Приоритетная поддержка</li>
+      <li>✓ API доступ + выгрузка для СФР</li>
+    </ul>
+    {% if sub.plan == "pro" and sub.is_active %}
+      <button class="btn-disabled" disabled>Активен</button>
+      {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
+    {% else %}
+      <a href="{% url 'billing:checkout' 'pro' %}" class="btn-primary btn-block">
+        {% if sub and sub.is_active and sub.plan != "trial" %}Перейти на Корпоратив{% else %}Подключить — 4 900 ₽{% endif %}
+      </a>
+    {% endif %}
+  </div>
 
 </div>
 
+<!-- ИСТОРИЯ ПЛАТЕЖЕЙ -->
 {% if payments %}
-<div class="card" style="margin-top: 2rem;">
-    <h3 style="margin-bottom: 1rem; color: var(--text-primary);">История платежей</h3>
-    <table class="employees-table">
-        <thead>
-            <tr>
-                <th>Дата</th>
-                <th>Тариф</th>
-                <th>Сумма</th>
-                <th>Статус</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in payments %}
-            <tr>
-                <td>{{ p.created_at|date:"d.m.Y H:i" }}</td>
-                <td>{{ p.get_plan_display|default:p.plan }}</td>
-                <td>{{ p.amount }} ₽</td>
-                <td>
-                    <span class="status-badge status-{{ p.status }}">
-                        {{ p.get_status_display }}
-                    </span>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="card" style="margin-top:2rem;">
+  <h3 style="margin-bottom:1rem;color:var(--text-primary);font-size:1rem;">История платежей</h3>
+  <table class="employees-table">
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Тариф</th>
+        <th>Сумма</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in payments %}
+      <tr>
+        <td>{{ p.created_at|date:"d.m.Y H:i" }}</td>
+        <td>
+          {% if p.plan == "start" %}Старт
+          {% elif p.plan == "business" %}Бизнес
+          {% elif p.plan == "pro" %}Корпоратив
+          {% else %}{{ p.plan }}{% endif %}
+        </td>
+        <td>{{ p.amount }} ₽</td>
+        <td>
+          <span class="status-badge status-{{ p.status }}">{{ p.get_status_display }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endif %}
+
+<!-- ПОДДЕРЖКА -->
+<div class="card" style="margin-top:1.5rem;padding:1.25rem 1.5rem;background:var(--bg-card);border:1px solid var(--border-color);">
+  <p style="margin:0;font-size:0.85rem;color:var(--text-muted);">
+    Вопросы по оплате и тарифам — пишите на
+    <a href="mailto:evgeniymalykh@gmail.com" style="color:var(--color-primary);">evgeniymalykh@gmail.com</a>
+  </p>
+</div>
 
 {% endblock %}
