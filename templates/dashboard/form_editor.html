@@ -25,7 +25,7 @@
     <!-- Выбор сотрудника -->
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Сотрудник</label>
-      <select name="employee_id" id="employee-select" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <select name="employee_id" id="employee-select" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
         <option value="">— Выберите сотрудника —</option>
         {% for emp in employees %}
         <option value="{{ emp.id }}" {% if document and document.employee_id == emp.id %}selected{% endif %}>
@@ -36,7 +36,7 @@
     </div>
 
     <!-- Автозаполненные данные сотрудника (read-only блок) -->
-    <div id="employee-info" style="display:none;margin-bottom:1.25rem;padding:12px 16px;background:var(--bg-secondary, #f8fafc);border-radius:8px;border:1px solid var(--border-color);">
+    <div id="employee-info" style="display:none;margin-bottom:1.25rem;padding:12px 16px;background:var(--bg-secondary, #f8fafc);border-radius:8px;border:1px solid var(--border);">
       <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Данные сотрудника</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:0.82rem;">
         <div><span style="color:var(--text-muted);">ФИО:</span> <span id="emp-fullname">—</span></div>
@@ -54,7 +54,7 @@
     <!-- ОТПУСК (Т-6) -->
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Вид отпуска</label>
-      <select name="vacation_type" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <select name="vacation_type" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
         <option value="основной" {% if extra_data.vacation_type == 'основной' %}selected{% endif %}>Ежегодный основной оплачиваемый</option>
         <option value="дополнительный" {% if extra_data.vacation_type == 'дополнительный' %}selected{% endif %}>Дополнительный</option>
         <option value="без сохранения" {% if extra_data.vacation_type == 'без сохранения' %}selected{% endif %}>Без сохранения заработной платы</option>
@@ -63,15 +63,15 @@
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1.25rem;">
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата начала</label>
-        <input type="date" name="start_date" id="vacation-start" value="{{ extra_data.start_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <input type="date" name="start_date" id="vacation-start" value="{{ extra_data.start_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
       </div>
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата окончания</label>
-        <input type="date" name="end_date" id="vacation-end" value="{{ extra_data.end_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <input type="date" name="end_date" id="vacation-end" value="{{ extra_data.end_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
       </div>
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Кол-во дней</label>
-        <input type="number" name="days_count" id="vacation-days" value="{{ extra_data.days_count|default:'' }}" readonly style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-secondary, #f1f5f9);color:var(--text-primary);">
+        <input type="number" name="days_count" id="vacation-days" value="{{ extra_data.days_count|default:'' }}" readonly style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-secondary, #f1f5f9);color:var(--text-primary);">
       </div>
     </div>
 
@@ -79,20 +79,20 @@
     <!-- ДОГОВОР ГПХ -->
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Предмет договора</label>
-      <textarea name="contract_subject" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;">{{ extra_data.contract_subject|default:'' }}</textarea>
+      <textarea name="contract_subject" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;">{{ extra_data.contract_subject|default:'' }}</textarea>
     </div>
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Сумма вознаграждения (руб.)</label>
-      <input type="number" name="amount" value="{{ extra_data.amount|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <input type="number" name="amount" value="{{ extra_data.amount|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem;">
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата начала</label>
-        <input type="date" name="start_date" value="{{ extra_data.start_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <input type="date" name="start_date" value="{{ extra_data.start_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
       </div>
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата окончания</label>
-        <input type="date" name="end_date" value="{{ extra_data.end_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <input type="date" name="end_date" value="{{ extra_data.end_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
       </div>
     </div>
 
@@ -100,61 +100,61 @@
     <!-- АКТ ГПХ -->
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Номер договора ГПХ</label>
-      <input type="text" name="contract_number" value="{{ extra_data.contract_number|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <input type="text" name="contract_number" value="{{ extra_data.contract_number|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
     </div>
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Описание выполненных работ</label>
-      <textarea name="work_description" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;">{{ extra_data.work_description|default:'' }}</textarea>
+      <textarea name="work_description" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;">{{ extra_data.work_description|default:'' }}</textarea>
     </div>
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Сумма (руб.)</label>
-      <input type="number" name="amount" value="{{ extra_data.amount|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <input type="number" name="amount" value="{{ extra_data.amount|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
     </div>
 
     {% elif doc_type == 'reference' %}
     <!-- СПРАВКА -->
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Цель справки</label>
-      <select name="purpose" id="purpose-select" onchange="togglePurposeOther()" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <select name="purpose" id="purpose-select" onchange="togglePurposeOther()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
         <option value="по месту требования" {% if extra_data.purpose == 'по месту требования' %}selected{% endif %}>По месту требования</option>
         <option value="в банк" {% if extra_data.purpose == 'в банк' %}selected{% endif %}>В банк</option>
         <option value="__other__" {% if extra_data.purpose and extra_data.purpose != 'по месту требования' and extra_data.purpose != 'в банк' %}selected{% endif %}>Другое...</option>
       </select>
-      <input type="text" name="purpose_other" id="purpose-other" value="{% if extra_data.purpose and extra_data.purpose != 'по месту требования' and extra_data.purpose != 'в банк' %}{{ extra_data.purpose }}{% endif %}" placeholder="Укажите цель" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-top:8px;display:none;">
+      <input type="text" name="purpose_other" id="purpose-other" value="{% if extra_data.purpose and extra_data.purpose != 'по месту требования' and extra_data.purpose != 'в банк' %}{{ extra_data.purpose }}{% endif %}" placeholder="Укажите цель" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-top:8px;display:none;">
     </div>
 
     {% elif doc_type == 'salary_change' %}
     <!-- ИЗМЕНЕНИЕ ОКЛАДА -->
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Новый оклад (руб.)</label>
-      <input type="number" name="new_salary" value="{{ extra_data.new_salary|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <input type="number" name="new_salary" value="{{ extra_data.new_salary|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
     </div>
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата изменения</label>
-      <input type="date" name="change_date" value="{{ extra_data.change_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <input type="date" name="change_date" value="{{ extra_data.change_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
     </div>
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Причина</label>
-      <input type="text" name="reason" value="{{ extra_data.reason|default:'' }}" placeholder="Например: повышение квалификации" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      <input type="text" name="reason" value="{{ extra_data.reason|default:'' }}" placeholder="Например: повышение квалификации" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
     </div>
     {% endif %}
 
     <!-- ═══════════════════════════════════════════════════════════ -->
     <!-- ОБЩИЕ ПОЛЯ: номер и дата документа                         -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <hr style="border:none;border-top:1px solid var(--border-color);margin:1.5rem 0;">
+    <hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem;">
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">
           {% if doc_type == 'vacation' or doc_type == 'salary_change' %}Номер приказа{% elif doc_type == 'gph_contract' %}Номер договора{% elif doc_type == 'gph_act' %}Номер акта{% elif doc_type == 'reference' %}Номер справки{% else %}Номер документа{% endif %}
         </label>
-        <input type="text" name="doc_number" value="{{ document.number|default:'' }}" placeholder="Авто" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <input type="text" name="doc_number" value="{{ document.number|default:'' }}" placeholder="Авто" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
       </div>
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">
           {% if doc_type == 'vacation' or doc_type == 'salary_change' %}Дата приказа{% elif doc_type == 'gph_contract' %}Дата договора{% elif doc_type == 'gph_act' %}Дата акта{% elif doc_type == 'reference' %}Дата справки{% else %}Дата документа{% endif %}
         </label>
-        <input type="date" name="doc_date" value="{% if document %}{{ document.date|date:'Y-m-d' }}{% endif %}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <input type="date" name="doc_date" value="{% if document %}{{ document.date|date:'Y-m-d' }}{% endif %}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
       </div>
     </div>
 

@@ -833,9 +833,12 @@ def generate_gph_act_pdf(employee, work_description=None, amount=None) -> bytes:
     story.append(Spacer(1, 5*mm))
     story.append(Paragraph("Услуги оказаны в полном объёме. Стороны претензий друг к другу не имеют.", normal))
     story.append(Spacer(1, 8*mm))
+    company_name_with_director = company_name
+    if director:
+        company_name_with_director = company_name + "\nРуководитель: " + director
     sig = [
         ["ЗАКАЗЧИК:", "ИСПОЛНИТЕЛЬ:"],
-        [company_name, full_name],
+        [company_name_with_director, full_name],
         ["Подпись: ________________", "Подпись: ________________"],
         ["Дата: " + today_str, "Дата: " + today_str],
     ]

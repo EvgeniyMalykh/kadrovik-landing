@@ -111,7 +111,8 @@ def get_subscription_context(company):
     sub = getattr(company, "subscription", None) if company else None
     plan_key = sub.plan if sub else "start"
     features = get_plan_features(plan_key)
-    max_emp = sub.max_employees if sub else 10
+    plan_data = PLANS.get(plan_key, PLANS["start"])
+    max_emp = plan_data["max_employees"]
     emp_count = Employee.objects.filter(company=company).count() if company else 0
     return {
         "sub": sub,
