@@ -39,6 +39,20 @@ function downloadT13() {
     var y = document.getElementById('t13-year').value;
     window.location.href = '{% url "dashboard:download_t13" %}?month=' + m + '&year=' + y;
 }
+function openEditEmployee(empId) {
+    fetch('/dashboard/employees/' + empId + '/edit/', {
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(function(r){ return r.text(); })
+    .then(function(html){
+        var mc = document.getElementById('modal-content');
+        mc.innerHTML = html;
+        openModal();
+        htmx.process(mc);
+        if (typeof initDateMasks === 'function') initDateMasks(mc);
+    })
+    .catch(function(e){ alert('Ошибка загрузки формы: ' + e); });
+}
 </script>
 
 <!-- DESKTOP: table (hidden on mobile via CSS) -->
@@ -140,20 +154,17 @@ function downloadT13() {
         {% endif %}
         <div class="emp-card__actions">
             <div class="emp-card__docs">
-                <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-doc">Т-1</a>
-                <a href="{% url 'dashboard:download_t2' emp.id %}" class="btn-doc">Т-2</a>
-                <a href="{% url 'dashboard:download_t5' emp.id %}" class="btn-doc">Т-5</a>
-                <a href="{% url 'dashboard:download_t6' emp.id %}?order=О-001&start={{ today }}&end={{ today }}" class="btn-doc">Т-6</a>
-                <a href="{% url 'dashboard:download_t8' emp.id %}?order=У-001" class="btn-doc">Т-8</a>
-                <a href="{% url 'dashboard:download_labor_contract' emp.id %}" class="btn-doc">ТД</a>
-                <a href="{% url 'dashboard:download_certificate' emp.id %}" class="btn-doc">Справка</a>
+                <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-doc" title="Т-1 Приём">Т-1</a>
+                <a href="{% url 'dashboard:download_t2' emp.id %}" class="btn-doc" title="Т-2 Карточка">Т-2</a>
+                <a href="{% url 'dashboard:download_t5' emp.id %}" class="btn-doc" title="Т-5 Перевод">Т-5</a>
+                <a href="{% url 'dashboard:download_t6' emp.id %}?order=О-001&start={{ today }}&end={{ today }}" class="btn-doc" title="Т-6 Отпуск">Т-6</a>
+                <a href="{% url 'dashboard:download_t8' emp.id %}?order=У-001" class="btn-doc" title="Т-8 Увольнение">Т-8</a>
+                <a href="{% url 'dashboard:download_labor_contract' emp.id %}" class="btn-doc" title="Трудовой договор">ТД</a>
+                <a href="{% url 'dashboard:download_certificate' emp.id %}" class="btn-doc" title="Справка с места работы">Справка</a>
             </div>
             <div class="emp-card__btns">
                 <button type="button" class="btn-icon" title="Редактировать"
-                    hx-get="{% url 'dashboard:employee_edit' emp.id %}"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    hx-trigger="click">✏️</button>
+                    onclick="openEditEmployee({{ emp.id }})">✏️</button>
                 <button type="button" class="btn-icon btn-danger" title="Удалить"
                     onclick="deleteEmployee({{ emp.id }}, this)">🗑️</button>
             </div>
