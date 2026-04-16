@@ -1,0 +1,71 @@
+{% if vacations %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Сотрудник</th>
+            <th>Вид отпуска</th>
+            <th>С</th>
+            <th>По</th>
+            <th>Дней</th>
+            <th>Причина</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for v in vacations %}
+        <tr id="vac-row-{{ v.id }}">
+            <td><strong>{{ v.employee.last_name }} {{ v.employee.first_name }}{% if v.employee.middle_name %} {{ v.employee.middle_name }}{% endif %}</strong><br>
+                <span style="font-size:0.8rem;color:var(--text-secondary);">{{ v.employee.position|default:"" }}</span>
+            </td>
+            <td>
+                <span class="vac-type-badge vac-{{ v.vacation_type }}">{{ v.get_vacation_type_display }}</span>
+            </td>
+            <td>{{ v.start_date|date:"d.m.Y" }}</td>
+            <td>{{ v.end_date|date:"d.m.Y" }}</td>
+            <td style="text-align:center;font-weight:700;">{{ v.days_count }}</td>
+            <td style="font-size:0.85rem;color:var(--text-secondary);max-width:220px;">
+                {{ v.reason|default:"—"|truncatechars:60 }}
+            </td>
+            <td class="actions-cell" style="white-space:nowrap;">
+                <a href="{% url 'vacations:print' v.id %}" target="_blank"
+                   class="btn-icon" title="Печать заявления" style="text-decoration:none;">🖨️</a>
+                <button type="button" class="btn-icon btn-danger" title="Удалить"
+                        onclick="deleteVacation({{ v.id }}, this)">🗑️</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function getCookieV(name) {
+    var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return v ? v[2] : null;
+}
+function deleteVacation(id, btn) {
+    if (!confirm('Удалить заявление об отпуске?')) return;
+    fetch('/vacations/' + id + '/delete/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookieV('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(r => r.text())
+    .then(html => {
+        var el = document.getElementById('vacations-table');
+        if (el) { el.innerHTML = html; htmx.process(el); }
+    })
+    .catch(e => alert('Ошибка: ' + e));
+}
+</script>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">🏖️</div>
+    <h3>Заявлений об отпуске нет</h3>
+    <p>Оформите первое заявление — оно сохранится и будет доступно для печати</p>
+    <button type="button" class="btn-primary" onclick="openVacationDrawer()">
+        + Новое заявление
+    </button>
+</div>
+{% endif %}

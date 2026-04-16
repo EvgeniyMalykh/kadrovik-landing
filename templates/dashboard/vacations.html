@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Заявления об отпуске — Кадровый автопилот{% endblock %}
+{% block nav_vacations %}active{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Заявления об отпуске</h1>
+        <p class="page-subtitle">{{ company.name|default:"Ваша компания" }}</p>
+    </div>
+    <button class="btn-primary"
+            hx-get="/vacations/add/"
+            hx-target="#modal-content"
+            hx-swap="innerHTML">
+        + Новое заявление
+    </button>
+</div>
+
+<div class="card" style="overflow:visible;">
+    <div id="vacations-table" style="padding:0;">
+        {% include "dashboard/partials/vacations_table.html" %}
+    </div>
+</div>
+
+<script>
+function openVacationDrawer() {
+    fetch('/vacations/add/', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('modal-content').innerHTML = html;
+            openModal();
+            htmx.process(document.getElementById('modal-content'));
+            initDateMasks(document.getElementById('modal-content'));
+        });
+}
+</script>
+
+{% endblock %}
