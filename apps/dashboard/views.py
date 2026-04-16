@@ -15,18 +15,6 @@ def dashboard_home(request):
     return redirect("dashboard:employees")
 
 
-@login_required
-def employees_list(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
-    if member:
-        employees = Employee.objects.filter(company=member.company).select_related("department")
-        company = member.company
-    else:
-        employees = Employee.objects.none()
-        company = None
-    from datetime import date as _date
-    from apps.billing.models import Subscription
-
 def subscription_required(view_func):
     """Декоратор: проверяет активную подписку. При истечении — редирект на тарифы."""
     from functools import wraps
@@ -47,6 +35,17 @@ def subscription_required(view_func):
     return wrapper
 
 
+@login_required
+def employees_list(request):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if member:
+        employees = Employee.objects.filter(company=member.company).select_related("department")
+        company = member.company
+    else:
+        employees = Employee.objects.none()
+        company = None
+    from datetime import date as _date
+    from apps.billing.models import Subscription
     from django.utils import timezone
     import datetime as _dt
     sub = getattr(company, "subscription", None) if company else None
