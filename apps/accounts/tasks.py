@@ -81,3 +81,26 @@ def notify_new_registration(email, company_name, registered_at):
     )
     _send_telegram(text)
     _send_google_sheets(email, company_name, registered_at)
+
+
+@shared_task(name="accounts.send_verification_email_pending")
+def send_verification_email_pending(email, verify_url):
+    """Отправляет письмо верификации до создания пользователя в БД."""
+    subject = "Подтвердите email — Кадровый автопилот"
+    html_message = render_to_string("emails/verify_email.html", {
+        "verify_url": verify_url,
+    })
+    plain_message = strip_tags(html_message)
+
+    try:
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Email send failed for {email}: {e}")

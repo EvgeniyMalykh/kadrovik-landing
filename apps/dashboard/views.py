@@ -292,95 +292,130 @@ def register_view(request):
         if User.objects.filter(email=email).exists():
             return render(request, "dashboard/register.html", {"error": "Email уже зарегистрирован"})
 
-        from apps.billing.models import Subscription
-        from apps.accounts.models import EmailVerification
+        import uuid, hashlib
+        from django.contrib.auth.hashers import make_password
         from django.utils import timezone
         import datetime
 
-        user = User.objects.create_user(username=email, email=email, password=password)
-        user.email_verified = False
-        user.is_active = False  # Не активен до подтверждения email
-        user.save()
+        # Сохраняем данные регистрации в Redis (не в БД!) до подтверждения email
+        token = str(uuid.uuid4())
+        expires_at = (timezone.now() + datetime.timedelta(hours=24)).isoformat()
+        password_hash = make_password(password)
 
-        company = Company.objects.create(name=company_name, owner=user)
-        CompanyMember.objects.create(user=user, company=company, role="owner")
-        Subscription.objects.create(
-            company=company,
-            plan=Subscription.Plan.TRIAL,
-            status=Subscription.Status.ACTIVE,
-            expires_at=timezone.now() + datetime.timedelta(days=7),
-            max_employees=10,
-        )
+        import redis as _redis
+        from django.conf import settings
+        r = _redis.from_url(getattr(settings, "REDIS_RELAY_URL", "redis://redis:6379/2"))
+        import json as _json
+        pending_key = f"pending_registration:{token}"
+        r.setex(pending_key, 86400, _json.dumps({
+            "email": email,
+            "password_hash": password_hash,
+            "company_name": company_name,
+            "expires_at": expires_at,
+        }, ensure_ascii=False))
 
-        # Создаём токен верификации (24 часа)
-        verif = EmailVerification.objects.create(
-            user=user,
-            expires_at=timezone.now() + datetime.timedelta(hours=24),
-        )
-        verify_url = request.build_absolute_uri(
-            f"/dashboard/verify-email/{verif.token}/"
-        )
+        verify_url = request.build_absolute_uri(f"/dashboard/verify-email/{token}/")
 
-        # Отправляем письмо + уведомления (Celery)
-        from apps.accounts.tasks import send_verification_email, notify_new_registration
-        send_verification_email.delay(user.id, verify_url)
-        notify_new_registration.delay(
-            email=email,
-            company_name=company_name,
-            registered_at=timezone.now().strftime("%d.%m.%Y %H:%M"),
-        )
+        # Отправляем только письмо — в БД ничего не создаётся
+        from apps.accounts.tasks import send_verification_email_pending
+        send_verification_email_pending.delay(email, verify_url)
 
         return render(request, "dashboard/email_sent.html", {"email": email})
     return render(request, "dashboard/register.html")
 
 
 def verify_email_view(request, token):
-    from apps.accounts.models import EmailVerification
+    import redis as _redis, json as _json
     from django.utils import timezone
-    try:
-        verif = EmailVerification.objects.select_related("user").get(token=token)
-    except EmailVerification.DoesNotExist:
-        return render(request, "dashboard/register.html", {"error": "Ссылка недействительна"})
+    from django.conf import settings
+    import datetime
 
-    if timezone.now() > verif.expires_at:
-        verif.delete()
-        return render(request, "dashboard/register.html", {"error": "Ссылка устарела. Зарегистрируйтесь снова."})
+    r = _redis.from_url(getattr(settings, "REDIS_RELAY_URL", "redis://redis:6379/2"))
+    pending_key = f"pending_registration:{token}"
+    data_raw = r.get(pending_key)
 
-    user = verif.user
-    user.email_verified = True
-    user.is_active = True
+    if not data_raw:
+        return render(request, "dashboard/register.html", {"error": "Ссылка недействительна или устарела"})
+
+    data = _json.loads(data_raw)
+    email        = data["email"]
+    password_hash = data["password_hash"]
+    company_name  = data["company_name"]
+
+    # Проверяем — вдруг успели зарегистрироваться с тем же email
+    if User.objects.filter(email=email).exists():
+        r.delete(pending_key)
+        return render(request, "dashboard/register.html", {"error": "Email уже зарегистрирован"})
+
+    # Создаём пользователя, компанию, подписку — только сейчас
+    from apps.billing.models import Subscription
+
+    user = User(username=email, email=email, email_verified=True, is_active=True)
+    user.password = password_hash
     user.save()
-    verif.delete()
+
+    company = Company.objects.create(name=company_name, owner=user)
+    CompanyMember.objects.create(user=user, company=company, role="owner")
+    Subscription.objects.create(
+        company=company,
+        plan=Subscription.Plan.TRIAL,
+        status=Subscription.Status.ACTIVE,
+        expires_at=timezone.now() + datetime.timedelta(days=7),
+        max_employees=10,
+    )
+
+    # Удаляем pending запись
+    r.delete(pending_key)
+
+    # Уведомления — Telegram + Google Sheets (только после реальной регистрации)
+    from apps.accounts.tasks import notify_new_registration
+    notify_new_registration.delay(
+        email=email,
+        company_name=company_name,
+        registered_at=timezone.now().strftime("%d.%m.%Y %H:%M"),
+    )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return render(request, "dashboard/email_verified.html")
 
 
 def resend_verification_view(request):
-    from apps.accounts.models import EmailVerification
+    import redis as _redis, json as _json, uuid
     from django.utils import timezone
+    from django.conf import settings
     import datetime
 
     email = request.GET.get("email", "").strip().lower()
     if not email:
         return redirect("dashboard:register")
 
-    try:
-        user = User.objects.get(email=email, is_active=False)
-    except User.DoesNotExist:
-        return redirect("dashboard:login")
+    r = _redis.from_url(getattr(settings, "REDIS_RELAY_URL", "redis://redis:6379/2"))
 
-    # Удаляем старый токен и создаём новый
-    EmailVerification.objects.filter(user=user).delete()
-    verif = EmailVerification.objects.create(
-        user=user,
-        expires_at=timezone.now() + datetime.timedelta(hours=24),
-    )
-    verify_url = request.build_absolute_uri(
-        f"/dashboard/verify-email/{verif.token}/"
-    )
-    from apps.accounts.tasks import send_verification_email
-    send_verification_email.delay(user.id, verify_url)
+    # Ищем pending запись по email
+    existing_data = None
+    existing_key = None
+    for key in r.scan_iter("pending_registration:*"):
+        raw = r.get(key)
+        if raw:
+            d = _json.loads(raw)
+            if d.get("email") == email:
+                existing_data = d
+                existing_key = key
+                break
+
+    if not existing_data:
+        return redirect("dashboard:register")
+
+    # Создаём новый токен
+    new_token = str(uuid.uuid4())
+    new_key = f"pending_registration:{new_token}"
+    r.setex(new_key, 86400, _json.dumps(existing_data, ensure_ascii=False))
+    if existing_key:
+        r.delete(existing_key)
+
+    verify_url = request.build_absolute_uri(f"/dashboard/verify-email/{new_token}/")
+    from apps.accounts.tasks import send_verification_email_pending
+    send_verification_email_pending.delay(email, verify_url)
 
     return render(request, "dashboard/email_sent.html", {"email": email, "resent": True})
 
