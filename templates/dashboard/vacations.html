@@ -8,10 +8,7 @@
         <h1 class="page-title">Заявления об отпуске</h1>
         <p class="page-subtitle">{{ company.name|default:"Ваша компания" }}</p>
     </div>
-    <button class="btn-primary"
-            hx-get="/vacations/add/"
-            hx-target="#modal-content"
-            hx-swap="innerHTML">
+    <button class="btn-primary" onclick="openVacationDrawer()">
         + Новое заявление
     </button>
 </div>
@@ -29,8 +26,8 @@ function openVacationDrawer() {
         .then(html => {
             document.getElementById('modal-content').innerHTML = html;
             openModal();
-            htmx.process(document.getElementById('modal-content'));
-            initDateMasks(document.getElementById('modal-content'));
+            if (window.htmx) htmx.process(document.getElementById('modal-content'));
+            if (window.initDateMasks) initDateMasks(document.getElementById('modal-content'));
         });
 }
 </script>
