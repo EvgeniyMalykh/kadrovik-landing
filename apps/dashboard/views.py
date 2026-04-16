@@ -25,10 +25,35 @@ def employees_list(request):
         employees = Employee.objects.none()
         company = None
     from datetime import date as _date
+    from apps.billing.models import Subscription
+    from django.utils import timezone
+    import datetime as _dt
+    sub = getattr(company, "subscription", None) if company else None
+    # Для старых аккаунтов без подписки — создаём trial
+    if company and not sub:
+        sub = Subscription.objects.create(
+            company=company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.ACTIVE,
+            expires_at=timezone.now() + _dt.timedelta(days=7),
+            max_employees=10,
+        )
+    # Оставшиеся дни trial
+    trial_days_left = None
+    if sub and sub.plan == Subscription.Plan.TRIAL and sub.expires_at:
+        delta = sub.expires_at - timezone.now()
+        trial_days_left = max(0, delta.days)
+    # Если подписка истекла — редирект на тарифы
+    if sub and not sub.is_active:
+        from django.contrib import messages
+        messages.error(request, "Ваша подписка истекла. Выберите тариф для продолжения работы.")
+        return redirect("dashboard:subscription")
     return render(request, "dashboard/employees.html", {
         "employees": employees,
         "company": company,
         "today": _date.today().isoformat(),
+        "sub": sub,
+        "trial_days_left": trial_days_left,
     })
 
 
@@ -186,6 +211,17 @@ def register_view(request):
         user = User.objects.create_user(username=email, email=email, password=password)
         company = Company.objects.create(name=company_name, owner=user)
         CompanyMember.objects.create(user=user, company=company, role="owner")
+        # Создаём пробную подписку на 7 дней
+        from apps.billing.models import Subscription
+        from django.utils import timezone
+        import datetime
+        Subscription.objects.create(
+            company=company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.ACTIVE,
+            expires_at=timezone.now() + datetime.timedelta(days=7),
+            max_employees=10,
+        )
         login(request, user)
         return redirect("dashboard:employees")
     return render(request, "dashboard/register.html")

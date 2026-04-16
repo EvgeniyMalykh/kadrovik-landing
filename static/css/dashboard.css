@@ -144,3 +144,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .form-section:last-of-type { border-bottom: none; }
 .form-section-title { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
 .form-group--full { grid-column: 1 / -1; }
+
+/* Trial banner */
+.trial-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #E8F4F5;
+    border: 1px solid #01696F;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 1.2rem;
+    font-size: 0.92rem;
+    color: #01696F;
+}
+.trial-banner--urgent {
+    background: #FFF3E0;
+    border-color: #E65100;
+    color: #E65100;
+}
+.trial-banner__icon { font-size: 1.1rem; }
+.trial-banner__link {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+}
+.trial-banner__link:hover { opacity: 0.8; }

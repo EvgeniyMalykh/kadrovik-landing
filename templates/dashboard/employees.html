@@ -2,6 +2,22 @@
 {% block title %}Сотрудники — Кадровый автопилот{% endblock %}
 {% block nav_employees %}active{% endblock %}
 {% block content %}
+{% if trial_days_left is not None %}
+<div class="trial-banner {% if trial_days_left <= 2 %}trial-banner--urgent{% endif %}">
+    <div class="trial-banner__icon">⏳</div>
+    <div class="trial-banner__text">
+        {% if trial_days_left == 0 %}
+            Сегодня последний день пробного периода.
+        {% elif trial_days_left == 1 %}
+            Пробный период заканчивается завтра.
+        {% else %}
+            Пробный период: осталось <b>{{ trial_days_left }} дн.</b>
+        {% endif %}
+        &nbsp;
+        <a href="{% url 'dashboard:subscription' %}" class="trial-banner__link">Выбрать тариф →</a>
+    </div>
+</div>
+{% endif %}
 <div class="page-header">
     <div>
         <h1 class="page-title">Сотрудники</h1>
