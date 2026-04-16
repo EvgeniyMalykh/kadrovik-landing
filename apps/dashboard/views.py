@@ -26,6 +26,27 @@ def employees_list(request):
         company = None
     from datetime import date as _date
     from apps.billing.models import Subscription
+
+def subscription_required(view_func):
+    """Декоратор: проверяет активную подписку. При истечении — редирект на тарифы."""
+    from functools import wraps
+    from django.contrib import messages
+    from django.shortcuts import redirect
+    from apps.billing.models import Subscription as _Sub
+    from apps.companies.models import CompanyMember as _CM
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        member = _CM.objects.filter(user=request.user).first()
+        if not member:
+            return view_func(request, *args, **kwargs)
+        sub = getattr(member.company, "subscription", None)
+        if sub and not sub.is_active:
+            messages.error(request, "Подписка истекла. Выберите тариф для продолжения работы.")
+            return redirect("dashboard:subscription")
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
     from django.utils import timezone
     import datetime as _dt
     sub = getattr(company, "subscription", None) if company else None
@@ -92,6 +113,7 @@ def _save_employee_from_post(post, employee):
 
 
 @login_required
+@subscription_required
 def employee_add(request):
     if request.method == "POST":
         member = CompanyMember.objects.filter(user=request.user).first()
@@ -106,6 +128,7 @@ def employee_add(request):
 
 
 @login_required
+@subscription_required
 def employee_edit(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -136,6 +159,7 @@ def employee_delete(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_t1(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -146,6 +170,7 @@ def download_t1(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_t2(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -156,6 +181,7 @@ def download_t2(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_t8(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -166,6 +192,7 @@ def download_t8(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_t6(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -237,6 +264,7 @@ def logout_view(request):
 
 
 @login_required
+@subscription_required
 def download_t5(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -250,6 +278,7 @@ def download_t5(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_salary_change(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -262,6 +291,7 @@ def download_salary_change(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_work_certificate(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -273,6 +303,7 @@ def download_work_certificate(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_labor_contract(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -284,6 +315,7 @@ def download_labor_contract(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_gph_contract(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -295,6 +327,7 @@ def download_gph_contract(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_gph_act(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -306,6 +339,7 @@ def download_gph_act(request, employee_id):
 
 
 @login_required
+@subscription_required
 def download_t13(request):
     member = CompanyMember.objects.filter(user=request.user).first()
     if not member:
