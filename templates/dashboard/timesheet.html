@@ -196,7 +196,7 @@ function initTable() {
 
 function setCell(cell, code, hours) {
     cell.querySelector('.ts-code').textContent = code;
-    cell.querySelector('.ts-code').className = 'ts-code code-' + code.replace('½','').replace('Н','H');
+    cell.querySelector('.ts-code').className = 'ts-code code-' + code.replace('½','');
     cell.querySelector('.ts-hrs').textContent = hours > 0 ? hours + 'ч' : '';
     cell.dataset.code  = code;
     cell.dataset.hours = hours;
@@ -253,8 +253,15 @@ function updateTotals() {
         var days = 0, hours = 0;
         cells.forEach(function(c) {
             var code  = c.dataset.code || '';
-            var h     = parseInt(c.dataset.hours) || 0;
-            if (!['В','П','НН'].includes(code) && h > 0) { days++; hours += h; }
+            var h     = parseFloat(c.dataset.hours) || 0;
+            // Считаем дни: всё кроме В (выходной) и П (праздник)
+            if (code && code !== 'В' && code !== 'П') {
+                days++;
+            }
+            // Считаем часы: все ненулевые
+            if (h > 0) {
+                hours += h;
+            }
         });
         row.querySelector('.ts-total-days').textContent  = days;
         row.querySelector('.ts-total-hours').textContent = hours;
