@@ -26,7 +26,7 @@
     <div class="form-row">
         <div class="form-group">
             <label>Дата рождения</label>
-            <input type="date" name="birth_date">
+            <input type="text" name="birth_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}">
         </div>
         <div class="form-group">
             <label>Телефон</label>
@@ -56,7 +56,7 @@
     <div class="form-row">
         <div class="form-group">
             <label>Дата приёма *</label>
-            <input type="date" name="hire_date" required>
+            <input type="text" name="hire_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" required>
         </div>
         <div class="form-group">
             <label>Испытательный срок (мес.)</label>
@@ -83,7 +83,7 @@
         </div>
         <div class="form-group">
             <label>Дата окончания договора</label>
-            <input type="date" name="contract_end_date">
+            <input type="text" name="contract_end_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}">
         </div>
     </div>
     <div class="form-row">
@@ -120,7 +120,7 @@
         </div>
         <div class="form-group">
             <label>Дата выдачи</label>
-            <input type="date" name="passport_issued_date">
+            <input type="text" name="passport_issued_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}">
         </div>
     </div>
     <div class="form-group">

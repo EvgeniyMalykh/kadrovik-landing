@@ -1,3 +1,4 @@
+import re
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
@@ -77,6 +78,28 @@ def employees_list(request):
     })
 
 
+
+def _parse_date_flexible(val):
+    """Parse date from DD.MM.YYYY or YYYY-MM-DD format. Returns date or None."""
+    if not val or not val.strip():
+        return None
+    val = val.strip()
+    # Try DD.MM.YYYY
+    m = re.match(r"^(\d{2})\.(\d{2})\.(\d{4})$", val)
+    if m:
+        try:
+            return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        except ValueError:
+            return None
+    # Try YYYY-MM-DD
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", val):
+        try:
+            return date.fromisoformat(val)
+        except ValueError:
+            return None
+    return None
+
+
 def _save_employee_from_post(post, employee):
     """Обновляет поля сотрудника из POST-данных."""
     employee.last_name   = post.get("last_name", "")
@@ -102,10 +125,10 @@ def _save_employee_from_post(post, employee):
         employee.department = None
 
     hire_date_str = post.get("hire_date")
-    employee.hire_date = date.fromisoformat(hire_date_str) if hire_date_str else date.today()
+    employee.hire_date = _parse_date_flexible(hire_date_str) or date.today()
 
     birth_date_str = post.get("birth_date")
-    employee.birth_date = date.fromisoformat(birth_date_str) if birth_date_str else None
+    employee.birth_date = _parse_date_flexible(birth_date_str)
 
     probation_months = post.get("probation_months")
     if probation_months:
@@ -130,17 +153,17 @@ def _save_employee_from_post(post, employee):
     employee.contract_type          = post.get("contract_type", "permanent")
 
     passport_issued_date_str = post.get("passport_issued_date")
-    employee.passport_issued_date = date.fromisoformat(passport_issued_date_str) if passport_issued_date_str else None
+    employee.passport_issued_date = _parse_date_flexible(passport_issued_date_str)
 
     contract_end_str = post.get("contract_end_date")
-    employee.contract_end_date = date.fromisoformat(contract_end_str) if contract_end_str else None
+    employee.contract_end_date = _parse_date_flexible(contract_end_str)
 
     fire_date_str = post.get("fire_date")
-    employee.fire_date = date.fromisoformat(fire_date_str) if fire_date_str else None
+    employee.fire_date = _parse_date_flexible(fire_date_str)
 
     probation_end_str = post.get("probation_end_date")
     if probation_end_str:
-        employee.probation_end_date = date.fromisoformat(probation_end_str)
+        employee.probation_end_date = _parse_date_flexible(probation_end_str)
     elif not post.get("probation_end_date") and post.get("probation_months"):
         pass  # уже обработано выше
     return employee
@@ -180,12 +203,12 @@ def employee_edit(request, employee_id):
     departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
     return render(request, "dashboard/partials/employee_edit_form.html", {
         "emp": employee,
-        "birth_date_str":           employee.birth_date.strftime("%Y-%m-%d") if employee.birth_date else "",
-        "hire_date_str":            employee.hire_date.strftime("%Y-%m-%d") if employee.hire_date else "",
-        "probation_end_str":        employee.probation_end_date.strftime("%Y-%m-%d") if employee.probation_end_date else "",
-        "contract_end_str":         employee.contract_end_date.strftime("%Y-%m-%d") if employee.contract_end_date else "",
-        "fire_date_str":            employee.fire_date.strftime("%Y-%m-%d") if employee.fire_date else "",
-        "passport_issued_date_str": employee.passport_issued_date.strftime("%Y-%m-%d") if employee.passport_issued_date else "",
+        "birth_date_str":           employee.birth_date.strftime("%d.%m.%Y") if employee.birth_date else "",
+        "hire_date_str":            employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else "",
+        "probation_end_str":        employee.probation_end_date.strftime("%d.%m.%Y") if employee.probation_end_date else "",
+        "contract_end_str":         employee.contract_end_date.strftime("%d.%m.%Y") if employee.contract_end_date else "",
+        "fire_date_str":            employee.fire_date.strftime("%d.%m.%Y") if employee.fire_date else "",
+        "passport_issued_date_str": employee.passport_issued_date.strftime("%d.%m.%Y") if employee.passport_issued_date else "",
         "departments": departments,
     })
 

@@ -26,7 +26,7 @@
     <div class="form-row">
         <div class="form-group">
             <label>Дата рождения</label>
-            <input type="date" name="birth_date" value="{{ birth_date_str }}">
+            <input type="text" name="birth_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ birth_date_str }}">
         </div>
         <div class="form-group">
             <label>Телефон</label>
@@ -56,11 +56,11 @@
     <div class="form-row">
         <div class="form-group">
             <label>Дата приёма *</label>
-            <input type="date" name="hire_date" value="{{ hire_date_str }}" required>
+            <input type="text" name="hire_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ hire_date_str }}" required>
         </div>
         <div class="form-group">
             <label>Испытательный срок до</label>
-            <input type="date" name="probation_end_date" value="{{ probation_end_str }}">
+            <input type="text" name="probation_end_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ probation_end_str }}">
         </div>
         <div class="form-group">
             <label>Статус</label>
@@ -83,11 +83,11 @@
         </div>
         <div class="form-group">
             <label>Дата окончания договора</label>
-            <input type="date" name="contract_end_date" value="{{ contract_end_str }}">
+            <input type="text" name="contract_end_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ contract_end_str }}">
         </div>
         <div class="form-group">
             <label>Дата увольнения</label>
-            <input type="date" name="fire_date" value="{{ fire_date_str }}">
+            <input type="text" name="fire_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ fire_date_str }}">
         </div>
     </div>
     <div class="form-row">
@@ -117,7 +117,7 @@
         </div>
         <div class="form-group">
             <label>Дата выдачи</label>
-            <input type="date" name="passport_issued_date" value="{{ passport_issued_date_str }}">
+            <input type="text" name="passport_issued_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ passport_issued_date_str }}">
         </div>
     </div>
     <div class="form-group">

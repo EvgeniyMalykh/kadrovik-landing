@@ -90,5 +90,43 @@
             if (e.detail.target.id === 'modal-content') openModal();
         });
     </script>
+
+    <script>
+    // ─── Маска ввода дат (ДД.ММ.ГГГГ) ───────────────────────────────────────
+    function initDateMasks(root) {
+        var inputs = (root.querySelectorAll) ? root.querySelectorAll(".date-input") : [];
+        inputs.forEach(function(inp) {
+            if (inp._dateMaskAttached) return;
+            inp._dateMaskAttached = true;
+            inp.addEventListener("input", function() {
+                var pos = inp.selectionStart;
+                var raw = inp.value.replace(/\D/g, "").substring(0, 8);
+                var out = "";
+                if (raw.length > 0) out = raw.substring(0, 2);
+                if (raw.length > 2) out += "." + raw.substring(2, 4);
+                if (raw.length > 4) out += "." + raw.substring(4, 8);
+                inp.value = out;
+            });
+            inp.addEventListener("keydown", function(e) {
+                // Allow: backspace, delete, tab, escape, arrows
+                if ([8,9,27,37,38,39,40,46].indexOf(e.keyCode) !== -1) return;
+                // Allow digits only
+                if ((e.keyCode < 48 || e.keyCode > 57) && (e.keyCode < 96 || e.keyCode > 105)) {
+                    e.preventDefault();
+                }
+            });
+        });
+    }
+    document.addEventListener("DOMContentLoaded", function() {
+        initDateMasks(document);
+    });
+    // Re-init after HTMX loads modal content
+    document.addEventListener("htmx:afterSettle", function(e) {
+        initDateMasks(e.detail.elt || document);
+    });
+    document.body.addEventListener("htmx:afterSwap", function(e) {
+        initDateMasks(e.detail.target || document);
+    });
+    </script>
 </body>
 </html>
