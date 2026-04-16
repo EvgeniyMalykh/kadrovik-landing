@@ -1,0 +1,31 @@
+
+ИНСТРУКЦИЯ: Настройка Google Apps Script для Кадровый автопилот
+=================================================================
+
+1. Откройте: https://docs.google.com/spreadsheets/create
+   Создайте новую таблицу, назовите "Кадровый автопилот — Пользователи"
+   Скопируйте ID таблицы из URL (часть после /d/)
+   Пример URL: https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit
+   ID = 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms
+
+2. Откройте: https://script.google.com/create
+   Вставьте код из файла /root/kadrovik/GAS_SCRIPT.js
+   Замените ВСТАВЬТЕ_ID_ТАБЛИЦЫ_СЮДА на ваш ID таблицы
+   
+3. Нажмите "Развернуть" → "Новое развёртывание"
+   Тип: Веб-приложение
+   Запуск от имени: Я
+   Доступ: Все
+   Нажмите "Развернуть"
+   
+4. Скопируйте URL развёртывания (вида:
+   https://script.google.com/macros/s/XXXXXXX/exec)
+   
+5. На сервере выполните:
+   echo "GAS_URL=https://script.google.com/macros/s/XXXXXXX/exec" >> /root/kadrovik/.env
+   docker compose -f /root/kadrovik/docker-compose.production.yml restart web celery
+
+6. Для SMTP пароля: зайдите в Яндекс.360 → Почта → Настройки почтового ящика noreply@kadrovik-auto.ru
+   Создайте пароль приложения и выполните на сервере:
+   sed -i 's/SMTP_PASSWORD_HERE/ВАШ_ПАРОЛЬ/' /root/email_relay.py
+   systemctl start email-relay

@@ -30,4 +30,7 @@ urlpatterns = [
     path("login/", views.login_view, name="login"),
     path("register/", views.register_view, name="register"),
     path("logout/", views.logout_view, name="logout"),
+    # Email верификация
+    path("verify-email/<uuid:token>/", views.verify_email_view, name="verify_email"),
+    path("resend-verification/", views.resend_verification_view, name="resend_verification"),
 ]

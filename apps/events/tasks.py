@@ -38,7 +38,7 @@ def check_probation_endings():
                 f"Сотрудник: {emp.full_name}\n"
                 f"Должность: {emp.position}\n"
                 f"Компания: {emp.company.name}\n"
-                f"Дата окончания: {emp.probation_end_date.strftime(%d.%m.%Y)}\n\n"
+                f"Дата окончания: {emp.probation_end_date.strftime('%d.%m.%Y')}\n\n"
                 f"Примите решение: оформить постоянно или уволить."
             )
             _send_telegram(text)
@@ -64,7 +64,7 @@ def check_contract_endings():
                 f"Сотрудник: {emp.full_name}\n"
                 f"Должность: {emp.position}\n"
                 f"Компания: {emp.company.name}\n"
-                f"Дата окончания договора: {emp.contract_end_date.strftime(%d.%m.%Y)}\n\n"
+                f"Дата окончания договора: {emp.contract_end_date.strftime('%d.%m.%Y')}\n\n"
                 f"Подготовьте продление или уведомление об увольнении."
             )
             _send_telegram(text)
@@ -86,7 +86,7 @@ def check_subscription_expirations():
             f"💳 <b>Подписка истекает через 3 дня</b>\n"
             f"Компания: {sub.company.name}\n"
             f"Тариф: {sub.get_plan_display()}\n"
-            f"Дата окончания: {sub.expires_at.strftime(%d.%m.%Y)}\n\n"
+            f"Дата окончания: {sub.expires_at.strftime('%d.%m.%Y')}\n\n"
             f"Продлите подписку на app.kadrovik-auto.ru"
         )
         _send_telegram(text)

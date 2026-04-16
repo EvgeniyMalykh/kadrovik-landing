@@ -280,18 +280,30 @@ def register_view(request):
     if request.user.is_authenticated:
         return redirect("dashboard:employees")
     if request.method == "POST":
-        email        = request.POST.get("email")
+        email        = request.POST.get("email", "").strip().lower()
         password     = request.POST.get("password")
-        company_name = request.POST.get("company_name")
+        password2    = request.POST.get("password2")
+        company_name = request.POST.get("company_name", "").strip()
+
+        if not email or not password or not company_name:
+            return render(request, "dashboard/register.html", {"error": "Заполните все поля"})
+        if password != password2:
+            return render(request, "dashboard/register.html", {"error": "Пароли не совпадают"})
         if User.objects.filter(email=email).exists():
             return render(request, "dashboard/register.html", {"error": "Email уже зарегистрирован"})
-        user = User.objects.create_user(username=email, email=email, password=password)
-        company = Company.objects.create(name=company_name, owner=user)
-        CompanyMember.objects.create(user=user, company=company, role="owner")
-        # Создаём пробную подписку на 7 дней
+
         from apps.billing.models import Subscription
+        from apps.accounts.models import EmailVerification
         from django.utils import timezone
         import datetime
+
+        user = User.objects.create_user(username=email, email=email, password=password)
+        user.email_verified = False
+        user.is_active = False  # Не активен до подтверждения email
+        user.save()
+
+        company = Company.objects.create(name=company_name, owner=user)
+        CompanyMember.objects.create(user=user, company=company, role="owner")
         Subscription.objects.create(
             company=company,
             plan=Subscription.Plan.TRIAL,
@@ -299,9 +311,78 @@ def register_view(request):
             expires_at=timezone.now() + datetime.timedelta(days=7),
             max_employees=10,
         )
-        login(request, user)
-        return redirect("dashboard:employees")
+
+        # Создаём токен верификации (24 часа)
+        verif = EmailVerification.objects.create(
+            user=user,
+            expires_at=timezone.now() + datetime.timedelta(hours=24),
+        )
+        verify_url = request.build_absolute_uri(
+            f"/dashboard/verify-email/{verif.token}/"
+        )
+
+        # Отправляем письмо + уведомления (Celery)
+        from apps.accounts.tasks import send_verification_email, notify_new_registration
+        send_verification_email.delay(user.id, verify_url)
+        notify_new_registration.delay(
+            email=email,
+            company_name=company_name,
+            registered_at=timezone.now().strftime("%d.%m.%Y %H:%M"),
+        )
+
+        return render(request, "dashboard/email_sent.html", {"email": email})
     return render(request, "dashboard/register.html")
+
+
+def verify_email_view(request, token):
+    from apps.accounts.models import EmailVerification
+    from django.utils import timezone
+    try:
+        verif = EmailVerification.objects.select_related("user").get(token=token)
+    except EmailVerification.DoesNotExist:
+        return render(request, "dashboard/register.html", {"error": "Ссылка недействительна"})
+
+    if timezone.now() > verif.expires_at:
+        verif.delete()
+        return render(request, "dashboard/register.html", {"error": "Ссылка устарела. Зарегистрируйтесь снова."})
+
+    user = verif.user
+    user.email_verified = True
+    user.is_active = True
+    user.save()
+    verif.delete()
+
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return render(request, "dashboard/email_verified.html")
+
+
+def resend_verification_view(request):
+    from apps.accounts.models import EmailVerification
+    from django.utils import timezone
+    import datetime
+
+    email = request.GET.get("email", "").strip().lower()
+    if not email:
+        return redirect("dashboard:register")
+
+    try:
+        user = User.objects.get(email=email, is_active=False)
+    except User.DoesNotExist:
+        return redirect("dashboard:login")
+
+    # Удаляем старый токен и создаём новый
+    EmailVerification.objects.filter(user=user).delete()
+    verif = EmailVerification.objects.create(
+        user=user,
+        expires_at=timezone.now() + datetime.timedelta(hours=24),
+    )
+    verify_url = request.build_absolute_uri(
+        f"/dashboard/verify-email/{verif.token}/"
+    )
+    from apps.accounts.tasks import send_verification_email
+    send_verification_email.delay(user.id, verify_url)
+
+    return render(request, "dashboard/email_sent.html", {"email": email, "resent": True})
 
 
 def logout_view(request):

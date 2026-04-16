@@ -50,3 +50,10 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+# Email — через Redis relay (SMTP с хоста, т.к. контейнер не имеет доступа к SMTP)
+EMAIL_BACKEND = "apps.accounts.email_backend.RedisRelayEmailBackend"
+REDIS_RELAY_URL = os.environ.get("REDIS_RELAY_URL", "redis://redis:6379/2")
+EMAIL_RELAY_QUEUE_KEY = "email_relay_queue"
+DEFAULT_FROM_EMAIL = "Кадровый автопилот <noreply@kadrovik-auto.ru>"
+SERVER_EMAIL = "noreply@kadrovik-auto.ru"
