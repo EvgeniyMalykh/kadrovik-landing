@@ -1,5 +1,5 @@
 {% if employees %}
-<div style="margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<div class="t13-toolbar" style="margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <span style="font-size:0.9rem;font-weight:700;color:#ffffff;">📋 Табель Т-13:</span>
     <select id="t13-month" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;">
         <option value="1">Январь</option>
@@ -40,6 +40,9 @@ function downloadT13() {
     window.location.href = '{% url "dashboard:download_t13" %}?month=' + m + '&year=' + y;
 }
 </script>
+
+<!-- DESKTOP: table (hidden on mobile via CSS) -->
+<div class="employees-desktop-table">
 <table class="data-table">
     <thead>
         <tr>
@@ -117,6 +120,48 @@ function downloadT13() {
         {% endfor %}
     </tbody>
 </table>
+</div><!-- /employees-desktop-table -->
+
+<!-- MOBILE: cards (hidden on desktop, shown on mobile via CSS) -->
+<div class="employees-mobile-cards" style="display:none;">
+    {% for emp in employees %}
+    <div class="emp-card" id="emp-card-{{ emp.id }}">
+        <div class="emp-card__name">{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</div>
+        <div class="emp-card__position">{{ emp.position|default:"Должность не указана" }}</div>
+        <div class="emp-card__row">
+            <span class="emp-card__label">Дата приёма</span>
+            <span class="emp-card__value">{{ emp.hire_date|date:"d.m.Y"|default:"—" }}</span>
+        </div>
+        {% if emp.probation_end_date %}
+        <div class="emp-card__row">
+            <span class="emp-card__label">Исп. срок до</span>
+            <span class="emp-card__value">{{ emp.probation_end_date|date:"d.m.Y" }}</span>
+        </div>
+        {% endif %}
+        <div class="emp-card__actions">
+            <div class="emp-card__docs">
+                <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-doc">Т-1</a>
+                <a href="{% url 'dashboard:download_t2' emp.id %}" class="btn-doc">Т-2</a>
+                <a href="{% url 'dashboard:download_t5' emp.id %}" class="btn-doc">Т-5</a>
+                <a href="{% url 'dashboard:download_t6' emp.id %}?order=О-001&start={{ today }}&end={{ today }}" class="btn-doc">Т-6</a>
+                <a href="{% url 'dashboard:download_t8' emp.id %}?order=У-001" class="btn-doc">Т-8</a>
+                <a href="{% url 'dashboard:download_labor_contract' emp.id %}" class="btn-doc">ТД</a>
+                <a href="{% url 'dashboard:download_certificate' emp.id %}" class="btn-doc">Справка</a>
+            </div>
+            <div class="emp-card__btns">
+                <button type="button" class="btn-icon" title="Редактировать"
+                    hx-get="{% url 'dashboard:employee_edit' emp.id %}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    hx-trigger="click">✏️</button>
+                <button type="button" class="btn-icon btn-danger" title="Удалить"
+                    onclick="deleteEmployee({{ emp.id }}, this)">🗑️</button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div><!-- /employees-mobile-cards -->
+
 <script>
 function getCookie(name) {
     var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');

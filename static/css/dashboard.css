@@ -336,3 +336,180 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     font-size: 14px;
     font-weight: 700;
 }
+
+
+/* ═══════════════════════════════════════════════════════
+   МОБИЛЬНАЯ АДАПТАЦИЯ (≤ 768px)
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Hamburger button ──────────────────────────────────── */
+.hamburger-btn {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 8px 10px;
+    cursor: pointer;
+    line-height: 1;
+    font-size: 20px;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 200;
+    background: var(--bg-secondary);
+}
+.hamburger-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Mobile top bar ────────────────────────────────────── */
+.mobile-topbar {
+    display: none;
+    height: 56px;
+}
+
+/* ── Sidebar overlay (closes menu when tapping outside) ── */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 149;
+}
+.sidebar-overlay.active { display: block; }
+
+/* ── Employee mobile cards ─────────────────────────────── */
+.emp-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.emp-card__name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.emp-card__position { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+.emp-card__row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+.emp-card__label { color: var(--text-secondary); }
+.emp-card__value { font-weight: 500; }
+.emp-card__actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); gap: 8px; }
+.emp-card__docs { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.emp-card__btns { display: flex; gap: 6px; }
+
+/* ── Vacation mobile cards ─────────────────────────────── */
+.vac-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.vac-card__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.vac-card__name { font-size: 15px; font-weight: 700; }
+.vac-card__position { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.vac-card__row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+.vac-card__label { color: var(--text-secondary); }
+.vac-card__value { font-weight: 500; }
+.vac-card__reason { font-size: 12px; color: var(--text-secondary); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.vac-card__actions { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+.vac-card__actions a, .vac-card__actions button { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+
+/* ── Timesheet horizontal scroll ───────────────────────── */
+.timesheet-scroll-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   MEDIA QUERY
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+    /* Hamburger visible */
+    .hamburger-btn { display: flex; }
+    .mobile-topbar { display: block; }
+
+    /* Sidebar: hidden by default, slide in when .open */
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.28s ease;
+        z-index: 150;
+        top: 0;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    /* Main content: no left margin, pad top for hamburger */
+    .main-content { margin-left: 0; padding-top: 56px; }
+    .content-wrapper { padding: 16px 14px; }
+
+    /* Page header: stack vertically */
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .page-title { font-size: 22px; }
+
+    /* Employees: hide desktop table, show cards */
+    .employees-desktop-table { display: none !important; }
+    .employees-mobile-cards { display: block !important; }
+
+    /* Vacations: hide desktop table, show cards */
+    .vacations-desktop-table { display: none !important; }
+    .vacations-mobile-cards { display: block !important; }
+
+    /* Drawer: full-screen on mobile */
+    .drawer-panel {
+        width: 100vw !important;
+        height: 100dvh !important;
+        border-left: none;
+        border-radius: 0;
+    }
+
+    /* Drawer inner paddings smaller */
+    .drawer-header { padding: 16px 18px; }
+    .drawer-body { padding: 18px 18px; }
+    .drawer-footer { padding: 12px 18px; }
+
+    /* Form rows: always single column */
+    .form-row-2, .form-row-3, .form-row-auto { grid-template-columns: 1fr !important; }
+
+    /* Tap targets */
+    .btn-primary, .btn-secondary { min-height: 44px; }
+    .btn-icon { min-width: 44px; min-height: 44px; font-size: 18px; }
+
+    /* Vacation type cards: single column */
+    .vac-type-cards { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .vac-type-card { padding: 12px 8px; }
+
+    /* Trial banner */
+    .trial-banner { font-size: 0.82rem; }
+
+    /* T-13 toolbar: wrap nicely */
+    .t13-toolbar { flex-wrap: wrap; gap: 8px !important; }
+    .t13-toolbar select, .t13-toolbar button, .t13-toolbar a {
+        font-size: 0.8rem !important;
+        padding: 6px 10px !important;
+    }
+
+    /* Timesheet: scrollable */
+    .card.timesheet-card { overflow: hidden; }
+    .timesheet-scroll-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Buttons in page header: full width */
+    .page-header .btn-primary { width: 100%; text-align: center; }
+
+    /* Modal/pricing */
+    .modal-content { margin: 0 12px; padding: 24px 18px; }
+
+    /* Auth on mobile */
+    .auth-card { padding: 24px 18px; }
+    .auth-container { padding: 16px; }
+}
