@@ -144,15 +144,6 @@
         </div>
     </div>
 
-    <script>
-    function toggleNewDept(suffix) {
-        var sel = document.getElementById('dept-select-' + suffix);
-        var inp = document.getElementById('dept-new-' + suffix);
-        if (sel.value === '__new__') { inp.style.display = 'block'; inp.required = true; }
-        else { inp.style.display = 'none'; inp.required = false; inp.value = ''; }
-    }
-    </script>
-
     <div class="modal-actions">
         <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
         <button type="submit" class="btn-primary">Сохранить</button>

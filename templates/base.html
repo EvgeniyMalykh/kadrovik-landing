@@ -61,6 +61,21 @@
     <script>
         function openModal() { document.getElementById('modal-overlay').style.display = 'flex'; }
         function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+        function toggleNewDept(suffix) {
+            var sel = document.getElementById('dept-select-' + suffix);
+            var inp = document.getElementById('dept-new-' + suffix);
+            if (!sel || !inp) return;
+            if (sel.value === '__new__') {
+                inp.style.display = 'block';
+                inp.required = true;
+                inp.focus();
+            } else {
+                inp.style.display = 'none';
+                inp.required = false;
+                inp.value = '';
+            }
+        }
+
         function openAddEmployeeModal() {
             fetch('/dashboard/employees/add/', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
                 .then(r => r.text())
