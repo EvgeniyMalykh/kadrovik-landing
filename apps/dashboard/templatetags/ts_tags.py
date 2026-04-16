@@ -13,3 +13,7 @@ def index(lst, i):
 @register.filter
 def safe_json(value):
     return _json.dumps(value, ensure_ascii=False)
+
+@register.filter
+def split(value, sep=','):
+    return value.split(sep)
