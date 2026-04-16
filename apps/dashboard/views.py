@@ -127,8 +127,12 @@ def employee_delete(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     employee.delete()
+    from datetime import date as _date
     employees = Employee.objects.filter(company=member.company).select_related("department")
-    return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
+    return render(request, "dashboard/partials/employees_table.html", {
+        "employees": employees,
+        "today": _date.today().strftime("%Y-%m-%d"),
+    })
 
 
 @login_required

@@ -56,19 +56,49 @@ function downloadT13() {
             <td>{{ emp.hire_date|date:"d.m.Y"|default:"—" }}</td>
             <td>{% if emp.probation_end_date %}{{ emp.probation_end_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
             <td class="docs-cell">
-                <div style="margin-bottom:3px;">
-                    <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-doc" title="Приказ о приёме">Т-1</a>
-                    <a href="{% url 'dashboard:download_t2' emp.id %}" class="btn-doc" title="Личная карточка">Т-2</a>
-                    <a href="{% url 'dashboard:download_t5' emp.id %}" class="btn-doc" title="Перевод">Т-5</a>
-                    <a href="{% url 'dashboard:download_t6' emp.id %}?order=О-001&start={{ today }}&end={{ today }}" class="btn-doc" title="Отпуск">Т-6</a>
-                    <a href="{% url 'dashboard:download_t8' emp.id %}?order=У-001" class="btn-doc" title="Увольнение">Т-8</a>
+                <div class="doc-group">
+                    <a href="{% url 'dashboard:download_t1' emp.id %}?order=П-001" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">Т-1</span>
+                        <span class="btn-doc-label">Приём</span>
+                    </a>
+                    <a href="{% url 'dashboard:download_t2' emp.id %}" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">Т-2</span>
+                        <span class="btn-doc-label">Карточка</span>
+                    </a>
+                    <a href="{% url 'dashboard:download_t5' emp.id %}" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">Т-5</span>
+                        <span class="btn-doc-label">Перевод</span>
+                    </a>
+                    <a href="{% url 'dashboard:download_t6' emp.id %}?order=О-001&start={{ today }}&end={{ today }}" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">Т-6</span>
+                        <span class="btn-doc-label">Отпуск</span>
+                    </a>
+                    <a href="{% url 'dashboard:download_t8' emp.id %}?order=У-001" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">Т-8</span>
+                        <span class="btn-doc-label">Увольнение</span>
+                    </a>
                 </div>
-                <div>
-                    <a href="{% url 'dashboard:download_labor_contract' emp.id %}" class="btn-doc" title="Трудовой договор">ТД</a>
-                    <a href="{% url 'dashboard:download_gph_contract' emp.id %}" class="btn-doc" title="Договор ГПХ">ГПХ</a>
-                    <a href="{% url 'dashboard:download_gph_act' emp.id %}" class="btn-doc" title="Акт ГПХ">Акт</a>
-                    <a href="{% url 'dashboard:download_certificate' emp.id %}" class="btn-doc" title="Справка с места работы">Справка</a>
-                    <a href="{% url 'dashboard:download_salary_change' emp.id %}" class="btn-doc" title="Изменение оклада">Оклад</a>
+                <div class="doc-group">
+                    <a href="{% url 'dashboard:download_labor_contract' emp.id %}" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">ТД</span>
+                        <span class="btn-doc-label">Труд. договор</span>
+                    </a>
+                    <a href="{% url 'dashboard:download_gph_contract' emp.id %}" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">ГПХ</span>
+                        <span class="btn-doc-label">Договор ГПХ</span>
+                    </a>
+                    <a href="{% url 'dashboard:download_gph_act' emp.id %}" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">Акт</span>
+                        <span class="btn-doc-label">Акт ГПХ</span>
+                    </a>
+                    <a href="{% url 'dashboard:download_certificate' emp.id %}" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">Справка</span>
+                        <span class="btn-doc-label">С места работы</span>
+                    </a>
+                    <a href="{% url 'dashboard:download_salary_change' emp.id %}" class="btn-doc-wrap" title="Скачать PDF">
+                        <span class="btn-doc">Оклад</span>
+                        <span class="btn-doc-label">Изм. оклада</span>
+                    </a>
                 </div>
             </td>
             <td class="actions-cell">
@@ -77,17 +107,35 @@ function downloadT13() {
                     hx-target="#modal-content"
                     hx-swap="innerHTML"
                     hx-trigger="click">✏️</button>
-                <button type="button" class="btn-icon btn-danger" title="Удалить"
-                    hx-post="{% url 'dashboard:employee_delete' emp.id %}"
-                    hx-target="#employees-table"
-                    hx-swap="innerHTML"
-                    hx-trigger="click"
-                    hx-confirm="Удалить сотрудника?">🗑️</button>
+                <button type="button" class="btn-icon btn-danger" title="Удалить сотрудника"
+                    onclick="deleteEmployee({{ emp.id }}, this)">🗑️</button>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+<script>
+function getCookie(name) {
+    var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+    return v ? v[2] : null;
+}
+function deleteEmployee(empId, btn) {
+    if (!confirm('Удалить сотрудника?')) return;
+    fetch('/dashboard/employees/' + empId + '/delete/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(function(r){ return r.text(); })
+    .then(function(html){
+        var el = document.getElementById('employees-table');
+        if (el) el.innerHTML = html;
+    })
+    .catch(function(e){ alert('Ошибка удаления: ' + e); });
+}
+</script>
 {% else %}
 <div class="empty-state">
     <div class="empty-icon">👥</div>
