@@ -104,3 +104,51 @@ def send_verification_email_pending(email, verify_url):
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Email send failed for {email}: {e}")
+
+
+@shared_task(name="accounts.send_password_reset_email")
+def send_password_reset_email(email, reset_url):
+    """Отправляет письмо со ссылкой сброса пароля."""
+    import json
+    subject = "Сброс пароля — Кадровый автопилот"
+    html_message = f"""<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;padding:40px 20px;">
+<div style="max-width:520px;margin:0 auto;background:#1e293b;border-radius:12px;padding:36px 32px;color:#f1f5f9;">
+  <div style="text-align:center;margin-bottom:24px;">
+    <span style="font-size:32px;">&#128203;</span>
+    <h1 style="font-size:1.3rem;margin:8px 0 0;">Кадровый автопилот</h1>
+  </div>
+  <h2 style="font-size:1.1rem;margin:0 0 12px;">Сброс пароля</h2>
+  <p style="color:#94a3b8;font-size:0.9rem;margin:0 0 24px;line-height:1.6;">
+    Вы запросили сброс пароля для аккаунта <strong style="color:#f1f5f9;">{email}</strong>.<br>
+    Нажмите кнопку ниже чтобы задать новый пароль. Ссылка действительна 1 час.
+  </p>
+  <div style="text-align:center;margin-bottom:24px;">
+    <a href="{reset_url}" style="display:inline-block;background:#3b82f6;color:#fff;padding:13px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.95rem;">
+      Задать новый пароль
+    </a>
+  </div>
+  <p style="color:#64748b;font-size:0.78rem;margin:0;line-height:1.5;">
+    Если вы не запрашивали смену пароля — просто проигнорируйте это письмо.<br>
+    Ссылка: {reset_url}
+  </p>
+</div>
+</body></html>"""
+
+    plain_message = f"Сброс пароля — Кадровый автопилот\n\nПерейдите по ссылке для смены пароля (действительна 1 час):\n{reset_url}\n\nЕсли вы не запрашивали смену пароля — проигнорируйте это письмо."
+
+    try:
+        from django.core.mail import send_mail
+        from django.conf import settings
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Password reset email failed for {email}: {e}")

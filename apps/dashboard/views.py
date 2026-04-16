@@ -698,3 +698,116 @@ def timesheet_save(request):
         saved += 1
     from django.http import JsonResponse
     return JsonResponse({"saved": saved})
+
+
+# ─── СБРОС ПАРОЛЯ ──────────────────────────────────────────────────────────
+
+def forgot_password_view(request):
+    """Запрос ссылки для сброса пароля."""
+    if request.user.is_authenticated:
+        return redirect("dashboard:employees")
+
+    if request.method == "POST":
+        import uuid, json as _json, datetime
+        import redis as _redis
+        from django.conf import settings
+        from django.utils import timezone
+
+        email = request.POST.get("email", "").strip().lower()
+        if not email:
+            return render(request, "dashboard/forgot_password.html",
+                          {"error": "Введите email"})
+
+        # Не раскрываем, есть ли такой пользователь (защита от перебора)
+        user = User.objects.filter(email=email).first()
+        if user:
+            token = str(uuid.uuid4())
+            r = _redis.from_url(getattr(settings, "REDIS_RELAY_URL", "redis://redis:6379/2"))
+            r.setex(f"password_reset:{token}", 3600, _json.dumps({
+                "user_id": user.id,
+                "email": email,
+            }))
+            reset_url = request.build_absolute_uri(f"/dashboard/reset-password/{token}/")
+            from apps.accounts.tasks import send_password_reset_email
+            send_password_reset_email.delay(email, reset_url)
+
+        return render(request, "dashboard/forgot_password.html", {
+            "success": f"Если аккаунт с адресом {email} существует, письмо будет отправлено в течение нескольких минут."
+        })
+
+    return render(request, "dashboard/forgot_password.html")
+
+
+def reset_password_view(request, token):
+    """Смена пароля по ссылке из письма."""
+    from django.conf import settings
+    import redis as _redis, json as _json
+    from django.contrib.auth.hashers import make_password
+
+    r = _redis.from_url(getattr(settings, "REDIS_RELAY_URL", "redis://redis:6379/2"))
+    data_raw = r.get(f"password_reset:{token}")
+
+    if not data_raw:
+        return render(request, "dashboard/reset_password.html",
+                      {"valid_token": False, "token": token})
+
+    data = _json.loads(data_raw)
+
+    if request.method == "POST":
+        post_token = request.POST.get("token", "")
+        password   = request.POST.get("password", "")
+        password2  = request.POST.get("password2", "")
+
+        if len(password) < 8:
+            return render(request, "dashboard/reset_password.html",
+                          {"valid_token": True, "token": token,
+                           "error": "Пароль должен быть не менее 8 символов"})
+        if password != password2:
+            return render(request, "dashboard/reset_password.html",
+                          {"valid_token": True, "token": token,
+                           "error": "Пароли не совпадают"})
+
+        try:
+            user = User.objects.get(id=data["user_id"])
+            user.set_password(password)
+            user.save()
+            r.delete(f"password_reset:{token}")
+            return render(request, "dashboard/reset_password.html",
+                          {"valid_token": True, "token": token,
+                           "success": "Пароль успешно изменён! Теперь вы можете войти."})
+        except User.DoesNotExist:
+            return render(request, "dashboard/reset_password.html",
+                          {"valid_token": False, "token": token})
+
+    return render(request, "dashboard/reset_password.html",
+                  {"valid_token": True, "token": token})
+
+
+@login_required
+def change_password_view(request):
+    """Смена пароля для авторизованного пользователя."""
+    from django.contrib.auth import update_session_auth_hash
+
+    if request.method == "POST":
+        old_password = request.POST.get("old_password", "")
+        password     = request.POST.get("password", "")
+        password2    = request.POST.get("password2", "")
+
+        if not request.user.check_password(old_password):
+            return render(request, "dashboard/change_password.html",
+                          {"error": "Текущий пароль введён неверно"})
+        if len(password) < 8:
+            return render(request, "dashboard/change_password.html",
+                          {"error": "Новый пароль должен быть не менее 8 символов"})
+        if password != password2:
+            return render(request, "dashboard/change_password.html",
+                          {"error": "Пароли не совпадают"})
+
+        request.user.set_password(password)
+        request.user.save()
+        # Обновляем сессию чтобы не разлогинило
+        update_session_auth_hash(request, request.user)
+        return render(request, "dashboard/change_password.html",
+                      {"success": "Пароль успешно изменён!"})
+
+    return render(request, "dashboard/change_password.html")
