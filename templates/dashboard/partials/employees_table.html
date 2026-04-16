@@ -131,7 +131,10 @@ function deleteEmployee(empId, btn) {
     .then(function(r){ return r.text(); })
     .then(function(html){
         var el = document.getElementById('employees-table');
-        if (el) el.innerHTML = html;
+        if (el) {
+            el.innerHTML = html;
+            htmx.process(el);
+        }
     })
     .catch(function(e){ alert('Ошибка удаления: ' + e); });
 }
@@ -141,10 +144,7 @@ function deleteEmployee(empId, btn) {
     <div class="empty-icon">👥</div>
     <h3>Сотрудников пока нет</h3>
     <p>Добавьте первого сотрудника, чтобы начать формировать документы</p>
-    <button type="button" class="btn-primary"
-        hx-get="{% url 'dashboard:employee_add' %}"
-        hx-target="#modal-content"
-        hx-swap="innerHTML">
+    <button type="button" class="btn-primary" onclick="openAddEmployeeModal()">
         + Добавить сотрудника
     </button>
 </div>

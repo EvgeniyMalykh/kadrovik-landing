@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Кадровый автопилот{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=2">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         // CSRF для HTMX POST запросов
@@ -57,6 +57,15 @@
     <script>
         function openModal() { document.getElementById('modal-overlay').style.display = 'flex'; }
         function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+        function openAddEmployeeModal() {
+            fetch('/dashboard/employees/add/', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                .then(r => r.text())
+                .then(html => {
+                    document.getElementById('modal-content').innerHTML = html;
+                    openModal();
+                    htmx.process(document.getElementById('modal-content'));
+                });
+        }
         document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
         document.body.addEventListener('htmx:afterSwap', function(e) {
             if (e.detail.target.id === 'modal-content') openModal();
