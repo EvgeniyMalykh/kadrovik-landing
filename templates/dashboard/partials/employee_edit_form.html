@@ -1,97 +1,104 @@
-<div class="modal-header">
+<div class="drawer-header">
     <h3>Редактировать сотрудника</h3>
-    <button type="button" class="modal-close" onclick="closeModal()">✕</button>
+    <button type="button" class="drawer-close" onclick="closeModal()">✕</button>
 </div>
-<form hx-post="{% url 'dashboard:employee_edit' emp.id %}"
+<form id="employee-edit-form"
+      hx-post="{% url 'dashboard:employee_edit' emp.id %}"
       hx-target="#employees-table"
       hx-swap="innerHTML"
       hx-on::after-request="closeModal()">
     {% csrf_token %}
+    <div class="drawer-body">
 
-    <div class="form-section-title">Основные данные</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Фамилия *</label>
-            <input type="text" name="last_name" value="{{ emp.last_name }}" required>
+        <div class="form-section-title">Основные данные</div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Фамилия *</label>
+                <input type="text" name="last_name" value="{{ emp.last_name }}" required>
+            </div>
+            <div class="form-group">
+                <label>Имя *</label>
+                <input type="text" name="first_name" value="{{ emp.first_name }}" required>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Имя *</label>
-            <input type="text" name="first_name" value="{{ emp.first_name }}" required>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Отчество</label>
+                <input type="text" name="middle_name" value="{{ emp.middle_name }}">
+            </div>
+            <div class="form-group">
+                <label>Дата рождения</label>
+                <input type="text" name="birth_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ birth_date_str }}">
+            </div>
         </div>
-        <div class="form-group">
-            <label>Отчество</label>
-            <input type="text" name="middle_name" value="{{ emp.middle_name }}">
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Телефон</label>
+                <input type="text" name="phone" value="{{ emp.phone }}">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" value="{{ emp.email }}">
+            </div>
         </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Дата рождения</label>
-            <input type="text" name="birth_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ birth_date_str }}">
-        </div>
-        <div class="form-group">
-            <label>Телефон</label>
-            <input type="text" name="phone" value="{{ emp.phone }}">
-        </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" value="{{ emp.email }}">
-        </div>
-    </div>
 
-    <div class="form-section-title">Трудовые данные</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Должность *</label>
-            <input type="text" name="position" value="{{ emp.position }}" required>
+        <div class="form-section-title">Трудовые данные</div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Должность *</label>
+                <input type="text" name="position" value="{{ emp.position }}" required>
+            </div>
+            <div class="form-group">
+                <label>Оклад (₽)</label>
+                <input type="number" name="salary" value="{{ emp.salary }}">
+            </div>
+        </div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Дата приёма *</label>
+                <input type="text" name="hire_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ hire_date_str }}" required>
+            </div>
+            <div class="form-group">
+                <label>Испытательный срок до</label>
+                <input type="text" name="probation_end_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ probation_end_str }}">
+            </div>
+        </div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Тип договора</label>
+                <select name="contract_type">
+                    <option value="permanent" {% if emp.contract_type == "permanent" %}selected{% endif %}>Бессрочный</option>
+                    <option value="fixed" {% if emp.contract_type == "fixed" %}selected{% endif %}>Срочный</option>
+                    <option value="gph" {% if emp.contract_type == "gph" %}selected{% endif %}>ГПХ</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Дата окончания договора</label>
+                <input type="text" name="contract_end_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ contract_end_str }}">
+            </div>
+        </div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Статус</label>
+                <select name="status">
+                    <option value="active" {% if emp.status == "active" %}selected{% endif %}>Работает</option>
+                    <option value="on_leave" {% if emp.status == "on_leave" %}selected{% endif %}>В отпуске</option>
+                    <option value="on_sick" {% if emp.status == "on_sick" %}selected{% endif %}>На больничном</option>
+                    <option value="fired" {% if emp.status == "fired" %}selected{% endif %}>Уволен</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Дата увольнения</label>
+                <input type="text" name="fire_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ fire_date_str }}">
+            </div>
+        </div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>Табельный номер</label>
+                <input type="text" name="personnel_number" value="{{ emp.personnel_number }}">
+            </div>
         </div>
         <div class="form-group">
-            <label>Оклад (₽)</label>
-            <input type="number" name="salary" value="{{ emp.salary }}">
-        </div>
-        <div class="form-group">
-            <label>Табельный номер</label>
-            <input type="text" name="personnel_number" value="{{ emp.personnel_number }}">
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Дата приёма *</label>
-            <input type="text" name="hire_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ hire_date_str }}" required>
-        </div>
-        <div class="form-group">
-            <label>Испытательный срок до</label>
-            <input type="text" name="probation_end_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ probation_end_str }}">
-        </div>
-        <div class="form-group">
-            <label>Статус</label>
-            <select name="status">
-                <option value="active" {% if emp.status == "active" %}selected{% endif %}>Работает</option>
-                <option value="on_leave" {% if emp.status == "on_leave" %}selected{% endif %}>В отпуске</option>
-                <option value="on_sick" {% if emp.status == "on_sick" %}selected{% endif %}>На больничном</option>
-                <option value="fired" {% if emp.status == "fired" %}selected{% endif %}>Уволен</option>
-            </select>
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Тип договора</label>
-            <select name="contract_type">
-                <option value="permanent" {% if emp.contract_type == "permanent" %}selected{% endif %}>Бессрочный</option>
-                <option value="fixed" {% if emp.contract_type == "fixed" %}selected{% endif %}>Срочный</option>
-                <option value="gph" {% if emp.contract_type == "gph" %}selected{% endif %}>ГПХ</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Дата окончания договора</label>
-            <input type="text" name="contract_end_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ contract_end_str }}">
-        </div>
-        <div class="form-group">
-            <label>Дата увольнения</label>
-            <input type="text" name="fire_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ fire_date_str }}">
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group form-group--full">
             <label>Структурное подразделение</label>
             <select name="department_id" id="dept-select-edit" onchange="toggleNewDept('edit')">
                 <option value="">— не указано —</option>
@@ -103,46 +110,46 @@
             <input type="text" name="department_new" id="dept-new-edit"
                    placeholder="Название нового подразделения" style="display:none;margin-top:6px;">
         </div>
-    </div>
 
-    <div class="form-section-title">Паспортные данные</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Серия паспорта</label>
-            <input type="text" name="passport_series" value="{{ emp.passport_series }}" maxlength="4" placeholder="0000">
+        <div class="form-section-title">Паспортные данные</div>
+        <div class="form-row-3">
+            <div class="form-group">
+                <label>Серия</label>
+                <input type="text" name="passport_series" value="{{ emp.passport_series }}" maxlength="4" placeholder="0000">
+            </div>
+            <div class="form-group">
+                <label>Номер</label>
+                <input type="text" name="passport_number" value="{{ emp.passport_number }}" maxlength="6" placeholder="000000">
+            </div>
+            <div class="form-group">
+                <label>Дата выдачи</label>
+                <input type="text" name="passport_issued_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ passport_issued_date_str }}">
+            </div>
         </div>
         <div class="form-group">
-            <label>Номер паспорта</label>
-            <input type="text" name="passport_number" value="{{ emp.passport_number }}" maxlength="6" placeholder="000000">
+            <label>Кем выдан</label>
+            <input type="text" name="passport_issued_by" value="{{ emp.passport_issued_by }}">
         </div>
         <div class="form-group">
-            <label>Дата выдачи</label>
-            <input type="text" name="passport_issued_date" class="date-input" placeholder="ДД.ММ.ГГГГ" pattern="\d{2}\.\d{2}\.\d{4}" value="{{ passport_issued_date_str }}">
+            <label>Адрес регистрации</label>
+            <input type="text" name="passport_registration" value="{{ emp.passport_registration }}">
         </div>
-    </div>
-    <div class="form-group">
-        <label>Кем выдан</label>
-        <input type="text" name="passport_issued_by" value="{{ emp.passport_issued_by }}">
-    </div>
-    <div class="form-group">
-        <label>Адрес регистрации</label>
-        <input type="text" name="passport_registration" value="{{ emp.passport_registration }}">
-    </div>
 
-    <div class="form-section-title">Реквизиты</div>
-    <div class="form-row">
-        <div class="form-group">
-            <label>ИНН</label>
-            <input type="text" name="inn" value="{{ emp.inn }}" maxlength="12">
+        <div class="form-section-title">Реквизиты</div>
+        <div class="form-row-2">
+            <div class="form-group">
+                <label>ИНН</label>
+                <input type="text" name="inn" value="{{ emp.inn }}" maxlength="12">
+            </div>
+            <div class="form-group">
+                <label>СНИЛС</label>
+                <input type="text" name="snils" value="{{ emp.snils }}" maxlength="14">
+            </div>
         </div>
-        <div class="form-group">
-            <label>СНИЛС</label>
-            <input type="text" name="snils" value="{{ emp.snils }}" maxlength="14">
-        </div>
-    </div>
 
-    <div class="modal-actions">
+    </div><!-- /drawer-body -->
+    <div class="drawer-footer">
         <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
-        <button type="submit" class="btn-primary">Сохранить</button>
+        <button type="submit" class="btn-primary">Сохранить изменения</button>
     </div>
 </form>
