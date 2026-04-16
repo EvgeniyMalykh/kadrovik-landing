@@ -39,7 +39,7 @@
         {% if sub.plan == "start" and sub.is_active %}
             <button class="btn-disabled" disabled>Активен</button>
         {% else %}
-            <a href="{% url billing:checkout start %}" class="btn-primary btn-block">Подключить — 790 ₽</a>
+            <a href="{% url 'billing:checkout' 'start' %}" class="btn-primary btn-block">Подключить — 790 ₽</a>
         {% endif %}
     </div>
 
@@ -61,7 +61,7 @@
         {% if sub.plan == "business" and sub.is_active %}
             <button class="btn-disabled" disabled>Активен</button>
         {% else %}
-            <a href="{% url billing:checkout business %}" class="btn-primary btn-block">Подключить — 1 990 ₽</a>
+            <a href="{% url 'billing:checkout' 'business' %}" class="btn-primary btn-block">Подключить — 1 990 ₽</a>
         {% endif %}
     </div>
 
@@ -79,7 +79,7 @@
         {% if sub.plan == "pro" and sub.is_active %}
             <button class="btn-disabled" disabled>Активен</button>
         {% else %}
-            <a href="{% url billing:checkout pro %}" class="btn-primary btn-block">Подключить — 4 900 ₽</a>
+            <a href="{% url 'billing:checkout' 'pro' %}" class="btn-primary btn-block">Подключить — 4 900 ₽</a>
         {% endif %}
     </div>
 
