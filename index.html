@@ -13,6 +13,12 @@
 </head>
 <body>
 
+  <!-- TOP BANNER -->
+  <div class="top-banner">
+    <span>7 дней бесплатно — без карты и звонков.</span>
+    <a href="https://app.kadrovik-auto.ru/dashboard/register/" class="top-banner__btn">Попробовать сейчас →</a>
+  </div>
+
   <!-- HEADER -->
   <header class="header" id="header">
     <div class="container header__inner">
@@ -35,7 +41,7 @@
         <button data-theme-toggle aria-label="Переключить тему" class="theme-toggle">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
-        <a href="#waitlist" class="btn btn--primary btn--sm">Ранний доступ</a>
+        <a href="https://app.kadrovik-auto.ru/dashboard/register/" class="btn btn--primary btn--sm">Попробовать бесплатно</a>
       </div>
       <button class="burger" id="burger" aria-label="Меню">
         <span></span><span></span><span></span>
@@ -50,7 +56,7 @@
       <a href="#docs" class="mobile-menu__link">Документы</a>
       <a href="#pricing" class="mobile-menu__link">Тарифы</a>
       <a href="#faq" class="mobile-menu__link">FAQ</a>
-      <a href="#waitlist" class="btn btn--primary" style="margin-top:var(--space-4)">Ранний доступ</a>
+      <a href="https://app.kadrovik-auto.ru/dashboard/register/" class="btn btn--primary" style="margin-top:var(--space-4)">Попробовать бесплатно</a>
     </nav>
   </div>
 
@@ -63,8 +69,8 @@
         <h1 class="hero__title">Кадровые документы<br><span class="hero__accent">без юриста и 1С</span></h1>
         <p class="hero__sub">Приём, увольнение, отпуск — любой приказ по ТК РФ за 2 минуты.<br>Сервис сам следит за сроками и напомнит до штрафа.</p>
         <div class="hero__cta">
-          <a href="#waitlist" class="btn btn--primary btn--lg">Получить ранний доступ</a>
-          <p class="hero__cta-note">Бесплатно первые 30 дней · Без карты</p>
+          <a href="https://app.kadrovik-auto.ru/dashboard/register/" class="btn btn--primary btn--lg">Попробовать 7 дней бесплатно</a>
+          <p class="hero__cta-note">7 дней бесплатно · Без карты · Без звонков</p>
         </div>
         <div class="hero__stats">
           <div class="stat">
@@ -323,7 +329,7 @@
               <li>Напоминания в Telegram</li>
               <li>Табель Т-13</li>
             </ul>
-            <a href="#waitlist" class="btn btn--outline">Попробовать</a>
+            <a href="https://app.kadrovik-auto.ru/dashboard/register/" class="btn btn--outline">Попробовать бесплатно</a>
           </div>
           <div class="pricing-card pricing-card--featured">
             <div class="pricing-card__popular">Популярный</div>
@@ -337,7 +343,7 @@
               <li>Многопользовательский доступ</li>
               <li>Экспорт в Excel</li>
             </ul>
-            <a href="#waitlist" class="btn btn--primary">Получить доступ</a>
+            <a href="https://app.kadrovik-auto.ru/dashboard/register/" class="btn btn--primary">Попробовать бесплатно</a>
           </div>
           <div class="pricing-card">
             <div class="pricing-card__name">Про</div>
@@ -350,10 +356,10 @@
               <li>API-интеграции</li>
               <li>Выгрузка для СФР</li>
             </ul>
-            <a href="#waitlist" class="btn btn--outline">Попробовать</a>
+            <a href="https://app.kadrovik-auto.ru/dashboard/register/" class="btn btn--outline">Попробовать бесплатно</a>
           </div>
         </div>
-        <p class="pricing__note">Все тарифы включают 30 дней бесплатного пробного периода без привязки карты</p>
+        <p class="pricing__note">Все тарифы включают 7 дней бесплатного пробного периода без привязки карты</p>
       </div>
     </section>
 
@@ -397,12 +403,12 @@
         <div class="waitlist__inner">
           <div class="waitlist__content">
             <div class="section-label section-label--light">Ранний доступ</div>
-            <h2 class="waitlist__title">Запустимся скоро.<br>Займите место первым.</h2>
-            <p class="waitlist__sub">Первые 100 компаний получат 3 месяца бесплатно и доступ к закрытому бета-тестированию.</p>
+            <h2 class="waitlist__title">Попробуйте прямо сейчас.<br>Первые 7 дней бесплатно.</h2>
+            <p class="waitlist__sub">Сервис уже работает. Зарегистрируйтесь и получите 7 дней бесплатного доступа ко всем функциям.</p>
             <ul class="waitlist__perks" role="list">
               <li>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                3 месяца бесплатно для первых 100
+                7 дней бесплатно для всех
               </li>
               <li>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -414,39 +420,20 @@
               </li>
             </ul>
           </div>
-          <div class="waitlist__form-wrap">
-            <form class="waitlist__form" id="waitlistForm">
-              <div class="form-group">
-                <label for="name">Ваше имя</label>
-                <input type="text" id="name" name="name" placeholder="Иван Иванов" required />
+          <div class=waitlist__form-wrap>
+            <div class=cta-register-box>
+              <div class=cta-register-box__steps>
+                <div class=cta-step><span class=cta-step__num>1</span><span>Зарегистрируйтесь — займёт 1 минуту</span></div>
+                <div class=cta-step><span class=cta-step__num>2</span><span>Добавьте компанию и сотрудников</span></div>
+                <div class=cta-step><span class=cta-step__num>3</span><span>Скачайте первый документ бесплатно</span></div>
               </div>
-              <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" placeholder="ivan@company.ru" required />
-              </div>
-              <div class="form-group">
-                <label for="telegram">Telegram (необязательно)</label>
-                <input type="text" id="telegram" name="telegram" placeholder="@username" />
-              </div>
-              <div class="form-group">
-                <label for="employees">Сколько сотрудников в компании?</label>
-                <select id="employees" name="employees">
-                  <option value="">Выберите</option>
-                  <option value="1-5">1–5 человек</option>
-                  <option value="6-15">6–15 человек</option>
-                  <option value="16-50">16–50 человек</option>
-                  <option value="50+">Более 50</option>
-                </select>
-              </div>
-              <button type="submit" class="btn btn--primary btn--full">
-                Записаться в список
-              </button>
-              <p class="form-note">Никакого спама. Только уведомление о запуске.</p>
-            </form>
-            <div class="waitlist__success" id="formSuccess" style="display:none;">
-              <div class="success-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
+              <a href="https://app.kadrovik-auto.ru/dashboard/register/" style="display:block;text-align:center;padding:16px;background:#1565C0;color:#fff !important;font-weight:800;font-size:1.05rem;border-radius:10px;text-decoration:none;">
+                Зарегистрироваться бесплатно
+              </a>
+              <p class=form-note>7 дней бесплатно · Без карты · Отмена в любой момент</p>
+              <div class=cta-login-note>Уже есть аккаунт? <a href=https://app.kadrovik-auto.ru/dashboard/login/>Войти</a></div>
+            </div>
+          </div>
               <h3>Вы в списке!</h3>
               <p>Мы напишем вам первыми, как только откроем доступ. Следите за обновлениями.</p>
             </div>
@@ -469,10 +456,10 @@
         </svg>
         <span class="logo__text">Кадровый автопилот</span>
       </div>
-      <p class="footer__copy">© 2026 Кадровый автопилот · Для ИП и малого бизнеса в РФ</p>
+      <p class="footer__copy">© 2026 Кадровый автопилот · Самозанятый Малых Евгений Васильевич · ИНН 270300952603 · <a href="mailto:evgeniymalykh@gmail.com" style="color:inherit;">evgeniymalykh@gmail.com</a></p>
       <div class="footer__links">
-        <a href="#">Политика конфиденциальности</a>
-        <a href="#">Оферта</a>
+        <a href="/privacy.html">Политика конфиденциальности</a>
+        <a href="/oferta.html">Оферта</a>
       </div>
     </div>
   </footer>
