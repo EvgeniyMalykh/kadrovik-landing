@@ -81,7 +81,10 @@ def vacation_add(request):
             end_date=end,
             reason=reason,
         )
-        # Return updated vacation list partial
+        # Return JSON with vacation id so JS can show print button
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept', '').startswith('application/json'):
+            return JsonResponse({"success": True, "vacation_id": v.id, "employee_name": emp.full_name})
+        # Fallback: return updated vacation list partial
         vacations = Vacation.objects.filter(
             employee__company=company
         ).select_related("employee")

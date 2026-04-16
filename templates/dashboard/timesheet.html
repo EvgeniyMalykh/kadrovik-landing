@@ -254,8 +254,9 @@ function updateTotals() {
         cells.forEach(function(c) {
             var code  = c.dataset.code || '';
             var h     = parseFloat(c.dataset.hours) || 0;
-            // Считаем дни: всё кроме В (выходной) и П (праздник)
-            if (code && code !== 'В' && code !== 'П') {
+            // Считаем рабочие дни: Я, Я½, ОТ, ОД, Б, К (всё кроме В, П, НН, пустых)
+            var workCodes = ['Я','Я½','ОТ','ОД','Б','К'];
+            if (workCodes.indexOf(code) !== -1) {
                 days++;
             }
             // Считаем часы: все ненулевые
@@ -264,7 +265,7 @@ function updateTotals() {
             }
         });
         row.querySelector('.ts-total-days').textContent  = days;
-        row.querySelector('.ts-total-hours').textContent = hours;
+        row.querySelector('.ts-total-hours').textContent = hours > 0 ? hours : 0;
     });
 }
 

@@ -2,11 +2,7 @@
     <h3>Заявление об отпуске</h3>
     <button type="button" class="drawer-close" onclick="closeModal()">✕</button>
 </div>
-<form id="vacation-add-form"
-      hx-post="/vacations/add/"
-      hx-target="#vacations-table"
-      hx-swap="innerHTML"
-      hx-on::after-request="closeModal()">
+<form id="vacation-add-form" onsubmit="submitVacationForm(event)">
     {% csrf_token %}
     <div class="drawer-body">
 
@@ -79,10 +75,25 @@
                       style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text-primary);font-size:14px;resize:vertical;width:100%;outline:none;font-family:inherit;"></textarea>
         </div>
 
+        <!-- Блок успеха — скрыт до сохранения -->
+        <div id="vac-success-block" style="display:none;margin-top:12px;padding:14px 16px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:10px;">
+            <div style="font-weight:600;color:#34d399;margin-bottom:10px;">✓ Заявление сохранено</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <a id="vac-print-link" href="#" target="_blank"
+                   style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#059669;color:#fff;border-radius:8px;text-decoration:none;font-size:0.85rem;font-weight:600;">
+                    🖨️ Распечатать заявление
+                </a>
+                <button type="button" onclick="resetVacationForm()"
+                        style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:0.85rem;cursor:pointer;">
+                    + Новое заявление
+                </button>
+            </div>
+        </div>
+
     </div><!-- /drawer-body -->
-    <div class="drawer-footer">
+    <div class="drawer-footer" id="vac-footer">
         <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
-        <button type="submit" class="btn-primary">Сохранить заявление</button>
+        <button type="submit" class="btn-primary" id="vac-submit-btn">Сохранить заявление</button>
     </div>
 </form>
 
@@ -113,5 +124,70 @@ function calcVacDays() {
     } else {
         preview.style.display = 'none';
     }
+}
+
+function submitVacationForm(e) {
+    e.preventDefault();
+    var form = document.getElementById('vacation-add-form');
+    var formData = new FormData(form);
+    var btn = document.getElementById('vac-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Сохранение...';
+
+    var csrf = document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)');
+    csrf = csrf ? csrf[2] : '';
+
+    fetch('/vacations/add/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrf,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        if (data.success) {
+            // Show success block with print link
+            document.getElementById('vac-print-link').href = '/vacations/' + data.vacation_id + '/print/';
+            document.getElementById('vac-success-block').style.display = 'block';
+            document.getElementById('vac-footer').style.display = 'none';
+            // Reload vacations table in background
+            fetch('/vacations/', { headers: {'X-Requested-With': 'XMLHttpRequest'} })
+                .then(r => r.text())
+                .then(function(html) {
+                    // Parse the vacations-table div from the response
+                    var parser = new DOMParser();
+                    var doc = parser.parseFromString(html, 'text/html');
+                    var newTable = doc.getElementById('vacations-table');
+                    var curTable = document.getElementById('vacations-table');
+                    if (newTable && curTable) {
+                        curTable.innerHTML = newTable.innerHTML;
+                        if (window.htmx) htmx.process(curTable);
+                    }
+                })
+                .catch(function(){});
+        } else {
+            btn.disabled = false;
+            btn.textContent = 'Сохранить заявление';
+            alert('Ошибка: ' + (data.error || 'неизвестная'));
+        }
+    })
+    .catch(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'Сохранить заявление';
+        alert('Ошибка сети');
+    });
+}
+
+function resetVacationForm() {
+    document.getElementById('vacation-add-form').reset();
+    document.getElementById('vac-success-block').style.display = 'none';
+    document.getElementById('vac-footer').style.display = 'flex';
+    document.getElementById('vac-submit-btn').disabled = false;
+    document.getElementById('vac-submit-btn').textContent = 'Сохранить заявление';
+    document.getElementById('vac-days-preview').style.display = 'none';
+    document.querySelectorAll('.vac-type-card').forEach(c => c.classList.remove('vac-type-card--selected'));
+    document.querySelector('.vac-type-card').classList.add('vac-type-card--selected');
 }
 </script>
