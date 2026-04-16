@@ -7,6 +7,8 @@
       hx-swap="innerHTML"
       hx-on::after-request="closeModal()">
     {% csrf_token %}
+
+    <div class="form-section-title">Основные данные</div>
     <div class="form-row">
         <div class="form-group">
             <label>Фамилия *</label>
@@ -23,28 +25,65 @@
     </div>
     <div class="form-row">
         <div class="form-group">
-            <label>Должность *</label>
-            <input type="text" name="position" placeholder="Менеджер" required>
-        </div>
-        <div class="form-group">
-            <label>Оклад (₽)</label>
-            <input type="number" name="salary" placeholder="50000">
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group">
             <label>Дата рождения</label>
             <input type="date" name="birth_date">
         </div>
         <div class="form-group">
-            <label>Дата приёма на работу *</label>
-            <input type="date" name="hire_date" required>
+            <label>Телефон</label>
+            <input type="text" name="phone" placeholder="+7 900 000 00 00">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" placeholder="ivan@example.com">
+        </div>
+    </div>
+
+    <div class="form-section-title">Трудовые данные</div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Должность *</label>
+            <input type="text" name="position" placeholder="Менеджер" required>
+        </div>
+        <div class="form-group">
+            <label>Оклад (₽) *</label>
+            <input type="number" name="salary" placeholder="50000" required>
+        </div>
+        <div class="form-group">
+            <label>Табельный номер</label>
+            <input type="text" name="personnel_number" placeholder="001">
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
+            <label>Дата приёма *</label>
+            <input type="date" name="hire_date" required>
+        </div>
+        <div class="form-group">
             <label>Испытательный срок (мес.)</label>
             <input type="number" name="probation_months" placeholder="3" min="0" max="6">
+        </div>
+        <div class="form-group">
+            <label>Статус</label>
+            <select name="status">
+                <option value="active">Работает</option>
+                <option value="on_leave">В отпуске</option>
+                <option value="on_sick">На больничном</option>
+                <option value="fired">Уволен</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Тип договора</label>
+            <select name="contract_type">
+                <option value="permanent">Бессрочный</option>
+                <option value="fixed">Срочный</option>
+                <option value="gph">ГПХ</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Дата окончания договора</label>
+            <input type="date" name="contract_end_date">
         </div>
     </div>
     <div class="form-row">
@@ -68,20 +107,52 @@
                    placeholder="Название нового подразделения" style="display:none;margin-top:6px;">
         </div>
     </div>
+
+    <div class="form-section-title">Паспортные данные</div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Серия паспорта</label>
+            <input type="text" name="passport_series" maxlength="4" placeholder="0000">
+        </div>
+        <div class="form-group">
+            <label>Номер паспорта</label>
+            <input type="text" name="passport_number" maxlength="6" placeholder="000000">
+        </div>
+        <div class="form-group">
+            <label>Дата выдачи</label>
+            <input type="date" name="passport_issued_date">
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Кем выдан</label>
+        <input type="text" name="passport_issued_by" placeholder="Отдел МВД России...">
+    </div>
+    <div class="form-group">
+        <label>Адрес регистрации</label>
+        <input type="text" name="passport_registration" placeholder="г. Москва, ул. ...">
+    </div>
+
+    <div class="form-section-title">Реквизиты</div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>ИНН</label>
+            <input type="text" name="inn" maxlength="12" placeholder="123456789012">
+        </div>
+        <div class="form-group">
+            <label>СНИЛС</label>
+            <input type="text" name="snils" maxlength="14" placeholder="000-000-000 00">
+        </div>
+    </div>
+
     <script>
     function toggleNewDept(suffix) {
         var sel = document.getElementById('dept-select-' + suffix);
         var inp = document.getElementById('dept-new-' + suffix);
-        if (sel.value === '__new__') {
-            inp.style.display = 'block';
-            inp.required = true;
-        } else {
-            inp.style.display = 'none';
-            inp.required = false;
-            inp.value = '';
-        }
+        if (sel.value === '__new__') { inp.style.display = 'block'; inp.required = true; }
+        else { inp.style.display = 'none'; inp.required = false; inp.value = ''; }
     }
     </script>
+
     <div class="modal-actions">
         <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
         <button type="submit" class="btn-primary">Сохранить</button>

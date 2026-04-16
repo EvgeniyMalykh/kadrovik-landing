@@ -119,12 +119,31 @@ def _save_employee_from_post(post, employee):
         employee.probation_end_date = None
 
     employee.phone  = post.get("phone", "")
+    employee.email  = post.get("email", "")
     employee.inn    = post.get("inn", "")
     employee.snils  = post.get("snils", "")
-    employee.passport_series      = post.get("passport_series", "")
-    employee.passport_number      = post.get("passport_number", "")
-    employee.passport_issued_by   = post.get("passport_issued_by", "")
-    employee.passport_registration = post.get("passport_registration", "")
+    employee.passport_series        = post.get("passport_series", "")
+    employee.passport_number        = post.get("passport_number", "")
+    employee.passport_issued_by     = post.get("passport_issued_by", "")
+    employee.passport_registration  = post.get("passport_registration", "")
+    employee.personnel_number       = post.get("personnel_number", "")
+    employee.status                 = post.get("status", "active")
+    employee.contract_type          = post.get("contract_type", "permanent")
+
+    passport_issued_date_str = post.get("passport_issued_date")
+    employee.passport_issued_date = date.fromisoformat(passport_issued_date_str) if passport_issued_date_str else None
+
+    contract_end_str = post.get("contract_end_date")
+    employee.contract_end_date = date.fromisoformat(contract_end_str) if contract_end_str else None
+
+    fire_date_str = post.get("fire_date")
+    employee.fire_date = date.fromisoformat(fire_date_str) if fire_date_str else None
+
+    probation_end_str = post.get("probation_end_date")
+    if probation_end_str:
+        employee.probation_end_date = date.fromisoformat(probation_end_str)
+    elif not post.get("probation_end_date") and post.get("probation_months"):
+        pass  # уже обработано выше
     return employee
 
 
@@ -162,8 +181,12 @@ def employee_edit(request, employee_id):
     departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
     return render(request, "dashboard/partials/employee_edit_form.html", {
         "emp": employee,
-        "birth_date_str": employee.birth_date.strftime("%Y-%m-%d") if employee.birth_date else "",
-        "hire_date_str": employee.hire_date.strftime("%Y-%m-%d") if employee.hire_date else "",
+        "birth_date_str":           employee.birth_date.strftime("%Y-%m-%d") if employee.birth_date else "",
+        "hire_date_str":            employee.hire_date.strftime("%Y-%m-%d") if employee.hire_date else "",
+        "probation_end_str":        employee.probation_end_date.strftime("%Y-%m-%d") if employee.probation_end_date else "",
+        "contract_end_str":         employee.contract_end_date.strftime("%Y-%m-%d") if employee.contract_end_date else "",
+        "fire_date_str":            employee.fire_date.strftime("%Y-%m-%d") if employee.fire_date else "",
+        "passport_issued_date_str": employee.passport_issued_date.strftime("%Y-%m-%d") if employee.passport_issued_date else "",
         "departments": departments,
     })
 
