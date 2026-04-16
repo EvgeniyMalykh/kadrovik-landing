@@ -73,6 +73,20 @@
         <label>СНИЛС</label>
         <input type="text" name="snils" value="{{ emp.snils }}">
     </div>
+    <div class="form-row">
+        <div class="form-group form-group--full">
+            <label>Структурное подразделение</label>
+            <select name="department_id" id="dept-select-edit" onchange="toggleNewDept('edit')">
+                <option value="">— не указано —</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}" {% if emp.department and emp.department.id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+                <option value="__new__">+ Создать новое...</option>
+            </select>
+            <input type="text" name="department_new" id="dept-new-edit"
+                   placeholder="Название нового подразделения" style="display:none;margin-top:6px;">
+        </div>
+    </div>
     <div class="modal-actions">
         <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
         <button type="submit" class="btn-primary">Сохранить</button>

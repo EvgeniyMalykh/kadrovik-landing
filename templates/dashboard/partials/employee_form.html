@@ -47,6 +47,41 @@
             <input type="number" name="probation_months" placeholder="3" min="0" max="6">
         </div>
     </div>
+    <div class="form-row">
+        <div class="form-group form-group--full">
+            <label>Структурное подразделение</label>
+            {% if departments %}
+            <select name="department_id" id="dept-select-add" onchange="toggleNewDept('add')">
+                <option value="">— не указано —</option>
+                {% for d in departments %}
+                <option value="{{ d.id }}">{{ d.name }}</option>
+                {% endfor %}
+                <option value="__new__">+ Создать новое...</option>
+            </select>
+            {% else %}
+            <select name="department_id" id="dept-select-add" onchange="toggleNewDept('add')">
+                <option value="">— не указано —</option>
+                <option value="__new__">+ Создать новое...</option>
+            </select>
+            {% endif %}
+            <input type="text" name="department_new" id="dept-new-add"
+                   placeholder="Название нового подразделения" style="display:none;margin-top:6px;">
+        </div>
+    </div>
+    <script>
+    function toggleNewDept(suffix) {
+        var sel = document.getElementById('dept-select-' + suffix);
+        var inp = document.getElementById('dept-new-' + suffix);
+        if (sel.value === '__new__') {
+            inp.style.display = 'block';
+            inp.required = true;
+        } else {
+            inp.style.display = 'none';
+            inp.required = false;
+            inp.value = '';
+        }
+    }
+    </script>
     <div class="modal-actions">
         <button type="button" class="btn-secondary" onclick="closeModal()">Отмена</button>
         <button type="submit" class="btn-primary">Сохранить</button>

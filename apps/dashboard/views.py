@@ -86,6 +86,22 @@ def _save_employee_from_post(post, employee):
     employee.position    = post.get("position", "")
     employee.salary      = post.get("salary") or None
 
+    # Структурное подразделение
+    dept_id = post.get("department_id")
+    dept_name_new = post.get("department_new", "").strip()
+    if dept_name_new and hasattr(employee, 'company') and employee.company:
+        from apps.employees.models import Department as _Dept
+        dept, _ = _Dept.objects.get_or_create(company=employee.company, name=dept_name_new)
+        employee.department = dept
+    elif dept_id:
+        from apps.employees.models import Department as _Dept
+        try:
+            employee.department = _Dept.objects.get(id=int(dept_id))
+        except (_Dept.DoesNotExist, ValueError):
+            employee.department = None
+    else:
+        employee.department = None
+
     hire_date_str = post.get("hire_date")
     employee.hire_date = date.fromisoformat(hire_date_str) if hire_date_str else date.today()
 
@@ -124,7 +140,12 @@ def employee_add(request):
         emp.save()
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
-    return render(request, "dashboard/partials/employee_form.html")
+    member = CompanyMember.objects.filter(user=request.user).first()
+    departments = []
+    if member:
+        from apps.employees.models import Department as _Dept
+        departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
+    return render(request, "dashboard/partials/employee_form.html", {"departments": departments})
 
 
 @login_required
@@ -137,10 +158,13 @@ def employee_edit(request, employee_id):
         employee.save()
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
+    from apps.employees.models import Department as _Dept
+    departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
     return render(request, "dashboard/partials/employee_edit_form.html", {
         "emp": employee,
         "birth_date_str": employee.birth_date.strftime("%Y-%m-%d") if employee.birth_date else "",
         "hire_date_str": employee.hire_date.strftime("%Y-%m-%d") if employee.hire_date else "",
+        "departments": departments,
     })
 
 
