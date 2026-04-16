@@ -84,3 +84,31 @@ class Employee(models.Model):
         if self.middle_name:
             parts.append(f'{self.middle_name[0]}.')
         return ' '.join(parts)
+
+class TimeRecord(models.Model):
+    """Ручная отметка в табеле Т-13."""
+    class Code(models.TextChoices):
+        WORK      = 'Я',  'Явка (рабочий день)'
+        VACATION  = 'ОТ', 'Отпуск ежегодный'
+        VACATION_U= 'ОД', 'Отпуск доп.'
+        SICK      = 'Б',  'Больничный'
+        HOLIDAY   = 'П',  'Праздник'
+        WEEKEND   = 'В',  'Выходной'
+        TRIP      = 'К',  'Командировка'
+        ABSENT    = 'НН', 'Неявка невыясненная'
+        HALF      = 'Я½', 'Неполный день'
+
+    employee  = models.ForeignKey(Employee, on_delete=models.CASCADE,
+                                   related_name='time_records', verbose_name='Сотрудник')
+    date      = models.DateField('Дата')
+    code      = models.CharField('Код', max_length=3, choices=Code.choices, default=Code.WORK)
+    hours     = models.PositiveSmallIntegerField('Часов', default=8)
+
+    class Meta:
+        verbose_name = 'Отметка табеля'
+        verbose_name_plural = 'Отметки табеля'
+        unique_together = ('employee', 'date')
+        ordering = ['date']
+
+    def __str__(self):
+        return f'{self.employee.full_name} {self.date} — {self.code}'

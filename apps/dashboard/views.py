@@ -433,3 +433,124 @@ def company_profile(request):
         company.save()
         saved = True
     return render(request, "dashboard/company.html", {"company": company, "saved": saved})
+
+
+@login_required
+@subscription_required
+def timesheet_edit(request):
+    """Редактирование табеля Т-13 по месяцу."""
+    import calendar
+    from datetime import date as dt_date
+    from apps.employees.models import TimeRecord
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:employees")
+    try:
+        y = int(request.GET.get("year", dt_date.today().year))
+        m = int(request.GET.get("month", dt_date.today().month))
+    except (ValueError, TypeError):
+        y, m = dt_date.today().year, dt_date.today().month
+
+    employees = Employee.objects.filter(company=member.company).select_related("department")
+    days_in_month = calendar.monthrange(y, m)[1]
+    days = list(range(1, days_in_month + 1))
+
+    # Получаем все отметки за месяц
+    from django.db.models import Q
+    import datetime
+    start = datetime.date(y, m, 1)
+    end = datetime.date(y, m, days_in_month)
+    records = TimeRecord.objects.filter(
+        employee__in=employees,
+        date__gte=start, date__lte=end
+    )
+    # Словарь: {(employee_id, day): record}
+    rec_map = {(r.employee_id, r.date.day): r for r in records}
+
+    # Праздники и выходные
+    holidays = _get_ru_holidays_dashboard(y)
+    day_types = []
+    for d in days:
+        dd = datetime.date(y, m, d)
+        if dd in holidays:
+            day_types.append('holiday')
+        elif dd.weekday() >= 5:
+            day_types.append('weekend')
+        else:
+            day_types.append('work')
+
+    CODES = [
+        ('Я','Явка'), ('ОТ','Отпуск'), ('ОД','Доп.отпуск'),
+        ('Б','Больничный'), ('К','Командировка'), ('НН','Неявка'),
+        ('П','Праздник'), ('В','Выходной'), ('Я½','Неполный'),
+    ]
+
+    month_names = ["Январь","Февраль","Март","Апрель","Май","Июнь",
+                   "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"]
+
+    return render(request, "dashboard/timesheet.html", {
+        "employees": employees,
+        "days": days,
+        "day_types": day_types,
+        "rec_map_json": _rec_map_to_json(rec_map),
+        "year": y,
+        "month": m,
+        "month_name": month_names[m-1],
+        "codes": CODES,
+    })
+
+
+def _rec_map_to_json(rec_map):
+    import json
+    d = {}
+    for (emp_id, day), rec in rec_map.items():
+        d[f"{emp_id}_{day}"] = {"code": rec.code, "hours": rec.hours}
+    return json.dumps(d, ensure_ascii=False)
+
+
+def _get_ru_holidays_dashboard(year):
+    """Обёртка _get_ru_holidays для использования в views."""
+    from apps.documents.services import _get_ru_holidays
+    return _get_ru_holidays(year)
+
+
+@login_required
+@subscription_required
+def timesheet_save(request):
+    """Сохраняет отметки табеля из POST (JSON body)."""
+    import json
+    from apps.employees.models import TimeRecord
+    from datetime import date as dt_date
+    if request.method != "POST":
+        from django.http import JsonResponse
+        return JsonResponse({"error": "POST required"}, status=405)
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        from django.http import JsonResponse
+        return JsonResponse({"error": "no company"}, status=403)
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        from django.http import JsonResponse
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    # data = {"records": [{"employee_id": 1, "date": "2026-04-15", "code": "ОТ", "hours": 8}, ...]}
+    employee_ids = set(Employee.objects.filter(company=member.company).values_list('id', flat=True))
+    saved = 0
+    for rec in data.get("records", []):
+        emp_id = rec.get("employee_id")
+        if emp_id not in employee_ids:
+            continue
+        try:
+            d = dt_date.fromisoformat(rec["date"])
+        except Exception:
+            continue
+        code = rec.get("code", "Я")[:3]
+        hours = int(rec.get("hours", 8))
+        TimeRecord.objects.update_or_create(
+            employee_id=emp_id, date=d,
+            defaults={"code": code, "hours": hours}
+        )
+        saved += 1
+    from django.http import JsonResponse
+    return JsonResponse({"saved": saved})

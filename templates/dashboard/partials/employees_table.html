@@ -22,8 +22,11 @@
         <option value="2027">2027</option>
     </select>
     <button type="button" onclick="downloadT13()" class="btn-secondary" style="font-size:0.85rem;padding:6px 14px;">
-        Скачать
+        Скачать PDF
     </button>
+    <a href="{% url 'dashboard:timesheet_edit' %}" class="btn-secondary" style="font-size:0.85rem;padding:6px 14px;text-decoration:none;">
+        ✏️ Редактировать
+    </a>
 </div>
 <script>
 (function(){

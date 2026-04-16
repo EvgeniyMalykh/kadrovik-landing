@@ -888,6 +888,21 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
         else:
             day_types.append('work')
 
+    # Загружаем ручные отметки из БД
+    import datetime as _dt_module
+    start_d = _dt_module.date(y, m, 1)
+    end_d   = _dt_module.date(y, m, days_in_month)
+    try:
+        from apps.employees.models import TimeRecord
+        emp_ids = [e.id for e in employees]
+        tr_qs = TimeRecord.objects.filter(
+            employee_id__in=emp_ids,
+            date__gte=start_d, date__lte=end_d
+        )
+        tr_map = {(r.employee_id, r.date.day): r for r in tr_qs}
+    except Exception:
+        tr_map = {}
+
     for i, emp in enumerate(employees, 1):
         ln = emp.last_name or ""
         fn = (emp.first_name[:1] + ".") if emp.first_name else ""
@@ -895,17 +910,26 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
         short_name = ln + " " + fn + mn
         row = [str(i), short_name.strip() + "\n" + (emp.position or "")]
         work_days = 0
+        work_hours = 0
         for d in range(1, days_in_month+1):
-            dtype = day_types[d-1]
-            if dtype == 'work':
-                row.append("8")
-                work_days += 1
-            elif dtype == 'holiday':
-                row.append("П")
+            rec = tr_map.get((emp.id, d))
+            if rec:
+                row.append(rec.code)
+                if rec.code in ("Я", "К", "Я½", "ОТ", "ОД", "Б"):
+                    work_days += 1
+                    work_hours += rec.hours
             else:
-                row.append("В")
+                dtype = day_types[d-1]
+                if dtype == 'work':
+                    row.append("8")
+                    work_days += 1
+                    work_hours += 8
+                elif dtype == 'holiday':
+                    row.append("П")
+                else:
+                    row.append("В")
         row.append(str(work_days))
-        row.append(str(work_days * 8))
+        row.append(str(work_hours))
         rows.append(row)
     t = Table(rows, colWidths=col_widths)
     # Базовые стили

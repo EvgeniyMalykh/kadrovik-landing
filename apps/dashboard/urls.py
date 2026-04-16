@@ -22,6 +22,8 @@ urlpatterns = [
     path("employees/<int:employee_id>/gph-act/", views.download_gph_act, name="download_gph_act"),
     # Табель — на всю компанию
     path("t13/", views.download_t13, name="download_t13"),
+    path("timesheet/", views.timesheet_edit, name="timesheet_edit"),
+    path("timesheet/save/", views.timesheet_save, name="timesheet_save"),
     # Подписка и auth
     path("company/", views.company_profile, name="company"),
     path("subscription/", views.subscription, name="subscription"),

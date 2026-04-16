@@ -1,0 +1,303 @@
+{% load ts_tags %}
+{% extends "base.html" %}
+{% block title %}Табель Т-13 — {{ month_name }} {{ year }}{% endblock %}
+{% block nav_employees %}active{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Табель учёта рабочего времени</h1>
+        <p class="page-subtitle">Т-13 — {{ month_name }} {{ year }} г.</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+        <a href="{% url 'dashboard:employees' %}" class="btn-secondary">← Сотрудники</a>
+        <button onclick="saveTimesheet()" class="btn-primary" id="save-btn">💾 Сохранить</button>
+        <a href="{% url 'dashboard:download_t13' %}?year={{ year }}&month={{ month }}" class="btn-secondary">📥 Скачать PDF</a>
+    </div>
+</div>
+
+<!-- Выбор месяца/года -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;">
+    <span style="color:var(--text-secondary);font-size:0.9rem;">Период:</span>
+    <select id="sel-month" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+        {% for mn in "Январь,Февраль,Март,Апрель,Май,Июнь,Июль,Август,Сентябрь,Октябрь,Ноябрь,Декабрь"|split:"," %}
+        <option value="{{ forloop.counter }}" {% if forloop.counter == month %}selected{% endif %}>{{ mn }}</option>
+        {% endfor %}
+    </select>
+    <select id="sel-year" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
+        {% for yr in "2024,2025,2026,2027"|split:"," %}
+        <option value="{{ yr }}" {% if yr == year|stringformat:"s" %}selected{% endif %}>{{ yr }}</option>
+        {% endfor %}
+    </select>
+    <button onclick="changeMonth()" class="btn-secondary">Перейти</button>
+</div>
+
+<!-- Легенда кодов -->
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;">
+    {% for code, label in codes %}
+    <span class="ts-legend ts-{{ code|lower|cut:'½'|cut:'н' }}">
+        <b>{{ code }}</b> — {{ label }}
+    </span>
+    {% endfor %}
+</div>
+
+<!-- Подсказка -->
+<div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">
+    Кликните на ячейку чтобы изменить код. Правый клик — изменить количество часов.
+</div>
+
+<!-- Таблица табеля -->
+<div style="overflow-x:auto;">
+<table class="ts-table" id="ts-table">
+    <thead>
+        <tr>
+            <th style="min-width:160px;">Сотрудник</th>
+            {% for d in days %}
+            <th class="ts-day-hdr ts-hdr-{{ day_types|index:forloop.index0 }}" title="{{ d }}">{{ d }}</th>
+            {% endfor %}
+            <th style="min-width:50px;">Дней</th>
+            <th style="min-width:50px;">Часов</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for emp in employees %}
+        <tr data-emp="{{ emp.id }}">
+            <td class="ts-name">
+                <div style="font-weight:600;font-size:0.8rem;">{{ emp.last_name }} {{ emp.first_name|first }}.{% if emp.middle_name %} {{ emp.middle_name|first }}.{% endif %}</div>
+                <div style="font-size:0.7rem;color:var(--text-muted);">{{ emp.position }}</div>
+            </td>
+            {% for d in days %}
+            <td class="ts-cell ts-{{ day_types|index:forloop.index0 }}"
+                data-emp="{{ emp.id }}"
+                data-day="{{ d }}"
+                data-date="{{ year }}-{{ month|stringformat:'02d' }}-{{ d|stringformat:'02d' }}"
+                onclick="cycleCode(this)"
+                oncontextmenu="editHours(event, this)"
+                title="Клик — код / ПКМ — часы">
+                <span class="ts-code"></span>
+                <span class="ts-hrs"></span>
+            </td>
+            {% endfor %}
+            <td class="ts-total-days" style="font-weight:700;text-align:center;"></td>
+            <td class="ts-total-hours" style="font-weight:700;text-align:center;"></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<!-- Статус сохранения -->
+<div id="save-status" style="margin-top:1rem;font-size:0.85rem;color:var(--text-muted);"></div>
+
+<style>
+.ts-table { border-collapse: collapse; font-size: 0.75rem; width: 100%; }
+.ts-table th, .ts-table td { border: 1px solid var(--border); padding: 2px 3px; text-align: center; }
+.ts-day-hdr { min-width: 28px; font-size: 0.7rem; }
+.ts-hdr-work { background: var(--bg-card); }
+.ts-hdr-weekend { background: #374151; }
+.ts-hdr-holiday { background: #7f1d1d; color: #fca5a5; }
+.ts-cell { cursor: pointer; min-width: 28px; height: 36px; vertical-align: middle; position: relative; transition: background 0.1s; }
+.ts-cell:hover { background: rgba(99,102,241,0.15) !important; }
+.ts-work { background: transparent; }
+.ts-weekend { background: rgba(55,65,81,0.5); }
+.ts-holiday { background: rgba(127,29,29,0.3); }
+.ts-name { text-align: left; padding: 4px 8px; min-width: 160px; }
+.ts-code { display: block; font-weight: 700; font-size: 0.72rem; line-height: 1.2; }
+.ts-hrs  { display: block; font-size: 0.6rem; color: var(--text-muted); line-height: 1; }
+
+/* Цвета кодов */
+.code-Я   { color: #34d399; }
+.code-ОТ  { color: #60a5fa; }
+.code-ОД  { color: #93c5fd; }
+.code-Б   { color: #fbbf24; }
+.code-К   { color: #a78bfa; }
+.code-НН  { color: #f87171; }
+.code-П   { color: #9ca3af; }
+.code-В   { color: #6b7280; }
+.code-Я½  { color: #6ee7b7; }
+
+.ts-legend { font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
+
+/* Контекстное меню */
+#ctx-menu { position: fixed; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; z-index: 9999; min-width: 160px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+#ctx-menu label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px; }
+#ctx-menu input { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-sidebar); color: var(--text-primary); font-size: 0.85rem; }
+#ctx-menu .ctx-btns { display: flex; gap: 6px; margin-top: 8px; }
+#ctx-menu button { flex: 1; padding: 4px; font-size: 0.8rem; border-radius: 4px; cursor: pointer; border: none; }
+</style>
+
+<!-- Контекстное меню для часов -->
+<div id="ctx-menu" style="display:none;">
+    <label>Часов в день:</label>
+    <input type="number" id="ctx-hours" min="1" max="24" value="8">
+    <div class="ctx-btns">
+        <button onclick="applyHours()" style="background:var(--accent);color:#fff;">Применить</button>
+        <button onclick="closeCtx()" style="background:var(--border);color:var(--text-primary);">Отмена</button>
+    </div>
+</div>
+
+<script>
+// Данные из сервера
+var INITIAL = {{ rec_map_json|safe }};
+var DAY_TYPES = {{ day_types|safe_json }};
+var YEAR = {{ year }};
+var MONTH = {{ month }};
+
+// Циклический порядок кодов при клике
+var CYCLE_WORK = ['Я','ОТ','ОД','Б','К','НН','Я½','В'];
+var CYCLE_WEEKEND = ['В','Я','ОТ','Б','НН'];
+var CYCLE_HOLIDAY = ['П','Я','ОТ','Б','НН'];
+
+// Хранилище изменений: {"empId_day": {code, hours}}
+var changes = {};
+
+function getDefaultCode(dayIdx) {
+    var t = DAY_TYPES[dayIdx];
+    if (t === 'holiday') return 'П';
+    if (t === 'weekend') return 'В';
+    return 'Я';
+}
+function getDefaultHours(code) {
+    if (['В','П','НН'].includes(code)) return 0;
+    if (code === 'Я½') return 4;
+    return 8;
+}
+
+function initTable() {
+    var cells = document.querySelectorAll('.ts-cell');
+    cells.forEach(function(cell) {
+        var empId = cell.dataset.emp;
+        var day   = cell.dataset.day;
+        var dayIdx = parseInt(day) - 1;
+        var key = empId + '_' + day;
+        var rec = INITIAL[key];
+        var code, hours;
+        if (rec) {
+            code  = rec.code;
+            hours = rec.hours;
+        } else {
+            code  = getDefaultCode(dayIdx);
+            hours = getDefaultHours(code);
+        }
+        setCell(cell, code, hours);
+    });
+    updateTotals();
+}
+
+function setCell(cell, code, hours) {
+    cell.querySelector('.ts-code').textContent = code;
+    cell.querySelector('.ts-code').className = 'ts-code code-' + code.replace('½','').replace('Н','H');
+    cell.querySelector('.ts-hrs').textContent = hours > 0 ? hours + 'ч' : '';
+    cell.dataset.code  = code;
+    cell.dataset.hours = hours;
+}
+
+function cycleCode(cell) {
+    var dayIdx = parseInt(cell.dataset.day) - 1;
+    var t = DAY_TYPES[dayIdx];
+    var cycle = t === 'holiday' ? CYCLE_HOLIDAY : (t === 'weekend' ? CYCLE_WEEKEND : CYCLE_WORK);
+    var cur = cell.dataset.code || getDefaultCode(dayIdx);
+    var idx = cycle.indexOf(cur);
+    var next = cycle[(idx + 1) % cycle.length];
+    var hours = getDefaultHours(next);
+    setCell(cell, next, hours);
+    markChange(cell, next, hours);
+    updateTotals();
+}
+
+var ctxCell = null;
+function editHours(e, cell) {
+    e.preventDefault();
+    ctxCell = cell;
+    var menu = document.getElementById('ctx-menu');
+    document.getElementById('ctx-hours').value = cell.dataset.hours || 8;
+    menu.style.display = 'block';
+    menu.style.left = e.clientX + 'px';
+    menu.style.top  = e.clientY + 'px';
+}
+function applyHours() {
+    if (!ctxCell) return;
+    var h = parseInt(document.getElementById('ctx-hours').value) || 8;
+    setCell(ctxCell, ctxCell.dataset.code, h);
+    markChange(ctxCell, ctxCell.dataset.code, h);
+    updateTotals();
+    closeCtx();
+}
+function closeCtx() {
+    document.getElementById('ctx-menu').style.display = 'none';
+    ctxCell = null;
+}
+document.addEventListener('click', function(e) {
+    if (!document.getElementById('ctx-menu').contains(e.target)) closeCtx();
+});
+
+function markChange(cell, code, hours) {
+    var key = cell.dataset.emp + '_' + cell.dataset.day;
+    changes[key] = { employee_id: parseInt(cell.dataset.emp), date: cell.dataset.date, code: code, hours: hours };
+}
+
+function updateTotals() {
+    var rows = document.querySelectorAll('#ts-table tbody tr');
+    rows.forEach(function(row) {
+        var cells = row.querySelectorAll('.ts-cell');
+        var days = 0, hours = 0;
+        cells.forEach(function(c) {
+            var code  = c.dataset.code || '';
+            var h     = parseInt(c.dataset.hours) || 0;
+            if (!['В','П','НН'].includes(code) && h > 0) { days++; hours += h; }
+        });
+        row.querySelector('.ts-total-days').textContent  = days;
+        row.querySelector('.ts-total-hours').textContent = hours;
+    });
+}
+
+function saveTimesheet() {
+    var records = Object.values(changes);
+    if (records.length === 0) {
+        // Сохраняем всё (не только изменения)
+        var allCells = document.querySelectorAll('.ts-cell');
+        allCells.forEach(function(cell) {
+            records.push({
+                employee_id: parseInt(cell.dataset.emp),
+                date: cell.dataset.date,
+                code: cell.dataset.code,
+                hours: parseInt(cell.dataset.hours) || 0
+            });
+        });
+    }
+    var btn = document.getElementById('save-btn');
+    btn.textContent = '⏳ Сохранение...';
+    btn.disabled = true;
+    fetch('{% url "dashboard:timesheet_save" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': (document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)') || [])[2] || ''
+        },
+        body: JSON.stringify({records: records})
+    })
+    .then(r => r.json())
+    .then(function(data) {
+        changes = {};
+        document.getElementById('save-status').textContent = '✓ Сохранено ' + data.saved + ' отметок — ' + new Date().toLocaleTimeString('ru');
+        btn.textContent = '💾 Сохранить';
+        btn.disabled = false;
+    })
+    .catch(function(e) {
+        document.getElementById('save-status').textContent = '✗ Ошибка сохранения';
+        btn.textContent = '💾 Сохранить';
+        btn.disabled = false;
+    });
+}
+
+function changeMonth() {
+    var m = document.getElementById('sel-month').value;
+    var y = document.getElementById('sel-year').value;
+    window.location.href = '{% url "dashboard:timesheet_edit" %}?year=' + y + '&month=' + m;
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', initTable);
+</script>
+
+{% endblock %}
