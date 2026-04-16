@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Формы и документы — Кадровый автопилот{% endblock %}
+{% block nav_forms %}active{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Формы и документы</h1>
+    <p class="page-subtitle">Создание и журнал кадровых документов</p>
+  </div>
+</div>
+
+<!-- Кнопки создания -->
+<div class="card" style="margin-bottom:2rem;padding:1.25rem 1.5rem;">
+  <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px;">Создать документ</div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;">
+    <a href="{% url 'dashboard:form_editor' 'vacation' %}" class="btn-primary" style="font-size:0.82rem;padding:8px 16px;text-decoration:none;border-radius:8px;display:inline-flex;align-items:center;gap:6px;">
+      <span>&#127958;&#65039;</span> Отпуск (Т-6)
+    </a>
+    <a href="{% url 'dashboard:form_editor' 'gph_contract' %}" class="btn-primary" style="font-size:0.82rem;padding:8px 16px;text-decoration:none;border-radius:8px;display:inline-flex;align-items:center;gap:6px;background:#6366f1;">
+      <span>&#128196;</span> Договор ГПХ
+    </a>
+    <a href="{% url 'dashboard:form_editor' 'gph_act' %}" class="btn-primary" style="font-size:0.82rem;padding:8px 16px;text-decoration:none;border-radius:8px;display:inline-flex;align-items:center;gap:6px;background:#8b5cf6;">
+      <span>&#9989;</span> Акт ГПХ
+    </a>
+    <a href="{% url 'dashboard:form_editor' 'reference' %}" class="btn-primary" style="font-size:0.82rem;padding:8px 16px;text-decoration:none;border-radius:8px;display:inline-flex;align-items:center;gap:6px;background:#0891b2;">
+      <span>&#128203;</span> Справка
+    </a>
+    <a href="{% url 'dashboard:form_editor' 'salary_change' %}" class="btn-primary" style="font-size:0.82rem;padding:8px 16px;text-decoration:none;border-radius:8px;display:inline-flex;align-items:center;gap:6px;background:#059669;">
+      <span>&#128176;</span> Изменение оклада
+    </a>
+  </div>
+</div>
+
+<!-- Журнал документов -->
+<div class="card">
+  <h3 style="margin-bottom:1rem;color:var(--text-primary);font-size:1rem;">Журнал документов</h3>
+
+  {% if documents %}
+  <div style="overflow-x:auto;">
+    <table class="employees-table">
+      <thead>
+        <tr>
+          <th>Тип</th>
+          <th>Сотрудник</th>
+          <th>Номер</th>
+          <th>Дата</th>
+          <th>Создан</th>
+          <th style="text-align:right;">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in documents %}
+        <tr>
+          <td>
+            <span class="status-badge" style="background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-primary);font-size:0.75rem;">
+              {{ doc.get_doc_type_display }}
+            </span>
+          </td>
+          <td>{{ doc.employee.full_name|default:"—" }}</td>
+          <td>{{ doc.number|default:"—" }}</td>
+          <td>{{ doc.date|date:"d.m.Y" }}</td>
+          <td style="color:var(--text-muted);font-size:0.82rem;">{{ doc.created_at|date:"d.m.Y H:i" }}</td>
+          <td style="text-align:right;">
+            <div style="display:inline-flex;gap:8px;">
+              {% if doc.doc_type == 'vacation' or doc.doc_type == 'gph_contract' or doc.doc_type == 'gph_act' or doc.doc_type == 'reference' or doc.doc_type == 'salary_change' %}
+              <a href="{% url 'dashboard:form_editor' doc.doc_type %}?doc_id={{ doc.id }}" style="font-size:0.82rem;color:var(--color-primary);text-decoration:none;" title="Редактировать">&#9998; Открыть</a>
+              {% endif %}
+
+              {% if doc.employee_id %}
+                {% if doc.doc_type == 'vacation' %}
+                <a href="{% url 'dashboard:download_t6' doc.employee_id %}?start={{ doc.extra_data.start_date|default:'' }}&end={{ doc.extra_data.end_date|default:'' }}&order={{ doc.number|default:'О-001' }}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% elif doc.doc_type == 'gph_contract' %}
+                <a href="{% url 'dashboard:download_gph_contract' doc.employee_id %}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% elif doc.doc_type == 'gph_act' %}
+                <a href="{% url 'dashboard:download_gph_act' doc.employee_id %}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% elif doc.doc_type == 'reference' %}
+                <a href="{% url 'dashboard:download_certificate' doc.employee_id %}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% elif doc.doc_type == 'salary_change' %}
+                <a href="{% url 'dashboard:download_salary_change' doc.employee_id %}?salary={{ doc.extra_data.new_salary|default:'' }}&order={{ doc.number|default:'З-001' }}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% endif %}
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:3rem 1rem;color:var(--text-muted);">
+    <div style="font-size:2.5rem;margin-bottom:0.75rem;">&#128196;</div>
+    <p style="margin:0;font-size:0.95rem;">Документы пока не созданы</p>
+    <p style="margin:0.5rem 0 0;font-size:0.82rem;">Выберите тип документа выше, чтобы начать</p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

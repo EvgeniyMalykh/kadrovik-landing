@@ -4,6 +4,7 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from apps.accounts.models import User
 from apps.employees.models import Employee, Department
 from apps.companies.models import Company, CompanyMember
@@ -811,3 +812,361 @@ def change_password_view(request):
                       {"success": "Пароль успешно изменён!"})
 
     return render(request, "dashboard/change_password.html")
+
+
+# ─── ФОРМЫ И ДОКУМЕНТЫ ────────────────────────────────────────────────────
+
+@login_required
+@subscription_required
+def forms_list(request):
+    """Журнал всех документов компании"""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:employees")
+    company = member.company
+    from apps.documents.models import Document
+    documents = Document.objects.filter(company=company).select_related('employee').order_by('-created_at')
+    employees = Employee.objects.filter(company=company, status='active').order_by('last_name')
+    return render(request, 'dashboard/forms_list.html', {
+        'documents': documents,
+        'employees': employees,
+    })
+
+
+@login_required
+@subscription_required
+def form_editor(request, doc_type):
+    """Редактор формы (новый или существующий документ)"""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:employees")
+    company = member.company
+    from apps.documents.models import Document
+    doc_id = request.GET.get('doc_id')
+    document = None
+    if doc_id:
+        document = get_object_or_404(Document, id=doc_id, company=company)
+    employees = Employee.objects.filter(company=company, status='active').order_by('last_name')
+
+    FORM_TITLES = {
+        'vacation': 'Приказ об отпуске (Т-6)',
+        'gph_contract': 'Договор ГПХ',
+        'gph_act': 'Акт выполненных работ',
+        'reference': 'Справка с места работы',
+        'salary_change': 'Изменение оклада',
+    }
+    if doc_type not in FORM_TITLES:
+        from django.http import Http404
+        raise Http404
+
+    return render(request, 'dashboard/form_editor.html', {
+        'doc_type': doc_type,
+        'form_title': FORM_TITLES[doc_type],
+        'document': document,
+        'employees': employees,
+        'extra_data': document.extra_data if document else {},
+    })
+
+
+@login_required
+@subscription_required
+@require_POST
+def form_save(request, doc_type):
+    """Сохранение документа"""
+    import json as _json_save
+    from apps.documents.models import Document
+    from django.http import JsonResponse
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return JsonResponse({'error': 'no company'}, status=403)
+    company = member.company
+    doc_id = request.POST.get('doc_id')
+    employee_id = request.POST.get('employee_id')
+
+    employee = None
+    if employee_id:
+        employee = get_object_or_404(Employee, id=employee_id, company=company)
+
+    # Собираем extra_data из POST
+    skip_keys = {'csrfmiddlewaretoken', 'doc_id', 'employee_id', 'doc_number', 'doc_date'}
+    extra_data = {}
+    for key, value in request.POST.items():
+        if key not in skip_keys and value:
+            extra_data[key] = value
+
+    doc_number = request.POST.get('doc_number', '')
+    doc_date_str = request.POST.get('doc_date', '')
+
+    doc_date = date.today()
+    if doc_date_str:
+        parsed = _parse_date_flexible(doc_date_str)
+        if parsed:
+            doc_date = parsed
+
+    FORM_TITLES = {
+        'vacation': 'vacation',
+        'gph_contract': 'gph_contract',
+        'gph_act': 'gph_act',
+        'reference': 'reference',
+        'salary_change': 'salary_change',
+    }
+    if doc_type not in FORM_TITLES:
+        return JsonResponse({'error': 'invalid doc_type'}, status=400)
+
+    if doc_id:
+        document = get_object_or_404(Document, id=doc_id, company=company)
+        document.employee = employee
+        document.number = doc_number
+        document.date = doc_date
+        document.extra_data = extra_data
+        document.save()
+    else:
+        document = Document.objects.create(
+            company=company,
+            employee=employee,
+            doc_type=doc_type,
+            number=doc_number,
+            date=doc_date,
+            extra_data=extra_data,
+        )
+
+    return JsonResponse({'success': True, 'doc_id': document.id, 'doc_type': doc_type})
+
+
+@login_required
+def employee_data_api(request, employee_id):
+    """JSON данные сотрудника для автозаполнения"""
+    from django.http import JsonResponse
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return JsonResponse({'error': 'no company'}, status=403)
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    data = {
+        'id': employee.id,
+        'full_name': employee.full_name,
+        'first_name': employee.first_name,
+        'last_name': employee.last_name,
+        'middle_name': employee.middle_name or '',
+        'position': employee.position or '',
+        'salary': str(employee.salary) if employee.salary else '',
+        'hire_date': employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '',
+        'inn': employee.inn or '',
+        'snils': employee.snils or '',
+        'phone': employee.phone or '',
+        'email': employee.email or '',
+        'passport_series': employee.passport_series or '',
+        'passport_number': employee.passport_number or '',
+    }
+    return JsonResponse(data)
+
+
+import hashlib as _hashlib
+import time as _time
+
+_CHAT_REDIS = 'redis://redis:6379/3'   # db=3 — чат (отдельно от celery и relay)
+_BOT_TOKEN  = '7718001813:AAH4KBXZId8CurJdxpmno9jCJr5Bgcx01mM'
+_ADMIN_CHAT = 1113292310
+
+
+def _get_chat_session(request):
+    """Уникальный 8-символьный ID сессии по email пользователя."""
+    uid = request.user.email if request.user.is_authenticated else (
+        request.session.session_key or 'anon'
+    )
+    return _hashlib.md5(uid.encode()).hexdigest()[:8]
+
+
+def _chat_redis():
+    import redis as _r
+    return _r.from_url(_CHAT_REDIS)
+
+
+def _save_msg(session_id, role, text, email=''):
+    """Сохраняет сообщение в историю и обновляет индекс сессий."""
+    import json as _j
+    r = _chat_redis()
+    msg = _j.dumps({'role': role, 'text': text, 'ts': int(_time.time())},
+                   ensure_ascii=False)
+    hist_key = f'chat_hist:{session_id}'
+    r.rpush(hist_key, msg)
+    r.expire(hist_key, 86400 * 7)   # храним 7 дней
+
+    # Индекс всех сессий: hash  session_id -> {email, last_msg, ts}
+    meta = _j.dumps({'email': email, 'last': text[:80], 'ts': int(_time.time())},
+                    ensure_ascii=False)
+    r.hset('chat_sessions', session_id, meta)
+
+
+@require_POST
+def chat_support(request):
+    """Принимает сообщение клиента, сохраняет в историю, шлёт в Telegram."""
+    from django.http import JsonResponse
+    import json as _json, requests as _req
+
+    try:
+        data = _json.loads(request.body)
+        text = data.get('text', '').strip()
+    except Exception:
+        text = request.POST.get('text', '').strip()
+
+    if not text:
+        return JsonResponse({'ok': False, 'error': 'empty'})
+
+    user_email = request.user.email if request.user.is_authenticated else 'аноним'
+    session_id = _get_chat_session(request)
+
+    # Сохраняем сообщение клиента в историю
+    _save_msg(session_id, 'user', text, email=user_email)
+
+    tg_text = (
+        f'\U0001f4ac Чат поддержки [{session_id}]\n'
+        f'\U0001f464 {user_email}\n'
+        f'\U0001f4dd {text}\n\n'
+        f'<i>Reply на это сообщение чтобы ответить клиенту</i>'
+    )
+
+    try:
+        resp = _req.post(
+            f'https://api.telegram.org/bot{_BOT_TOKEN}/sendMessage',
+            json={'chat_id': _ADMIN_CHAT, 'text': tg_text, 'parse_mode': 'HTML'},
+            timeout=10,
+        )
+        result = resp.json()
+        return JsonResponse({'ok': result.get('ok', False), 'session': session_id})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': str(e)})
+
+
+def chat_history(request):
+    """Возвращает историю переписки для сессии (вызывается при загрузке страницы)."""
+    from django.http import JsonResponse
+    import json as _json
+
+    session_id = request.GET.get('session', '')
+    if not session_id or len(session_id) != 8:
+        # Вычисляем session_id из текущего пользователя
+        session_id = _get_chat_session(request)
+
+    r = _chat_redis()
+    hist_key = f'chat_hist:{session_id}'
+    raw_list = r.lrange(hist_key, 0, -1)
+
+    messages = []
+    for raw in raw_list:
+        try:
+            messages.append(_json.loads(raw))
+        except Exception:
+            pass
+
+    return JsonResponse({'session': session_id, 'messages': messages})
+
+
+@csrf_exempt
+def chat_webhook(request):
+    """Webhook от Telegram — ответы оператора и команды бота."""
+    from django.http import JsonResponse
+    import json as _json, re as _re, requests as _req
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': True})
+
+    try:
+        data = _json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False})
+
+    msg = data.get('message', {})
+    if not msg:
+        return JsonResponse({'ok': True})
+
+    from_chat = msg.get('chat', {}).get('id')
+    text = msg.get('text', '').strip()
+
+    # ── Команда /чаты ──────────────────────────────────────────────────────
+    if text in ('/чаты', '/chats', '/чаты@kadrovik_leads_bot'):
+        r = _chat_redis()
+        sessions = r.hgetall('chat_sessions')
+
+        if not sessions:
+            reply = '\U0001f4c2 Активных чатов нет.'
+        else:
+            import json as _j2
+            lines = ['\U0001f4cb <b>Активные сессии чата:</b>\n']
+            for sid, meta_raw in sessions.items():
+                sid = sid.decode() if isinstance(sid, bytes) else sid
+                try:
+                    meta = _j2.loads(meta_raw)
+                except Exception:
+                    continue
+                import datetime
+                ts = datetime.datetime.fromtimestamp(meta['ts']).strftime('%d.%m %H:%M')
+                lines.append(
+                    f'\U0001f464 <b>{meta.get("email","?")}</b> [{sid}]\n'
+                    f'   \U0001f4dd {meta.get("last","...")}\n'
+                    f'   \U0001f552 {ts}\n'
+                )
+            reply = '\n'.join(lines)
+
+        _req.post(
+            f'https://api.telegram.org/bot{_BOT_TOKEN}/sendMessage',
+            json={'chat_id': from_chat, 'text': reply, 'parse_mode': 'HTML'},
+            timeout=10,
+        )
+        return JsonResponse({'ok': True})
+
+    # ── Ответ оператора клиенту ────────────────────────────────────────────
+    session_id = None
+
+    # Способ 1: reply на сообщение бота
+    reply_to = msg.get('reply_to_message', {})
+    if reply_to:
+        orig = reply_to.get('text', '')
+        m = _re.search(r'\[([a-f0-9]{8})\]', orig)
+        if m:
+            session_id = m.group(1)
+
+    # Способ 2: оператор пишет [session_id] текст
+    if not session_id:
+        m = _re.match(r'\[([a-f0-9]{8})\]\s*(.*)', text, _re.DOTALL)
+        if m:
+            session_id = m.group(1)
+            text = m.group(2).strip()
+
+    if not session_id or not text:
+        return JsonResponse({'ok': True})
+
+    # Сохраняем ответ в историю
+    _save_msg(session_id, 'bot', text)
+
+    # Кладём в очередь для poll
+    r = _chat_redis()
+    import json as _j3
+    r.rpush(f'chat_replies:{session_id}',
+            _j3.dumps({'text': text, 'ts': int(_time.time())}, ensure_ascii=False))
+    r.expire(f'chat_replies:{session_id}', 3600)
+
+    return JsonResponse({'ok': True})
+
+
+def chat_poll(request):
+    """Клиент опрашивает новые сообщения от оператора (только новые, не история)."""
+    from django.http import JsonResponse
+    import json as _json
+
+    session_id = request.GET.get('session', '')
+    if not session_id or len(session_id) != 8:
+        return JsonResponse({'messages': []})
+
+    r = _chat_redis()
+    key = f'chat_replies:{session_id}'
+    messages = []
+    while True:
+        raw = r.lpop(key)
+        if not raw:
+            break
+        try:
+            messages.append(_json.loads(raw))
+        except Exception:
+            pass
+
+    return JsonResponse({'messages': messages})

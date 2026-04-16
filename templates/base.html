@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Кадровый автопилот{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=4">
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=10">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         // CSRF для HTMX POST запросов
@@ -34,6 +34,7 @@
                 <span class="nav-icon">&#128197;</span>
                 <span>Табель</span>
             </a>
+                        <a href="{% url 'dashboard:forms_list' %}" class="nav-item {% block nav_forms %}{% endblock %}" onclick="closeSidebar()"><span class="nav-icon">&#128196;</span><span>Формы</span></a>
             <a href="/vacations/" class="nav-item {% block nav_vacations %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#127958;&#65039;</span>
                 <span>Отпуска</span>
@@ -155,5 +156,118 @@
         initDateMasks(e.detail.target || document);
     });
     </script>
+        <!-- Support Chat -->
+    <button class="chat-widget-btn" onclick="toggleChat()" title="Техподдержка">&#128172;</button>
+    <div class="chat-widget-box" id="chatBox">
+        <div class="chat-widget-head">
+            <div><div>Техподдержка</div><span style="font-size:0.8rem;opacity:0.85;">Отвечаем в Telegram</span></div>
+            <button onclick="toggleChat()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">&#10005;</button>
+        </div>
+        <div class="chat-widget-msgs" id="chatMsgs"></div>
+        <div id="chatTyping" class="chat-typing" style="display:none;">Отправляем...</div>
+        <div class="chat-widget-input">
+            <input type="text" id="chatInput" placeholder="Ваш вопрос..." onkeydown="if(event.key==='Enter')sendChatMsg()">
+            <button onclick="sendChatMsg()">&#9658;</button>
+        </div>
+    </div>
+    <script>
+    (function(){
+        var chatSession = null;
+        var pollTimer = null;
+
+        function getCsrf(){
+            var m = document.cookie.match(/csrftoken=([^;]+)/);
+            return m ? m[1] : '';
+        }
+
+        function addMsg(text, cls, prepend){
+            var m = document.getElementById('chatMsgs');
+            var d = document.createElement('div');
+            d.className = 'chat-msg ' + cls;
+            d.textContent = text;
+            if(prepend) m.insertBefore(d, m.firstChild);
+            else m.appendChild(d);
+            m.scrollTop = m.scrollHeight;
+        }
+
+        function startPolling(){
+            if(pollTimer || !chatSession) return;
+            pollTimer = setInterval(function(){
+                fetch('/dashboard/chat-poll/?session=' + chatSession)
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    if(d.messages && d.messages.length){
+                        d.messages.forEach(function(msg){ addMsg(msg.text, 'bot'); });
+                    }
+                }).catch(function(){});
+            }, 3000);
+        }
+
+        function stopPolling(){
+            if(pollTimer){ clearInterval(pollTimer); pollTimer = null; }
+        }
+
+        // Загружаем историю переписки при открытии чата
+        function loadHistory(){
+            var url = '/dashboard/chat-history/';
+            if(chatSession) url += '?session=' + chatSession;
+            fetch(url)
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if(!chatSession && d.session) chatSession = d.session;
+                var m = document.getElementById('chatMsgs');
+                m.innerHTML = '';
+                if(d.messages && d.messages.length){
+                    d.messages.forEach(function(msg){
+                        addMsg(msg.text, msg.role === 'user' ? 'user' : 'bot');
+                    });
+                } else {
+                    addMsg('Привет! Напишите вопрос — ответим в течение нескольких минут.', 'bot');
+                }
+                if(chatSession) startPolling();
+            }).catch(function(){
+                addMsg('Привет! Напишите вопрос — ответим в течение нескольких минут.', 'bot');
+            });
+        }
+
+        window.toggleChat = function(){
+            var b = document.getElementById('chatBox');
+            b.classList.toggle('open');
+            if(b.classList.contains('open')){
+                loadHistory();
+                setTimeout(function(){ document.getElementById('chatInput').focus(); }, 100);
+            } else {
+                stopPolling();
+            }
+        };
+
+        window.sendChatMsg = function(){
+            var inp = document.getElementById('chatInput');
+            var t = inp.value.trim();
+            if(!t) return;
+            addMsg(t, 'user');
+            inp.value = '';
+            document.getElementById('chatTyping').style.display = 'block';
+            fetch('/dashboard/chat-support/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+                body: JSON.stringify({text: t})
+            }).then(function(r){ return r.json(); })
+            .then(function(d){
+                document.getElementById('chatTyping').style.display = 'none';
+                if(d.ok){
+                    if(d.session && !chatSession){ chatSession = d.session; startPolling(); }
+                    addMsg('Отправлено! Ожидайте ответа...', 'bot');
+                } else {
+                    addMsg('Ошибка. Пишите: @kadrovik_leads_bot', 'bot');
+                }
+            }).catch(function(){
+                document.getElementById('chatTyping').style.display = 'none';
+                addMsg('Нет связи. Пишите: @kadrovik_leads_bot', 'bot');
+            });
+        };
+    })();
+    </script>
+
 </body>
 </html>

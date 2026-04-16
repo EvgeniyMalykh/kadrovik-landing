@@ -4,6 +4,12 @@ from . import views
 app_name = "dashboard"
 
 urlpatterns = [
+    path("chat-support/",  views.chat_support,  name="chat_support"),
+    path("chat-history/",  views.chat_history,  name="chat_history"),
+    path("chat-webhook/",  views.chat_webhook,  name="chat_webhook"),
+    path("chat-poll/",     views.chat_poll,     name="chat_poll"),
+
+
     path("", views.dashboard_home, name="home"),
     path("employees/", views.employees_list, name="employees"),
     path("employees/add/", views.employee_add, name="employee_add"),
@@ -24,6 +30,11 @@ urlpatterns = [
     path("t13/", views.download_t13, name="download_t13"),
     path("timesheet/", views.timesheet_edit, name="timesheet_edit"),
     path("timesheet/save/", views.timesheet_save, name="timesheet_save"),
+    # Формы и документы
+    path("forms/", views.forms_list, name="forms_list"),
+    path("forms/api/employee/<int:employee_id>/", views.employee_data_api, name="employee_data_api"),
+    path("forms/<str:doc_type>/save/", views.form_save, name="form_save"),
+    path("forms/<str:doc_type>/", views.form_editor, name="form_editor"),
     # Подписка и auth
     path("company/", views.company_profile, name="company"),
     path("subscription/", views.subscription, name="subscription"),

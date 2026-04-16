@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block title %}{{ form_title }} — Кадровый автопилот{% endblock %}
+{% block nav_forms %}active{% endblock %}
+{% block content %}
+
+<div class="page-header" style="margin-bottom:1.5rem;">
+  <div>
+    <h1 class="page-title">{{ form_title }}</h1>
+    <p class="page-subtitle">
+      {% if document %}Редактирование документа #{{ document.id }}{% else %}Создание нового документа{% endif %}
+    </p>
+  </div>
+  <a href="{% url 'dashboard:forms_list' %}" class="btn-secondary" style="font-size:0.82rem;padding:8px 16px;text-decoration:none;border-radius:8px;">
+    &larr; К журналу
+  </a>
+</div>
+
+<div class="card" style="padding:1.5rem 2rem;max-width:720px;">
+  <form id="form-editor" onsubmit="return false;">
+    {% csrf_token %}
+    {% if document %}
+    <input type="hidden" name="doc_id" value="{{ document.id }}">
+    {% endif %}
+
+    <!-- Выбор сотрудника -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Сотрудник</label>
+      <select name="employee_id" id="employee-select" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <option value="">— Выберите сотрудника —</option>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}" {% if document and document.employee_id == emp.id %}selected{% endif %}>
+          {{ emp.full_name }} — {{ emp.position }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Автозаполненные данные сотрудника (read-only блок) -->
+    <div id="employee-info" style="display:none;margin-bottom:1.25rem;padding:12px 16px;background:var(--bg-secondary, #f8fafc);border-radius:8px;border:1px solid var(--border-color);">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Данные сотрудника</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:0.82rem;">
+        <div><span style="color:var(--text-muted);">ФИО:</span> <span id="emp-fullname">—</span></div>
+        <div><span style="color:var(--text-muted);">Должность:</span> <span id="emp-position">—</span></div>
+        <div><span style="color:var(--text-muted);">Оклад:</span> <span id="emp-salary">—</span></div>
+        <div><span style="color:var(--text-muted);">Дата приёма:</span> <span id="emp-hiredate">—</span></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ДИНАМИЧЕСКИЕ ПОЛЯ ПО ТИПУ ФОРМЫ                           -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+
+    {% if doc_type == 'vacation' %}
+    <!-- ОТПУСК (Т-6) -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Вид отпуска</label>
+      <select name="vacation_type" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <option value="основной" {% if extra_data.vacation_type == 'основной' %}selected{% endif %}>Ежегодный основной оплачиваемый</option>
+        <option value="дополнительный" {% if extra_data.vacation_type == 'дополнительный' %}selected{% endif %}>Дополнительный</option>
+        <option value="без сохранения" {% if extra_data.vacation_type == 'без сохранения' %}selected{% endif %}>Без сохранения заработной платы</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1.25rem;">
+      <div>
+        <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата начала</label>
+        <input type="date" name="start_date" id="vacation-start" value="{{ extra_data.start_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      </div>
+      <div>
+        <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата окончания</label>
+        <input type="date" name="end_date" id="vacation-end" value="{{ extra_data.end_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      </div>
+      <div>
+        <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Кол-во дней</label>
+        <input type="number" name="days_count" id="vacation-days" value="{{ extra_data.days_count|default:'' }}" readonly style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-secondary, #f1f5f9);color:var(--text-primary);">
+      </div>
+    </div>
+
+    {% elif doc_type == 'gph_contract' %}
+    <!-- ДОГОВОР ГПХ -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Предмет договора</label>
+      <textarea name="contract_subject" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;">{{ extra_data.contract_subject|default:'' }}</textarea>
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Сумма вознаграждения (руб.)</label>
+      <input type="number" name="amount" value="{{ extra_data.amount|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem;">
+      <div>
+        <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата начала</label>
+        <input type="date" name="start_date" value="{{ extra_data.start_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      </div>
+      <div>
+        <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата окончания</label>
+        <input type="date" name="end_date" value="{{ extra_data.end_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      </div>
+    </div>
+
+    {% elif doc_type == 'gph_act' %}
+    <!-- АКТ ГПХ -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Номер договора ГПХ</label>
+      <input type="text" name="contract_number" value="{{ extra_data.contract_number|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Описание выполненных работ</label>
+      <textarea name="work_description" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;">{{ extra_data.work_description|default:'' }}</textarea>
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Сумма (руб.)</label>
+      <input type="number" name="amount" value="{{ extra_data.amount|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+
+    {% elif doc_type == 'reference' %}
+    <!-- СПРАВКА -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Цель справки</label>
+      <select name="purpose" id="purpose-select" onchange="togglePurposeOther()" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <option value="по месту требования" {% if extra_data.purpose == 'по месту требования' %}selected{% endif %}>По месту требования</option>
+        <option value="в банк" {% if extra_data.purpose == 'в банк' %}selected{% endif %}>В банк</option>
+        <option value="__other__" {% if extra_data.purpose and extra_data.purpose != 'по месту требования' and extra_data.purpose != 'в банк' %}selected{% endif %}>Другое...</option>
+      </select>
+      <input type="text" name="purpose_other" id="purpose-other" value="{% if extra_data.purpose and extra_data.purpose != 'по месту требования' and extra_data.purpose != 'в банк' %}{{ extra_data.purpose }}{% endif %}" placeholder="Укажите цель" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);margin-top:8px;display:none;">
+    </div>
+
+    {% elif doc_type == 'salary_change' %}
+    <!-- ИЗМЕНЕНИЕ ОКЛАДА -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Новый оклад (руб.)</label>
+      <input type="number" name="new_salary" value="{{ extra_data.new_salary|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата изменения</label>
+      <input type="date" name="change_date" value="{{ extra_data.change_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Причина</label>
+      <input type="text" name="reason" value="{{ extra_data.reason|default:'' }}" placeholder="Например: повышение квалификации" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ОБЩИЕ ПОЛЯ: номер и дата документа                         -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <hr style="border:none;border-top:1px solid var(--border-color);margin:1.5rem 0;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem;">
+      <div>
+        <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">
+          {% if doc_type == 'vacation' or doc_type == 'salary_change' %}Номер приказа{% elif doc_type == 'gph_contract' %}Номер договора{% elif doc_type == 'gph_act' %}Номер акта{% elif doc_type == 'reference' %}Номер справки{% else %}Номер документа{% endif %}
+        </label>
+        <input type="text" name="doc_number" value="{{ document.number|default:'' }}" placeholder="Авто" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      </div>
+      <div>
+        <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">
+          {% if doc_type == 'vacation' or doc_type == 'salary_change' %}Дата приказа{% elif doc_type == 'gph_contract' %}Дата договора{% elif doc_type == 'gph_act' %}Дата акта{% elif doc_type == 'reference' %}Дата справки{% else %}Дата документа{% endif %}
+        </label>
+        <input type="date" name="doc_date" value="{% if document %}{{ document.date|date:'Y-m-d' }}{% endif %}" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+      </div>
+    </div>
+
+    <!-- Кнопки -->
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <button type="button" id="btn-save" onclick="saveForm()" class="btn-primary" style="padding:10px 28px;font-size:0.9rem;border-radius:8px;cursor:pointer;">
+        Сохранить
+      </button>
+      <span id="save-status" style="font-size:0.82rem;color:var(--text-muted);"></span>
+      <a id="btn-print" href="#" target="_blank" style="display:none;font-size:0.82rem;padding:10px 20px;background:#059669;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">
+        &#128424; Печать PDF
+      </a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function() {
+  var docType = "{{ doc_type }}";
+  var savedDocId = "{{ document.id|default:'' }}";
+  var savedEmployeeId = "{{ document.employee_id|default:'' }}";
+
+  // --- Автозаполнение при выборе сотрудника ---
+  var empSelect = document.getElementById("employee-select");
+  empSelect.addEventListener("change", function() {
+    var empId = this.value;
+    if (!empId) {
+      document.getElementById("employee-info").style.display = "none";
+      return;
+    }
+    fetch("/dashboard/forms/api/employee/" + empId + "/")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        document.getElementById("emp-fullname").textContent = data.full_name || "—";
+        document.getElementById("emp-position").textContent = data.position || "—";
+        document.getElementById("emp-salary").textContent = data.salary ? (data.salary + " руб.") : "—";
+        document.getElementById("emp-hiredate").textContent = data.hire_date || "—";
+        document.getElementById("employee-info").style.display = "block";
+      });
+  });
+  // Триггерим при загрузке если сотрудник уже выбран
+  if (empSelect.value) {
+    empSelect.dispatchEvent(new Event("change"));
+  }
+
+  // --- Авто-расчёт дней отпуска ---
+  if (docType === "vacation") {
+    var startInput = document.getElementById("vacation-start");
+    var endInput = document.getElementById("vacation-end");
+    var daysInput = document.getElementById("vacation-days");
+    function calcDays() {
+      if (startInput.value && endInput.value) {
+        var s = new Date(startInput.value);
+        var e = new Date(endInput.value);
+        var diff = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+        daysInput.value = diff > 0 ? diff : "";
+      }
+    }
+    startInput.addEventListener("change", calcDays);
+    endInput.addEventListener("change", calcDays);
+    calcDays();
+  }
+
+  // --- Справка: другая цель ---
+  if (docType === "reference") {
+    window.togglePurposeOther = function() {
+      var sel = document.getElementById("purpose-select");
+      var inp = document.getElementById("purpose-other");
+      if (sel.value === "__other__") {
+        inp.style.display = "block";
+        inp.focus();
+      } else {
+        inp.style.display = "none";
+        inp.value = "";
+      }
+    };
+    // При загрузке
+    var purposeSel = document.getElementById("purpose-select");
+    if (purposeSel && purposeSel.value === "__other__") {
+      document.getElementById("purpose-other").style.display = "block";
+    }
+  }
+
+  // --- Сохранение формы ---
+  window.saveForm = function() {
+    var form = document.getElementById("form-editor");
+    var formData = new FormData(form);
+
+    // Для справки: подставляем purpose_other если выбрано "другое"
+    if (docType === "reference") {
+      var purposeSel = document.getElementById("purpose-select");
+      if (purposeSel.value === "__other__") {
+        formData.set("purpose", document.getElementById("purpose-other").value);
+      } else {
+        formData.set("purpose", purposeSel.value);
+      }
+      formData.delete("purpose_other");
+    }
+
+    var statusEl = document.getElementById("save-status");
+    statusEl.textContent = "Сохранение...";
+    statusEl.style.color = "var(--text-muted)";
+
+    var csrfToken = document.cookie.match(/csrftoken=([^;]+)/);
+    csrfToken = csrfToken ? csrfToken[1] : formData.get("csrfmiddlewaretoken");
+
+    fetch("/dashboard/forms/" + docType + "/save/", {
+      method: "POST",
+      headers: { "X-CSRFToken": csrfToken },
+      body: formData,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        savedDocId = data.doc_id;
+        statusEl.textContent = "Сохранено!";
+        statusEl.style.color = "#059669";
+        // Обновляем hidden doc_id
+        var hiddenDocId = form.querySelector('input[name="doc_id"]');
+        if (!hiddenDocId) {
+          hiddenDocId = document.createElement("input");
+          hiddenDocId.type = "hidden";
+          hiddenDocId.name = "doc_id";
+          form.prepend(hiddenDocId);
+        }
+        hiddenDocId.value = savedDocId;
+        // Показываем кнопку печати
+        showPrintButton();
+      } else {
+        statusEl.textContent = "Ошибка: " + (data.error || "неизвестная");
+        statusEl.style.color = "#ef4444";
+      }
+    })
+    .catch(function(err) {
+      statusEl.textContent = "Ошибка сети";
+      statusEl.style.color = "#ef4444";
+    });
+  };
+
+  function showPrintButton() {
+    var empId = empSelect.value;
+    if (!empId || !savedDocId) return;
+    var btn = document.getElementById("btn-print");
+    var url = "";
+    if (docType === "vacation") {
+      var start = document.querySelector('[name="start_date"]').value || "";
+      var end = document.querySelector('[name="end_date"]').value || "";
+      var order = document.querySelector('[name="doc_number"]').value || "О-001";
+      url = "/dashboard/employees/" + empId + "/t6/?start=" + start + "&end=" + end + "&order=" + encodeURIComponent(order);
+    } else if (docType === "gph_contract") {
+      url = "/dashboard/employees/" + empId + "/gph-contract/";
+    } else if (docType === "gph_act") {
+      url = "/dashboard/employees/" + empId + "/gph-act/";
+    } else if (docType === "reference") {
+      url = "/dashboard/employees/" + empId + "/certificate/";
+    } else if (docType === "salary_change") {
+      var salary = document.querySelector('[name="new_salary"]').value || "";
+      var order2 = document.querySelector('[name="doc_number"]').value || "З-001";
+      url = "/dashboard/employees/" + empId + "/salary-change/?salary=" + encodeURIComponent(salary) + "&order=" + encodeURIComponent(order2);
+    }
+    if (url) {
+      btn.href = url;
+      btn.style.display = "inline-block";
+    }
+  }
+
+  // Показываем кнопку печати при загрузке если документ уже сохранён
+  if (savedDocId && empSelect.value) {
+    showPrintButton();
+  }
+})();
+</script>
+
+{% endblock %}
