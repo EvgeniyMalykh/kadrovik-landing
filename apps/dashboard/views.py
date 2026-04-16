@@ -773,9 +773,10 @@ def reset_password_view(request, token):
             user.set_password(password)
             user.save()
             r.delete(f"password_reset:{token}")
-            return render(request, "dashboard/reset_password.html",
-                          {"valid_token": True, "token": token,
-                           "success": "Пароль успешно изменён! Теперь вы можете войти."})
+            # Автологин после смены пароля
+            from django.contrib.auth import login as auth_login
+            auth_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+            return redirect("dashboard:employees")
         except User.DoesNotExist:
             return render(request, "dashboard/reset_password.html",
                           {"valid_token": False, "token": token})
