@@ -4,134 +4,168 @@
 {% block content %}
 
 <style>
-/* Растянуть на всю ширину */
 .content-wrapper { max-width:100% !important; padding:12px 16px !important; }
 
-.vs-tbl { width:100%; border-collapse:collapse; table-layout:fixed; }
+.vs-tbl { width:100%; border-collapse:collapse; font-size:0.75rem; }
 .vs-tbl th {
-    padding:4px 3px; white-space:nowrap; text-align:center;
-    font-size:0.63rem; font-weight:700; letter-spacing:0.02em;
-    border-bottom:1px solid var(--border); overflow:hidden;
+    padding:5px 6px; white-space:nowrap; text-align:center;
+    font-size:0.68rem; font-weight:700;
+    border-bottom:1px solid var(--border); background:#1e293b;
 }
-.vs-tbl td { padding:3px 2px; vertical-align:middle; overflow:hidden; }
-.vs-tbl tr:hover td { background:rgba(255,255,255,0.03); }
+.vs-tbl td { padding:3px 4px; vertical-align:middle; border-bottom:1px solid rgba(255,255,255,0.04); }
+.vs-emp-row td { background:rgba(255,255,255,0.02); }
+.vs-period-row td { background:transparent; }
 
 .vs-input {
-    background:var(--bg-primary);
-    border:1px solid var(--border);
-    border-radius:3px;
-    color:var(--text-primary);
-    padding:2px 3px;
-    font-size:0.63rem;
-    width:100%;
-    box-sizing:border-box;
-    min-width:0;
+    background:var(--bg-primary); border:1px solid var(--border);
+    border-radius:3px; color:var(--text-primary);
+    padding:2px 4px; font-size:0.7rem; width:100%; box-sizing:border-box;
 }
 .vs-input:focus { outline:none; border-color:var(--accent); }
-/* Скрыть иконку календаря чтобы сэкономить место */
-.vs-input[type="date"]::-webkit-calendar-picker-indicator { display:none; }
-.vs-input[type="date"] { -webkit-appearance:none; }
+.vs-input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.8); width:11px; cursor:pointer; }
 .vs-input[type="number"] { text-align:center; }
 
-.th-main   { background:#1e293b; }
-.th-north  { background:#14532d; color:#86efac; }
-.th-extra  { background:#1e3a5f; color:#93c5fd; }
-.td-north  { background:rgba(34,197,94,0.05); }
-.td-extra  { background:rgba(59,130,246,0.05); }
+.btn-add-period {
+    background:none; border:1px dashed var(--border); border-radius:3px;
+    color:var(--text-secondary); cursor:pointer; font-size:0.65rem;
+    padding:1px 6px; white-space:nowrap; transition:all 0.15s;
+}
+.btn-add-period:hover { border-color:var(--accent); color:var(--accent); }
+.btn-del-period {
+    background:none; border:none; color:#ef4444; cursor:pointer;
+    font-size:0.75rem; padding:0 4px; opacity:0.5;
+}
+.btn-del-period:hover { opacity:1; }
 
-.vs-used   { color:var(--accent); font-weight:700; text-align:center; font-size:0.75rem; }
-.vs-remain { color:#22c55e; font-weight:700; text-align:center; font-size:0.75rem; }
+.lbl-north { color:#86efac; font-size:0.65rem; font-weight:600; }
+.lbl-extra { color:#93c5fd; font-size:0.65rem; font-weight:600; }
+.lbl-main  { color:#94a3b8; font-size:0.65rem; }
+
+.vs-used   { color:var(--accent); font-weight:700; text-align:center; }
+.vs-remain { color:#22c55e; font-weight:700; text-align:center; }
 .vs-remain.neg { color:#ef4444; }
 
-/* Ширины колонок */
-.c-num  { width:24px; }
-.c-fio  { width:130px; }
-.c-pos  { width:90px; }
-.c-days { width:38px; }
-.c-date { width:76px; }
-.c-stat { width:44px; }
+.tag-north { display:inline-block; background:#14532d; color:#86efac; border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
+.tag-extra { display:inline-block; background:#1e3a5f; color:#93c5fd; border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
+.tag-main  { display:inline-block; background:#1e293b; color:#94a3b8; border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
 </style>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-    <div>
-        <h1 class="page-title" style="margin:0;font-size:1.2rem;">График отпусков</h1>
-        <p style="margin:0;color:var(--text-secondary);font-size:0.8rem;">{{ company.name|default:"Ваша компания" }} — {{ year }} г.</p>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="sel-year" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-primary);font-size:0.82rem;">
-            {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
-        </select>
-        <button onclick="changeYear()" class="btn-secondary btn-sm">Перейти</button>
-        <button onclick="saveSchedule()" class="btn-primary btn-sm" id="save-btn">Сохранить</button>
-        <a href="{% url 'vacations:schedule_pdf' %}?year={{ year }}" class="btn-secondary btn-sm">PDF Т-7</a>
-        <a href="{% url 'vacations:schedule_history' %}" class="btn-secondary btn-sm">История</a>
-    </div>
+  <div>
+    <h1 class="page-title" style="margin:0;font-size:1.2rem;">График отпусков</h1>
+    <p style="margin:0;color:var(--text-secondary);font-size:0.8rem;">{{ company.name|default:"Ваша компания" }} — {{ year }} г.</p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <select id="sel-year" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-primary);font-size:0.82rem;">
+      {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+    </select>
+    <button onclick="changeYear()" class="btn-secondary btn-sm">Перейти</button>
+    <button onclick="saveSchedule()" class="btn-primary btn-sm" id="save-btn">Сохранить</button>
+    <a href="{% url 'vacations:schedule_pdf' %}?year={{ year }}" class="btn-secondary btn-sm">PDF Т-7</a>
+    <a href="{% url 'vacations:schedule_history' %}" class="btn-secondary btn-sm">История</a>
+  </div>
 </div>
 
-<div class="card" style="padding:8px;overflow:visible;">
+<div class="card" style="padding:8px;">
 <div style="overflow-x:auto;">
 <table class="vs-tbl" id="schedule-table">
-    <colgroup>
-        <col class="c-num"><col class="c-fio"><col class="c-pos"><col class="c-days">
-        <col class="c-date"><col class="c-date"><col class="c-date"><col class="c-date"><col class="c-date"><col class="c-date">
-        <col class="c-days"><col class="c-date"><col class="c-date">
-        <col class="c-days"><col class="c-date"><col class="c-date">
-        <col class="c-stat"><col class="c-stat">
-    </colgroup>
-    <thead>
-        <tr>
-            <th class="c-num th-main" rowspan="2">#</th>
-            <th class="c-fio th-main" rowspan="2" style="text-align:left;">ФИО</th>
-            <th class="c-pos th-main" rowspan="2" style="text-align:left;">Должность</th>
-            <th class="c-days th-main" rowspan="2">Осн.<br>дн.</th>
-            <th class="th-main" colspan="6">— Основной отпуск —</th>
-            <th class="th-north" colspan="3" style="border-left:2px solid #22c55e;">— Северный —</th>
-            <th class="th-extra" colspan="3" style="border-left:2px solid #3b82f6;">— Доп. —</th>
-            <th class="c-stat th-main" rowspan="2">Исп.</th>
-            <th class="c-stat th-main" rowspan="2">Ост.</th>
-        </tr>
-        <tr>
-            <th class="th-main">П1 с</th><th class="th-main">П1 по</th>
-            <th class="th-main">П2 с</th><th class="th-main">П2 по</th>
-            <th class="th-main">П3 с</th><th class="th-main">П3 по</th>
-            <th class="th-north" style="border-left:2px solid #22c55e;">дн.</th>
-            <th class="th-north">с</th><th class="th-north">по</th>
-            <th class="th-extra" style="border-left:2px solid #3b82f6;">дн.</th>
-            <th class="th-extra">с</th><th class="th-extra">по</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for entry in entries %}
-        <tr data-entry="{{ entry.id }}">
-            <td style="text-align:center;color:var(--text-secondary);font-size:0.63rem;">{{ forloop.counter }}</td>
-            <td style="font-weight:600;font-size:0.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                {{ entry.employee.last_name }} {{ entry.employee.first_name|slice:":1" }}.{% if entry.employee.middle_name %} {{ entry.employee.middle_name|slice:":1" }}.{% endif %}
-            </td>
-            <td style="color:var(--text-secondary);font-size:0.63rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ entry.employee.position }}</td>
-            <td><input type="number" class="vs-input" value="{{ entry.days_total }}" min="0" max="365" data-field="days_total"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.period1_start|date:'Y-m-d' }}" data-field="period1_start"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.period1_end|date:'Y-m-d' }}" data-field="period1_end"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.period2_start|date:'Y-m-d' }}" data-field="period2_start"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.period2_end|date:'Y-m-d' }}" data-field="period2_end"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.period3_start|date:'Y-m-d' }}" data-field="period3_start"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.period3_end|date:'Y-m-d' }}" data-field="period3_end"></td>
-            <td class="td-north" style="border-left:2px solid #22c55e;"><input type="number" class="vs-input" value="{{ entry.days_north }}" min="0" max="100" data-field="days_north"></td>
-            <td class="td-north"><input type="date" class="vs-input vs-date" value="{{ entry.north_start|date:'Y-m-d' }}" data-field="north_start"></td>
-            <td class="td-north"><input type="date" class="vs-input vs-date" value="{{ entry.north_end|date:'Y-m-d' }}" data-field="north_end"></td>
-            <td class="td-extra" style="border-left:2px solid #3b82f6;"><input type="number" class="vs-input" value="{{ entry.days_extra }}" min="0" max="100" data-field="days_extra"></td>
-            <td class="td-extra"><input type="date" class="vs-input vs-date" value="{{ entry.extra_start|date:'Y-m-d' }}" data-field="extra_start"></td>
-            <td class="td-extra"><input type="date" class="vs-input vs-date" value="{{ entry.extra_end|date:'Y-m-d' }}" data-field="extra_end"></td>
-            <td class="vs-used">{{ entry.days_used }}</td>
-            <td class="vs-remain">{{ entry.days_remaining }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="18" style="text-align:center;padding:30px;color:var(--text-secondary);">
-                Нет сотрудников. Добавьте сотрудников на странице "Сотрудники".
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
+  <thead>
+    <tr>
+      <th style="width:24px;">#</th>
+      <th style="min-width:140px;text-align:left;">ФИО</th>
+      <th style="min-width:100px;text-align:left;">Должность</th>
+      <th style="width:46px;">Осн.<br>дн.</th>
+      <th style="width:46px;">Сев.<br>дн.</th>
+      <th style="width:46px;">Доп.<br>дн.</th>
+      <th style="min-width:320px;text-align:left;">Периоды отпуска</th>
+      <th style="width:50px;">Исп.</th>
+      <th style="width:50px;">Ост.</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in entries %}
+    <tr class="vs-emp-row" data-entry="{{ entry.id }}">
+      <td style="text-align:center;color:var(--text-secondary);font-size:0.65rem;">{{ forloop.counter }}</td>
+      <td style="font-weight:600;font-size:0.75rem;">
+        {{ entry.employee.last_name }} {{ entry.employee.first_name|slice:":1" }}.{% if entry.employee.middle_name %} {{ entry.employee.middle_name|slice:":1" }}.{% endif %}
+      </td>
+      <td style="color:var(--text-secondary);font-size:0.65rem;">{{ entry.employee.position }}</td>
+      <td><input type="number" class="vs-input" value="{{ entry.days_total }}" min="0" max="365" data-field="days_total"></td>
+      <td><input type="number" class="vs-input" value="{{ entry.days_north }}" min="0" max="100" data-field="days_north" style="border-left:2px solid #22c55e;"></td>
+      <td><input type="number" class="vs-input" value="{{ entry.days_extra }}" min="0" max="100" data-field="days_extra" style="border-left:2px solid #3b82f6;"></td>
+      <td>
+        <!-- Периоды основного отпуска -->
+        <div class="periods-main" style="display:flex;flex-direction:column;gap:3px;">
+          {% if entry.period1_start or entry.period1_end or not entry.period2_start %}
+          <div class="period-row" style="display:flex;align-items:center;gap:4px;">
+            <span class="tag-main">Осн</span>
+            <input type="date" class="vs-input" value="{{ entry.period1_start|date:'Y-m-d' }}" data-field="period1_start" style="width:110px;">
+            <span style="color:var(--text-secondary);font-size:0.65rem;">—</span>
+            <input type="date" class="vs-input" value="{{ entry.period1_end|date:'Y-m-d' }}" data-field="period1_end" style="width:110px;">
+            <button class="btn-del-period" onclick="delPeriod(this)" title="Удалить">×</button>
+          </div>
+          {% endif %}
+          {% if entry.period2_start or entry.period2_end %}
+          <div class="period-row" style="display:flex;align-items:center;gap:4px;">
+            <span class="tag-main">Осн</span>
+            <input type="date" class="vs-input" value="{{ entry.period2_start|date:'Y-m-d' }}" data-field="period2_start" style="width:110px;">
+            <span style="color:var(--text-secondary);font-size:0.65rem;">—</span>
+            <input type="date" class="vs-input" value="{{ entry.period2_end|date:'Y-m-d' }}" data-field="period2_end" style="width:110px;">
+            <button class="btn-del-period" onclick="delPeriod(this)" title="Удалить">×</button>
+          </div>
+          {% endif %}
+          {% if entry.period3_start or entry.period3_end %}
+          <div class="period-row" style="display:flex;align-items:center;gap:4px;">
+            <span class="tag-main">Осн</span>
+            <input type="date" class="vs-input" value="{{ entry.period3_start|date:'Y-m-d' }}" data-field="period3_start" style="width:110px;">
+            <span style="color:var(--text-secondary);font-size:0.65rem;">—</span>
+            <input type="date" class="vs-input" value="{{ entry.period3_end|date:'Y-m-d' }}" data-field="period3_end" style="width:110px;">
+            <button class="btn-del-period" onclick="delPeriod(this)" title="Удалить">×</button>
+          </div>
+          {% endif %}
+        </div>
+        <!-- Северный -->
+        <div class="periods-north" style="display:flex;flex-direction:column;gap:3px;margin-top:3px;">
+          {% if entry.north_start or entry.north_end %}
+          <div class="period-row" style="display:flex;align-items:center;gap:4px;">
+            <span class="tag-north">Сев</span>
+            <input type="date" class="vs-input" value="{{ entry.north_start|date:'Y-m-d' }}" data-field="north_start" style="width:110px;border-left:2px solid #22c55e;">
+            <span style="color:var(--text-secondary);font-size:0.65rem;">—</span>
+            <input type="date" class="vs-input" value="{{ entry.north_end|date:'Y-m-d' }}" data-field="north_end" style="width:110px;">
+            <button class="btn-del-period" onclick="delPeriod(this)" title="Удалить">×</button>
+          </div>
+          {% endif %}
+        </div>
+        <!-- Доп -->
+        <div class="periods-extra" style="display:flex;flex-direction:column;gap:3px;margin-top:3px;">
+          {% if entry.extra_start or entry.extra_end %}
+          <div class="period-row" style="display:flex;align-items:center;gap:4px;">
+            <span class="tag-extra">Доп</span>
+            <input type="date" class="vs-input" value="{{ entry.extra_start|date:'Y-m-d' }}" data-field="extra_start" style="width:110px;border-left:2px solid #3b82f6;">
+            <span style="color:var(--text-secondary);font-size:0.65rem;">—</span>
+            <input type="date" class="vs-input" value="{{ entry.extra_end|date:'Y-m-d' }}" data-field="extra_end" style="width:110px;">
+            <button class="btn-del-period" onclick="delPeriod(this)" title="Удалить">×</button>
+          </div>
+          {% endif %}
+        </div>
+        <!-- Кнопки добавления -->
+        <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
+          <button class="btn-add-period" onclick="addPeriod(this,'main')">+ Осн</button>
+          <button class="btn-add-period" onclick="addPeriod(this,'north')" style="color:#86efac;border-color:#22c55e;">+ Сев</button>
+          <button class="btn-add-period" onclick="addPeriod(this,'extra')" style="color:#93c5fd;border-color:#3b82f6;">+ Доп</button>
+        </div>
+      </td>
+      <td class="vs-used">{{ entry.days_used }}</td>
+      <td class="vs-remain {% if entry.days_remaining < 0 %}neg{% endif %}">{{ entry.days_remaining }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="9" style="text-align:center;padding:30px;color:var(--text-secondary);">
+        Нет сотрудников. Добавьте сотрудников на странице "Сотрудники".
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
 </table>
 </div>
 </div>
@@ -140,46 +174,117 @@
 
 <script>
 var YEAR = {{ year }};
-function calcRow(row) {
-    var used=0;
-    [['period1_start','period1_end'],['period2_start','period2_end'],['period3_start','period3_end'],
-     ['north_start','north_end'],['extra_start','extra_end']].forEach(function(p){
-        var s=row.querySelector('[data-field="'+p[0]+'"]').value;
-        var e=row.querySelector('[data-field="'+p[1]+'"]').value;
-        if(s&&e){var d=(new Date(e)-new Date(s))/86400000+1;if(d>0)used+=d;}
+
+// Счётчик периодов для уникальных data-field при динамическом добавлении
+// Используем extra_* поля для дополнительных периодов основного отпуска через data-attr
+// Логика: period1/2/3 для основного, north, extra для остальных
+
+function addPeriod(btn, type) {
+  var row = btn.closest('tr');
+  var container = row.querySelector('.periods-' + type);
+  var existing = container.querySelectorAll('.period-row').length;
+
+  // Определяем тег и стиль
+  var tagHtml, fieldPrefix, borderStyle;
+  if (type === 'main') {
+    // Для основного — ищем свободный слот period1/2/3
+    var slots = ['period1','period2','period3'];
+    var usedSlots = [];
+    row.querySelectorAll('.periods-main .period-row').forEach(function(r) {
+      var f = r.querySelector('[data-field]');
+      if (f) usedSlots.push(f.dataset.field.replace('_start',''));
     });
-    var dM=parseInt(row.querySelector('[data-field="days_total"]').value)||0;
-    var dN=parseInt(row.querySelector('[data-field="days_north"]').value)||0;
-    var dE=parseInt(row.querySelector('[data-field="days_extra"]').value)||0;
-    var total=dM+dN+dE;
-    row.querySelector('.vs-used').textContent=used;
-    var rc=row.querySelector('.vs-remain');
-    rc.textContent=total-used;
-    rc.classList.toggle('neg',(total-used)<0);
+    var freeSlot = slots.find(function(s) { return !usedSlots.includes(s); });
+    if (!freeSlot) { alert('Максимум 3 периода основного отпуска'); return; }
+    tagHtml = '<span class="tag-main">Осн</span>';
+    fieldPrefix = freeSlot;
+    borderStyle = '';
+  } else if (type === 'north') {
+    if (existing >= 1) { alert('Северный отпуск: только один период'); return; }
+    tagHtml = '<span class="tag-north">Сев</span>';
+    fieldPrefix = 'north';
+    borderStyle = 'border-left:2px solid #22c55e;';
+  } else {
+    if (existing >= 1) { alert('Доп. отпуск: только один период'); return; }
+    tagHtml = '<span class="tag-extra">Доп</span>';
+    fieldPrefix = 'extra';
+    borderStyle = 'border-left:2px solid #3b82f6;';
+  }
+
+  var div = document.createElement('div');
+  div.className = 'period-row';
+  div.style.cssText = 'display:flex;align-items:center;gap:4px;';
+  div.innerHTML = tagHtml +
+    '<input type="date" class="vs-input" data-field="' + fieldPrefix + '_start" style="width:110px;' + borderStyle + '">' +
+    '<span style="color:var(--text-secondary);font-size:0.65rem;">—</span>' +
+    '<input type="date" class="vs-input" data-field="' + fieldPrefix + '_end" style="width:110px;">' +
+    '<button class="btn-del-period" onclick="delPeriod(this)" title="Удалить">×</button>';
+  container.appendChild(div);
 }
-document.getElementById('schedule-table').addEventListener('input',function(e){
-    var row=e.target.closest('tr');if(row)calcRow(row);
+
+function delPeriod(btn) {
+  var row = btn.closest('.period-row');
+  // Очистить значения перед удалением (чтобы при сохранении не попали)
+  row.querySelectorAll('input').forEach(function(i){ i.value=''; });
+  calcRowByTr(btn.closest('tr'));
+  row.remove();
+}
+
+function calcRowByTr(tr) {
+  var used = 0;
+  tr.querySelectorAll('.period-row').forEach(function(pr) {
+    var inputs = pr.querySelectorAll('input[type="date"]');
+    if (inputs.length >= 2) {
+      var s = inputs[0].value, e = inputs[1].value;
+      if (s && e) { var d = (new Date(e) - new Date(s)) / 86400000 + 1; if (d > 0) used += d; }
+    }
+  });
+  var dM = parseInt(tr.querySelector('[data-field="days_total"]').value) || 0;
+  var dN = parseInt(tr.querySelector('[data-field="days_north"]').value) || 0;
+  var dE = parseInt(tr.querySelector('[data-field="days_extra"]').value) || 0;
+  var total = dM + dN + dE;
+  tr.querySelector('.vs-used').textContent = used;
+  var rc = tr.querySelector('.vs-remain');
+  rc.textContent = total - used;
+  rc.classList.toggle('neg', (total - used) < 0);
+}
+
+document.getElementById('schedule-table').addEventListener('input', function(e) {
+  var tr = e.target.closest('tr'); if (tr) calcRowByTr(tr);
 });
-function saveSchedule(){
-    var rows=[];
-    document.querySelectorAll('#schedule-table tbody tr[data-entry]').forEach(function(row){
-        var obj={entry_id:parseInt(row.dataset.entry)};
-        row.querySelectorAll('.vs-input').forEach(function(inp){obj[inp.dataset.field]=inp.value||'';});
-        rows.push(obj);
+
+function saveSchedule() {
+  var rows = [];
+  document.querySelectorAll('#schedule-table tbody tr[data-entry]').forEach(function(tr) {
+    var obj = { entry_id: parseInt(tr.dataset.entry) };
+    // Собрать фиксированные числовые поля
+    ['days_total','days_north','days_extra'].forEach(function(f) {
+      var el = tr.querySelector('[data-field="' + f + '"]');
+      obj[f] = el ? (el.value || '0') : '0';
     });
-    var btn=document.getElementById('save-btn');
-    btn.textContent='...';btn.disabled=true;
-    fetch('{% url "vacations:schedule_save" %}',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-CSRFToken':(document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)')||[])[2]||''},
-        body:JSON.stringify({year:YEAR,rows:rows})
-    }).then(function(r){return r.json();}).then(function(data){
-        btn.textContent='Сохранить';btn.disabled=false;
-        if(data.success)document.getElementById('save-status').textContent='✓ Сохранено — '+new Date().toLocaleTimeString('ru');
-    }).catch(function(){btn.textContent='Сохранить';btn.disabled=false;});
+    // Собрать периоды — взять значения из полей по data-field
+    ['period1_start','period1_end','period2_start','period2_end','period3_start','period3_end',
+     'north_start','north_end','extra_start','extra_end'].forEach(function(f) {
+      var el = tr.querySelector('[data-field="' + f + '"]');
+      obj[f] = el ? (el.value || '') : '';
+    });
+    rows.push(obj);
+  });
+  var btn = document.getElementById('save-btn');
+  btn.textContent = '...'; btn.disabled = true;
+  fetch('{% url "vacations:schedule_save" %}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json',
+      'X-CSRFToken': (document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)') || [])[2] || '' },
+    body: JSON.stringify({ year: YEAR, rows: rows })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    btn.textContent = 'Сохранить'; btn.disabled = false;
+    if (data.success) document.getElementById('save-status').textContent = '✓ Сохранено — ' + new Date().toLocaleTimeString('ru');
+  }).catch(function() { btn.textContent = 'Сохранить'; btn.disabled = false; });
 }
-function changeYear(){
-    window.location.href='{% url "vacations:schedule" %}?year='+document.getElementById('sel-year').value;
+
+function changeYear() {
+  window.location.href = '{% url "vacations:schedule" %}?year=' + document.getElementById('sel-year').value;
 }
 </script>
 {% endblock %}
