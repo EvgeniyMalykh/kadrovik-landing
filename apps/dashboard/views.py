@@ -1752,7 +1752,7 @@ def team_invite(request):
     # Проверка тарифа
     from apps.billing.models import Subscription
     from apps.billing.services import PLANS
-    subscription = Subscription.objects.filter(company=company).order_by('-created_at').first()
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
     plan = subscription.plan if subscription else 'trial'
     plan_features = PLANS.get(plan, PLANS['trial'])['features']
     if not plan_features.get('multi_user'):
@@ -2066,7 +2066,7 @@ def sfr_export(request):
         return redirect('dashboard:login')
     company = member.company
 
-    subscription = Subscription.objects.filter(company=company).order_by('-created_at').first()
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
     plan = subscription.plan if subscription else 'trial'
     features = PLANS.get(plan, PLANS['trial'])['features']
 
