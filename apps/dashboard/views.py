@@ -865,7 +865,7 @@ def forms_list(request):
 
 
 def _next_doc_number(company, doc_type):
-    \"\"\"Генерирует следующий номер документа по типу для компании.\"\"\"
+    """Генерирует следующий номер документа по типу для компании."""
     from apps.documents.models import Document
     PREFIX = {
         "vacation":     "О",
