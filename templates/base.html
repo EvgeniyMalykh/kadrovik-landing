@@ -8,8 +8,10 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         // CSRF для HTMX POST запросов
-        document.body.addEventListener("htmx:configRequest", function(e) {
-            e.detail.headers["X-CSRFToken"] = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
+        document.addEventListener("DOMContentLoaded", function() {
+            document.body.addEventListener("htmx:configRequest", function(e) {
+                e.detail.headers["X-CSRFToken"] = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
+            });
         });
     </script>
     <!-- Yandex.Metrika counter -->
