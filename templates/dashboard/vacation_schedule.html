@@ -14,7 +14,6 @@
     </div>
 </div>
 
-<!-- Переключатель года -->
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
     <span style="color:var(--text-secondary);font-size:0.9rem;">Год:</span>
     <select id="sel-year" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-primary);">
@@ -25,32 +24,79 @@
     <button onclick="changeYear()" class="btn-secondary btn-sm">Перейти</button>
 </div>
 
-<div class="card" style="overflow:visible;">
+<style>
+.content-wrapper { max-width: 100% !important; padding: 20px 16px !important; }
+
+.vs-tbl { width:100%; border-collapse:collapse; font-size:0.72rem; }
+.vs-tbl th {
+    padding:5px 4px; white-space:nowrap; text-align:center;
+    font-size:0.68rem; font-weight:600; letter-spacing:0.02em;
+    border-bottom:1px solid var(--border);
+}
+.vs-tbl td { padding:4px 3px; vertical-align:middle; }
+.vs-tbl tr:hover td { background:rgba(255,255,255,0.03); }
+
+.vs-input {
+    background:var(--bg-primary);
+    border:1px solid var(--border);
+    border-radius:4px;
+    color:var(--text-primary);
+    padding:3px 4px;
+    font-size:0.68rem;
+    width:100%;
+    box-sizing:border-box;
+}
+.vs-input:focus { outline:none; border-color:var(--accent); }
+.vs-input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.8); cursor:pointer; width:10px; }
+.vs-input[type="number"] { text-align:center; }
+
+/* Группы колонок */
+.th-main   { background:#1e293b; }
+.th-north  { background:#1a3a2a; }
+.th-extra  { background:#1a2a3a; }
+.td-north  { background:rgba(34,197,94,0.04); }
+.td-extra  { background:rgba(59,130,246,0.04); }
+
+.vs-used   { color:var(--accent); font-weight:700; text-align:center; }
+.vs-remain { color:#22c55e; font-weight:700; text-align:center; }
+.vs-remain.neg { color:#ef4444; }
+
+.col-num   { width:28px; }
+.col-fio   { min-width:120px; max-width:150px; }
+.col-pos   { min-width:90px; max-width:120px; }
+.col-days  { width:46px; }
+.col-date  { width:94px; }
+.col-stat  { width:60px; }
+</style>
+
+<div class="card" style="padding:12px;overflow:visible;">
 <div style="overflow-x:auto;">
-<table class="data-table" id="schedule-table">
+<table class="vs-tbl" id="schedule-table">
     <thead>
         <tr>
-            <th style="width:40px;text-align:center;">#</th>
-            <th style="min-width:180px;">ФИО</th>
-            <th style="min-width:120px;">Должность</th>
-            <th style="width:80px;text-align:center;">Дней</th>
-            <th style="min-width:110px;">Период 1 с</th>
-            <th style="min-width:110px;">Период 1 по</th>
-            <th style="min-width:110px;">Период 2 с</th>
-            <th style="min-width:110px;">Период 2 по</th>
-            <th style="min-width:110px;">Период 3 с</th>
-            <th style="min-width:110px;">Период 3 по</th>
-            <th colspan="3" style="text-align:center;background:#1a3a2a;">Северный отпуск</th>
-            <th colspan="3" style="text-align:center;background:#1a2a3a;">Доп. отпуск</th>
-            <th style="width:90px;text-align:center;">Использовано</th>
-            <th style="width:80px;text-align:center;">Остаток</th>
+            <th class="col-num th-main" rowspan="2">#</th>
+            <th class="col-fio th-main" rowspan="2" style="text-align:left;">ФИО</th>
+            <th class="col-pos th-main" rowspan="2" style="text-align:left;">Должность</th>
+            <th class="col-days th-main" rowspan="2">Осн.<br>дней</th>
+            <th class="th-main" colspan="6" style="border-left:1px solid var(--border);">Основной отпуск</th>
+            <th class="th-north" colspan="3" style="border-left:2px solid #22c55e;">Северный</th>
+            <th class="th-extra" colspan="3" style="border-left:2px solid #3b82f6;">Доп. отпуск</th>
+            <th class="col-stat th-main" rowspan="2" style="border-left:1px solid var(--border);">Исп.</th>
+            <th class="col-stat th-main" rowspan="2">Ост.</th>
         </tr>
         <tr>
-            <th></th><th></th><th></th><th></th>
-            <th></th><th></th><th></th><th></th><th></th><th></th>
-            <th style="background:#1a3a2a;">Дней</th><th style="background:#1a3a2a;">С</th><th style="background:#1a3a2a;">По</th>
-            <th style="background:#1a2a3a;">Дней</th><th style="background:#1a2a3a;">С</th><th style="background:#1a2a3a;">По</th>
-            <th></th><th></th>
+            <th class="th-main col-date">П1 с</th>
+            <th class="th-main col-date">П1 по</th>
+            <th class="th-main col-date">П2 с</th>
+            <th class="th-main col-date">П2 по</th>
+            <th class="th-main col-date">П3 с</th>
+            <th class="th-main col-date">П3 по</th>
+            <th class="th-north col-days" style="border-left:2px solid #22c55e;">Дней</th>
+            <th class="th-north col-date">С</th>
+            <th class="th-north col-date">По</th>
+            <th class="th-extra col-days" style="border-left:2px solid #3b82f6;">Дней</th>
+            <th class="th-extra col-date">С</th>
+            <th class="th-extra col-date">По</th>
         </tr>
     </thead>
     <tbody>
@@ -58,28 +104,26 @@
         <tr data-entry="{{ entry.id }}">
             <td style="text-align:center;color:var(--text-secondary);">{{ forloop.counter }}</td>
             <td>
-                <div style="font-weight:600;font-size:0.85rem;">{{ entry.employee.last_name }} {{ entry.employee.first_name }} {{ entry.employee.middle_name }}</div>
+                <div style="font-weight:600;font-size:0.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;">
+                    {{ entry.employee.last_name }} {{ entry.employee.first_name }} {{ entry.employee.middle_name }}
+                </div>
             </td>
-            <td style="color:var(--text-secondary);font-size:0.85rem;">{{ entry.employee.position }}</td>
-            <td style="text-align:center;">
-                <input type="number" class="vs-input vs-days" value="{{ entry.days_total }}" min="0" max="365" style="width:60px;text-align:center;" data-field="days_total">
-            </td>
+            <td style="color:var(--text-secondary);font-size:0.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">{{ entry.employee.position }}</td>
+            <td><input type="number" class="vs-input vs-days" value="{{ entry.days_total }}" min="0" max="365" data-field="days_total"></td>
             <td><input type="date" class="vs-input vs-date" value="{{ entry.period1_start|date:'Y-m-d' }}" data-field="period1_start"></td>
             <td><input type="date" class="vs-input vs-date" value="{{ entry.period1_end|date:'Y-m-d' }}" data-field="period1_end"></td>
             <td><input type="date" class="vs-input vs-date" value="{{ entry.period2_start|date:'Y-m-d' }}" data-field="period2_start"></td>
             <td><input type="date" class="vs-input vs-date" value="{{ entry.period2_end|date:'Y-m-d' }}" data-field="period2_end"></td>
             <td><input type="date" class="vs-input vs-date" value="{{ entry.period3_start|date:'Y-m-d' }}" data-field="period3_start"></td>
             <td><input type="date" class="vs-input vs-date" value="{{ entry.period3_end|date:'Y-m-d' }}" data-field="period3_end"></td>
-            <!-- Северный отпуск -->
-            <td><input type="number" class="vs-input vs-days" value="{{ entry.days_north }}" min="0" max="100" data-field="days_north" style="width:55px;text-align:center;"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.north_start|date:'Y-m-d' }}" data-field="north_start"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.north_end|date:'Y-m-d' }}" data-field="north_end"></td>
-            <!-- Доп. отпуск -->
-            <td><input type="number" class="vs-input vs-days" value="{{ entry.days_extra }}" min="0" max="100" data-field="days_extra" style="width:55px;text-align:center;"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.extra_start|date:'Y-m-d' }}" data-field="extra_start"></td>
-            <td><input type="date" class="vs-input vs-date" value="{{ entry.extra_end|date:'Y-m-d' }}" data-field="extra_end"></td>
-            <td class="vs-used" style="text-align:center;font-weight:600;">{{ entry.days_used }}</td>
-            <td class="vs-remain" style="text-align:center;font-weight:600;">{{ entry.days_remaining }}</td>
+            <td class="td-north" style="border-left:2px solid #22c55e;"><input type="number" class="vs-input vs-days" value="{{ entry.days_north }}" min="0" max="100" data-field="days_north"></td>
+            <td class="td-north"><input type="date" class="vs-input vs-date" value="{{ entry.north_start|date:'Y-m-d' }}" data-field="north_start"></td>
+            <td class="td-north"><input type="date" class="vs-input vs-date" value="{{ entry.north_end|date:'Y-m-d' }}" data-field="north_end"></td>
+            <td class="td-extra" style="border-left:2px solid #3b82f6;"><input type="number" class="vs-input vs-days" value="{{ entry.days_extra }}" min="0" max="100" data-field="days_extra"></td>
+            <td class="td-extra"><input type="date" class="vs-input vs-date" value="{{ entry.extra_start|date:'Y-m-d' }}" data-field="extra_start"></td>
+            <td class="td-extra"><input type="date" class="vs-input vs-date" value="{{ entry.extra_end|date:'Y-m-d' }}" data-field="extra_end"></td>
+            <td class="vs-used">{{ entry.days_used }}</td>
+            <td class="vs-remain">{{ entry.days_remaining }}</td>
         </tr>
         {% empty %}
         <tr>
@@ -93,133 +137,57 @@
 </div>
 </div>
 
-<div id="save-status" style="margin-top:1rem;font-size:0.85rem;color:var(--text-muted);"></div>
-
-<style>
-.content-wrapper { max-width: 100% !important; padding: 20px 24px !important; }
-
-.vs-input {
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-primary);
-    padding: 5px 8px;
-    font-size: 0.82rem;
-    width: 100%;
-    transition: border-color 0.15s;
-}
-.vs-input:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-.vs-input[type="date"] {
-    min-width: 100px;
-}
-/* Fix date input icon color on dark theme */
-.vs-input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.8);
-    cursor: pointer;
-}
-
-.vs-used { color: var(--accent); }
-.vs-remain { color: var(--success); }
-.vs-remain.negative { color: var(--danger); }
-
-#schedule-table th {
-    font-size: 0.75rem;
-    padding: 10px 8px;
-    white-space: nowrap;
-}
-#schedule-table td {
-    padding: 8px;
-    font-size: 0.85rem;
-}
-</style>
+<div id="save-status" style="margin-top:0.5rem;font-size:0.8rem;color:var(--text-muted);"></div>
 
 <script>
 var YEAR = {{ year }};
 
 function calcRow(row) {
     var used = 0;
-    var dateFields = [
-        ['period1_start','period1_end'],
-        ['period2_start','period2_end'],
-        ['period3_start','period3_end'],
-        ['north_start','north_end'],
-        ['extra_start','extra_end'],
+    var pairs = [
+        ['period1_start','period1_end'],['period2_start','period2_end'],['period3_start','period3_end'],
+        ['north_start','north_end'],['extra_start','extra_end'],
     ];
-    dateFields.forEach(function(pair) {
-        var s = row.querySelector('[data-field="'+pair[0]+'"]').value;
-        var e = row.querySelector('[data-field="'+pair[1]+'"]').value;
-        if (s && e) {
-            var diff = (new Date(e) - new Date(s)) / 86400000 + 1;
-            if (diff > 0) used += diff;
-        }
+    pairs.forEach(function(p) {
+        var s = row.querySelector('[data-field="'+p[0]+'"]').value;
+        var e = row.querySelector('[data-field="'+p[1]+'"]').value;
+        if (s && e) { var d=(new Date(e)-new Date(s))/86400000+1; if(d>0) used+=d; }
     });
-    var daysMain = parseInt(row.querySelector('[data-field="days_total"]').value) || 0;
-    var daysNorth = parseInt(row.querySelector('[data-field="days_north"]').value) || 0;
-    var daysExtra = parseInt(row.querySelector('[data-field="days_extra"]').value) || 0;
-    var total = daysMain + daysNorth + daysExtra;
-    row.querySelector('.vs-used').textContent = used;
-    var remainCell = row.querySelector('.vs-remain');
-    remainCell.textContent = total - used;
-    remainCell.classList.toggle('negative', (total - used) < 0);
+    var dM=parseInt(row.querySelector('[data-field="days_total"]').value)||0;
+    var dN=parseInt(row.querySelector('[data-field="days_north"]').value)||0;
+    var dE=parseInt(row.querySelector('[data-field="days_extra"]').value)||0;
+    var total=dM+dN+dE;
+    row.querySelector('.vs-used').textContent=used;
+    var rc=row.querySelector('.vs-remain');
+    rc.textContent=total-used;
+    rc.classList.toggle('neg',(total-used)<0);
 }
 
-// Recalculate on any input change
-document.getElementById('schedule-table').addEventListener('input', function(e) {
-    var row = e.target.closest('tr');
-    if (row) calcRow(row);
+document.getElementById('schedule-table').addEventListener('input',function(e){
+    var row=e.target.closest('tr'); if(row) calcRow(row);
 });
 
-function saveSchedule() {
-    var rows = [];
-    document.querySelectorAll('#schedule-table tbody tr[data-entry]').forEach(function(row) {
-        var entryId = row.dataset.entry;
-        var obj = { entry_id: parseInt(entryId) };
-        row.querySelectorAll('.vs-input').forEach(function(inp) {
-            obj[inp.dataset.field] = inp.value || '';
-        });
+function saveSchedule(){
+    var rows=[];
+    document.querySelectorAll('#schedule-table tbody tr[data-entry]').forEach(function(row){
+        var obj={entry_id:parseInt(row.dataset.entry)};
+        row.querySelectorAll('.vs-input').forEach(function(inp){ obj[inp.dataset.field]=inp.value||''; });
         rows.push(obj);
     });
-
-    var btn = document.getElementById('save-btn');
-    btn.textContent = 'Сохранение...';
-    btn.disabled = true;
-
-    fetch('{% url "vacations:schedule_save" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': (document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)') || [])[2] || ''
-        },
-        body: JSON.stringify({ year: YEAR, rows: rows })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        btn.textContent = 'Сохранить';
-        btn.disabled = false;
-        if (data.success) {
-            document.getElementById('save-status').textContent = 'Сохранено ' + data.saved + ' записей — ' + new Date().toLocaleTimeString('ru');
-            // Show toast
-            var toast = document.getElementById('save-toast');
-            if (toast) {
-                toast.style.display = 'flex';
-                setTimeout(function() { toast.style.display = 'none'; }, 2500);
-            }
-        }
-    })
-    .catch(function() {
-        btn.textContent = 'Сохранить';
-        btn.disabled = false;
-        document.getElementById('save-status').textContent = 'Ошибка сохранения';
-    });
+    var btn=document.getElementById('save-btn');
+    btn.textContent='Сохранение...'; btn.disabled=true;
+    fetch('{% url "vacations:schedule_save" %}',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':(document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)')||[])[2]||''},
+        body:JSON.stringify({year:YEAR,rows:rows})
+    }).then(function(r){return r.json();}).then(function(data){
+        btn.textContent='Сохранить'; btn.disabled=false;
+        if(data.success) document.getElementById('save-status').textContent='✓ Сохранено — '+new Date().toLocaleTimeString('ru');
+    }).catch(function(){btn.textContent='Сохранить';btn.disabled=false;});
 }
 
-function changeYear() {
-    var y = document.getElementById('sel-year').value;
-    window.location.href = '{% url "vacations:schedule" %}?year=' + y;
+function changeYear(){
+    window.location.href='{% url "vacations:schedule" %}?year='+document.getElementById('sel-year').value;
 }
 </script>
-
 {% endblock %}
