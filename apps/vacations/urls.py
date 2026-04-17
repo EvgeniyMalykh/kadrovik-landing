@@ -11,6 +11,7 @@ urlpatterns = [
     # Публичная форма для работника (без авторизации)
     path("request/<int:company_id>/", views.vacation_request_public, name="request_public"),
     # График отпусков
+    path("schedule/history/", views.vacation_schedule_history, name="schedule_history"),
     path("schedule/", views.vacation_schedule, name="schedule"),
     path("schedule/save/", views.vacation_schedule_save, name="schedule_save"),
     path("schedule/pdf/", views.vacation_schedule_pdf, name="schedule_pdf"),

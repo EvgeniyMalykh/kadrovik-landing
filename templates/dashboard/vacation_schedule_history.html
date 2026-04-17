@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}История графиков отпусков{% endblock %}
+{% block nav_vacation_schedule %}active{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+  <div>
+    <h1 class="page-title">История графиков отпусков</h1>
+    <p class="page-subtitle">{{ company.name }}</p>
+  </div>
+  <a href="{% url 'vacations:schedule' %}" class="btn-primary">+ Текущий график</a>
+</div>
+
+<div class="card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Год</th>
+        <th>Сотрудников</th>
+        <th>Последнее обновление</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in schedules %}
+      <tr>
+        <td style="font-weight:700;font-size:1.1rem;">{{ s.year }}</td>
+        <td>{{ s.employee_count }} чел.</td>
+        <td style="color:var(--text-secondary);">
+          {% if s.updated_at %}{{ s.updated_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
+        </td>
+        <td>
+          <a href="{% url 'vacations:schedule' %}?year={{ s.year }}" class="btn-secondary btn-sm">Открыть</a>
+          <a href="{% url 'vacations:schedule_pdf' %}?year={{ s.year }}" class="btn-secondary btn-sm">PDF Т-7</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" style="text-align:center;padding:40px;color:var(--text-secondary);">
+          Нет сохранённых графиков. Создайте первый график отпусков.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

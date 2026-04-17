@@ -43,6 +43,7 @@ class VacationSchedule(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='vacation_schedules')
     year = models.IntegerField(verbose_name='Год')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Последнее обновление')
 
     class Meta:
         unique_together = [['company', 'year']]

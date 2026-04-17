@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponse
+from django.db.models import Count
 from apps.companies.models import Company, CompanyMember
 from apps.employees.models import Employee
 from .models import Vacation, VacationSchedule, VacationScheduleEntry
@@ -268,6 +269,22 @@ def vacation_request_public(request, company_id):
 
 
 # ─── ГРАФИК ОТПУСКОВ ──────────────────────────────────────────────────────────
+
+@login_required
+def vacation_schedule_history(request):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:employees')
+    schedules = VacationSchedule.objects.filter(
+        company=member.company
+    ).annotate(
+        employee_count=Count('entries')
+    ).order_by('-year')
+    return render(request, 'dashboard/vacation_schedule_history.html', {
+        'schedules': schedules,
+        'company': member.company,
+    })
+
 
 @login_required
 def vacation_schedule(request):

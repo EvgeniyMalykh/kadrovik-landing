@@ -64,6 +64,7 @@
         <button onclick="changeYear()" class="btn-secondary btn-sm">Перейти</button>
         <button onclick="saveSchedule()" class="btn-primary btn-sm" id="save-btn">Сохранить</button>
         <a href="{% url 'vacations:schedule_pdf' %}?year={{ year }}" class="btn-secondary btn-sm">PDF Т-7</a>
+        <a href="{% url 'vacations:schedule_history' %}" class="btn-secondary btn-sm">История</a>
     </div>
 </div>
 
