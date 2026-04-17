@@ -33,6 +33,25 @@
         </div>
         <div class="form-row-2">
             <div class="form-group">
+                <label>Место рождения</label>
+                <input type="text" name="birth_place" class="form-control"
+                       value="{{ emp.birth_place }}" placeholder="Город, регион">
+            </div>
+            <div class="form-group">
+                <label>Образование</label>
+                <select name="education" class="form-control">
+                    <option value="">—</option>
+                    <option value="secondary" {% if emp.education == "secondary" %}selected{% endif %}>Среднее</option>
+                    <option value="secondary_special" {% if emp.education == "secondary_special" %}selected{% endif %}>Среднее специальное</option>
+                    <option value="incomplete_higher" {% if emp.education == "incomplete_higher" %}selected{% endif %}>Неполное высшее</option>
+                    <option value="higher" {% if emp.education == "higher" %}selected{% endif %}>Высшее</option>
+                    <option value="two_higher" {% if emp.education == "two_higher" %}selected{% endif %}>Два высших</option>
+                    <option value="postgraduate" {% if emp.education == "postgraduate" %}selected{% endif %}>Аспирантура / учёная степень</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row-2">
+            <div class="form-group">
                 <label>Телефон</label>
                 <input type="text" name="phone" value="{{ emp.phone }}">
             </div>

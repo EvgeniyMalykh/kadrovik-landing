@@ -59,6 +59,20 @@ class Employee(models.Model):
     phone = models.CharField('Телефон', max_length=20, blank=True)
     email = models.EmailField('Email', blank=True)
     birth_date = models.DateField('Дата рождения', null=True, blank=True)
+    birth_place = models.CharField(max_length=255, blank=True, default='', verbose_name='Место рождения')
+    education = models.CharField(
+        max_length=50,
+        choices=[
+            ('', '—'),
+            ('secondary', 'Среднее'),
+            ('secondary_special', 'Среднее специальное'),
+            ('incomplete_higher', 'Неполное высшее'),
+            ('higher', 'Высшее'),
+            ('two_higher', 'Два высших'),
+            ('postgraduate', 'Аспирантура / учёная степень'),
+        ],
+        blank=True, default='', verbose_name='Образование'
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

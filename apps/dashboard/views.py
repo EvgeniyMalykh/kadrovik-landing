@@ -106,6 +106,8 @@ def _parse_date_flexible(val):
 
 def _save_employee_from_post(post, employee):
     """Обновляет поля сотрудника из POST-данных."""
+    is_new = not employee.pk
+
     employee.last_name   = post.get("last_name", "")
     employee.first_name  = post.get("first_name", "")
     employee.middle_name = post.get("middle_name", "")
@@ -128,11 +130,18 @@ def _save_employee_from_post(post, employee):
     else:
         employee.department = None
 
-    hire_date_str = post.get("hire_date")
-    employee.hire_date = _parse_date_flexible(hire_date_str) or date.today()
+    # Даты: при редактировании пустое поле не затирает старое значение
+    parsed_hire = _parse_date_flexible(post.get("hire_date"))
+    if parsed_hire:
+        employee.hire_date = parsed_hire
+    elif is_new:
+        employee.hire_date = date.today()
 
-    birth_date_str = post.get("birth_date")
-    employee.birth_date = _parse_date_flexible(birth_date_str)
+    parsed_birth = _parse_date_flexible(post.get("birth_date"))
+    if parsed_birth:
+        employee.birth_date = parsed_birth
+    elif is_new:
+        employee.birth_date = None
 
     probation_months = post.get("probation_months")
     if probation_months:
@@ -140,9 +149,15 @@ def _save_employee_from_post(post, employee):
             months = int(probation_months)
             employee.probation_end_date = employee.hire_date + timedelta(days=30 * months)
         except ValueError:
-            employee.probation_end_date = None
+            if is_new:
+                employee.probation_end_date = None
     else:
-        employee.probation_end_date = None
+        probation_end_str = post.get("probation_end_date")
+        parsed_probation = _parse_date_flexible(probation_end_str)
+        if parsed_probation:
+            employee.probation_end_date = parsed_probation
+        elif is_new:
+            employee.probation_end_date = None
 
     employee.phone  = post.get("phone", "")
     employee.email  = post.get("email", "")
@@ -156,20 +171,28 @@ def _save_employee_from_post(post, employee):
     employee.status                 = post.get("status", "active")
     employee.contract_type          = post.get("contract_type", "permanent")
 
-    passport_issued_date_str = post.get("passport_issued_date")
-    employee.passport_issued_date = _parse_date_flexible(passport_issued_date_str)
+    parsed_passport_date = _parse_date_flexible(post.get("passport_issued_date"))
+    if parsed_passport_date:
+        employee.passport_issued_date = parsed_passport_date
+    elif is_new:
+        employee.passport_issued_date = None
 
-    contract_end_str = post.get("contract_end_date")
-    employee.contract_end_date = _parse_date_flexible(contract_end_str)
+    parsed_contract_end = _parse_date_flexible(post.get("contract_end_date"))
+    if parsed_contract_end:
+        employee.contract_end_date = parsed_contract_end
+    elif is_new:
+        employee.contract_end_date = None
 
-    fire_date_str = post.get("fire_date")
-    employee.fire_date = _parse_date_flexible(fire_date_str)
+    parsed_fire = _parse_date_flexible(post.get("fire_date"))
+    if parsed_fire:
+        employee.fire_date = parsed_fire
+    elif is_new:
+        employee.fire_date = None
 
-    probation_end_str = post.get("probation_end_date")
-    if probation_end_str:
-        employee.probation_end_date = _parse_date_flexible(probation_end_str)
-    elif not post.get("probation_end_date") and post.get("probation_months"):
-        pass  # уже обработано выше
+    # Новые поля
+    employee.birth_place = post.get("birth_place", "")
+    employee.education   = post.get("education", "")
+
     return employee
 
 
