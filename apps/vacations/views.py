@@ -375,16 +375,19 @@ def vacation_schedule_pdf(request):
 
     entries = []
     if schedule:
+        # Ensure entries exist for all active employees (same as HTML view)
+        employees = Employee.objects.filter(company=company, status='active').order_by('last_name')
+        for emp in employees:
+            VacationScheduleEntry.objects.get_or_create(
+                schedule=schedule, employee=emp,
+                defaults={'days_total': 28},
+            )
         entries = list(schedule.entries.select_related('employee').order_by('employee__last_name'))
 
-    try:
-        pdf_bytes = generate_t7_pdf(company, year, entries)
-    except Exception:
-        return HttpResponse("Ошибка генерации PDF", status=500, content_type='text/plain; charset=utf-8')
+    pdf_bytes = generate_t7_pdf(company, year, entries)
 
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="vacation_schedule_T7_{year}.pdf"'
-    response['Content-Length'] = len(pdf_bytes)
     return response
 
 
@@ -531,7 +534,7 @@ def generate_t7_pdf(company, year, entries):
     elements.append(Spacer(1, 10 * mm))
 
     # Footer
-    director_position = company.director_position or 'Директор'
+    director_position = 'Ответственное лицо'
     director_name = company.director_name or ''
     elements.append(Paragraph(
         f'{director_position}: _________________ / {director_name} /',
