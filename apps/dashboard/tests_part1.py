@@ -274,8 +274,8 @@ class ExportExcelTests(TestCase):
         self.assertEqual(resp.status_code, 403)
 
     def test_export_employees_excel_trial_plan(self):
-        """Trial plan has export_excel=True, so should be allowed.
-        But _require_plan checks PLAN_RANK trial(0) < business(2) → 403."""
+        """Trial plan has export_excel=False — export not available on trial.
+        Both feature flag and _require_plan deny access → 403."""
         self._set_plan("trial")
         resp = self.client.get(reverse("dashboard:export_employees_excel"))
         self.assertEqual(resp.status_code, 403)
@@ -327,7 +327,7 @@ class BillingTests(TestCase):
     def test_plan_features_trial(self):
         feats = get_plan_features("trial")
         self.assertTrue(feats["documents"])
-        self.assertTrue(feats["export_excel"])
+        self.assertFalse(feats["export_excel"])
         self.assertTrue(feats["multi_user"])
 
     def test_plan_features_start(self):

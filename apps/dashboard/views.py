@@ -198,8 +198,8 @@ def _save_employee_from_post(post, employee):
     # Новые поля
     employee.birth_place = post.get("birth_place", "")
     employee.education   = post.get("education", "")
-    employee.marital_status = post.get("marital_status") or None
-    employee.citizenship    = post.get("citizenship") or None
+    employee.marital_status = post.get("marital_status", "") or ""
+    employee.citizenship    = post.get("citizenship", "") or "Российская Федерация"
 
     return employee
 

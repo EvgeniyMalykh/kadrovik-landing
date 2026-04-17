@@ -18,7 +18,7 @@ PLANS = {
             "timesheet":         True,
             "email_notify":      True,
             "multi_user":        True,
-            "export_excel":      True,
+            "export_excel":      False,
             "custom_templates":  False,
             "priority_support":  False,
             "api":               False,
