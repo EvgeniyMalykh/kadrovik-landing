@@ -6,18 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('vacations', '0001_initial'),
+        ('vacations', '0002_vacation_reason'),
     ]
 
     operations = [
         migrations.AlterModelOptions(
             name='vacation',
             options={'ordering': ['-start_date'], 'verbose_name': 'Отпуск / заявление', 'verbose_name_plural': 'Отпуска / заявления'},
-        ),
-        migrations.AddField(
-            model_name='vacation',
-            name='reason',
-            field=models.TextField(blank=True, default='', verbose_name='Причина / основание'),
         ),
         migrations.AlterField(
             model_name='vacation',
