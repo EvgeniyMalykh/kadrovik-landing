@@ -2,10 +2,11 @@ import json
 from django.shortcuts import redirect, render
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from apps.companies.models import CompanyMember
-from apps.billing.models import Payment
+from apps.billing.models import Payment, Subscription
 from apps.billing.services import create_payment, activate_subscription, PLANS
 
 
@@ -43,8 +44,9 @@ def payment_success(request):
 
 
 @login_required
+@require_POST
 def cancel_autorenew(request):
-    """Отключает автопродление подписки."""
+    """Отключает автопродление и отвязывает карту (очищает payment_method_id)."""
     member = CompanyMember.objects.filter(user=request.user).first()
     if member:
         sub = getattr(member.company, 'subscription', None)
@@ -52,6 +54,23 @@ def cancel_autorenew(request):
             sub.auto_renew = False
             sub.payment_method_id = ''
             sub.save(update_fields=['auto_renew', 'payment_method_id'])
+            messages.success(request, 'Карта отвязана. Автопродление отключено.')
+    return redirect("dashboard:subscription")
+
+
+@login_required
+@require_POST
+def detach_card(request):
+    """Отвязывает карту — удаляет payment_method_id из системы (требование ЮКассы)."""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:login")
+    sub = Subscription.objects.filter(company=member.company).order_by('-started_at').first()
+    if sub:
+        sub.payment_method_id = ''
+        sub.auto_renew = False
+        sub.save(update_fields=['payment_method_id', 'auto_renew'])
+        messages.success(request, 'Карта отвязана. Автопродление отключено.')
     return redirect("dashboard:subscription")
 
 
