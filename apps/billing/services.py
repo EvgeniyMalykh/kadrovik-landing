@@ -1,9 +1,11 @@
 import uuid
+import logging
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from apps.billing.models import Payment, Subscription
 
+logger = logging.getLogger(__name__)
 
 # Лимиты и фичи по тарифам
 PLANS = {
@@ -127,6 +129,8 @@ def _get_yookassa():
 def create_payment(company, plan_key, return_url):
     """
     Создаёт платёж через ЮKassa.
+    Пытается создать с save_payment_method=True для рекуррентных платежей.
+    Если ЮKassa отклоняет (автоплатежи не включены в кабинете), создаёт обычный платёж.
     Возвращает (payment_db, confirmation_url).
     """
     plan = PLANS[plan_key]
@@ -148,7 +152,12 @@ def create_payment(company, plan_key, return_url):
         yookassa = _get_yookassa()
         idempotence_key = str(uuid.uuid4())
 
-        yk_payment = yookassa.Payment.create({
+        owner_email = "noreply@kadrovik-auto.ru"
+        owner_member = company.members.filter(role='owner').first()
+        if owner_member:
+            owner_email = owner_member.user.email or owner_email
+
+        payment_data = {
             "amount": {
                 "value": f"{plan['price']:.2f}",
                 "currency": "RUB",
@@ -166,11 +175,7 @@ def create_payment(company, plan_key, return_url):
             },
             "receipt": {
                 "customer": {
-                    "email": company.members.filter(
-                        role='owner'
-                    ).first() and company.members.filter(
-                        role='owner'
-                    ).first().user.email or "noreply@kadrovik-auto.ru",
+                    "email": owner_email,
                 },
                 "items": [{
                     "description": f"Подписка «{plan['name']}» на 1 месяц",
@@ -184,7 +189,28 @@ def create_payment(company, plan_key, return_url):
                     "payment_subject": "service",
                 }],
             },
-        }, idempotence_key)
+        }
+
+        # Пытаемся с save_payment_method для автопродления
+        payment_data_with_save = {
+            **payment_data,
+            "payment_method_data": {"type": "bank_card"},
+            "save_payment_method": True,
+        }
+
+        try:
+            yk_payment = yookassa.Payment.create(payment_data_with_save, idempotence_key)
+            logger.info(f"[billing] Платёж создан с save_payment_method: {yk_payment.id}")
+        except Exception as save_err:
+            # ForbiddenError = автоплатежи не включены в кабинете ЮKassa
+            # Создаём обычный платёж без сохранения метода
+            logger.warning(
+                f"[billing] save_payment_method отклонён ({type(save_err).__name__}): {save_err}. "
+                f"Создаём обычный платёж."
+            )
+            idempotence_key = str(uuid.uuid4())
+            yk_payment = yookassa.Payment.create(payment_data, idempotence_key)
+            logger.info(f"[billing] Платёж создан без save_payment_method: {yk_payment.id}")
 
         payment.yukassa_payment_id = yk_payment.id
         payment.save(update_fields=["yukassa_payment_id"])
