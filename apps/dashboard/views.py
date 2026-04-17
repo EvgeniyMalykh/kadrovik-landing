@@ -1016,6 +1016,26 @@ def form_save(request, doc_type):
             extra_data=extra_data,
         )
 
+    # При сохранении salary_change — записываем старый оклад в историю и обновляем employee.salary
+    if doc_type == 'salary_change' and employee:
+        new_salary_raw = extra_data.get('new_salary')
+        if new_salary_raw:
+            try:
+                new_salary_val = Decimal(new_salary_raw)
+            except (InvalidOperation, ValueError):
+                new_salary_val = None
+            if new_salary_val and employee.salary != new_salary_val:
+                from apps.employees.models import SalaryHistory
+                effective = _parse_date_flexible(extra_data.get('change_date')) or date.today()
+                if employee.salary:
+                    SalaryHistory.objects.create(
+                        employee=employee,
+                        salary=employee.salary,
+                        effective_date=effective,
+                    )
+                employee.salary = new_salary_val
+                employee.save()
+
     return JsonResponse({'success': True, 'doc_id': document.id, 'doc_type': doc_type})
 
 
@@ -1027,6 +1047,9 @@ def employee_data_api(request, employee_id):
     if not member:
         return JsonResponse({'error': 'no company'}, status=403)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    # Последняя запись из истории окладов
+    from apps.employees.models import SalaryHistory
+    last_hist = employee.salary_history.order_by('-effective_date', '-created_at').first()
     data = {
         'id': employee.id,
         'full_name': employee.full_name,
@@ -1042,6 +1065,8 @@ def employee_data_api(request, employee_id):
         'email': employee.email or '',
         'passport_series': employee.passport_series or '',
         'passport_number': employee.passport_number or '',
+        'previous_salary': str(last_hist.salary) if last_hist else '',
+        'previous_salary_date': last_hist.effective_date.strftime('%d.%m.%Y') if last_hist else '',
     }
     return JsonResponse(data)
 

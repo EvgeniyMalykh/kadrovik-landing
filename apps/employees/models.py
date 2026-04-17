@@ -120,6 +120,28 @@ class Employee(models.Model):
             parts.append(f'{self.middle_name[0]}.')
         return ' '.join(parts)
 
+class SalaryHistory(models.Model):
+    employee = models.ForeignKey(
+        'Employee', on_delete=models.CASCADE,
+        related_name='salary_history', verbose_name='Сотрудник'
+    )
+    salary = models.DecimalField(
+        max_digits=12, decimal_places=2, verbose_name='Оклад'
+    )
+    effective_date = models.DateField(
+        verbose_name='Дата вступления в силу'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-effective_date', '-created_at']
+        verbose_name = 'История оклада'
+        verbose_name_plural = 'История окладов'
+
+    def __str__(self):
+        return f"{self.employee} — {self.salary} с {self.effective_date}"
+
+
 class TimeRecord(models.Model):
     """Ручная отметка в табеле Т-13."""
     class Code(models.TextChoices):

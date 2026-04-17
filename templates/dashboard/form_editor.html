@@ -125,6 +125,15 @@
 
     {% elif doc_type == 'salary_change' %}
     <!-- ИЗМЕНЕНИЕ ОКЛАДА -->
+    <div id="salary-current-info" style="display:none;margin-bottom:1.25rem;padding:12px 16px;background:var(--bg-secondary, #f8fafc);border-radius:8px;border:1px solid var(--border);">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Информация об окладе</div>
+      <div style="font-size:0.88rem;">
+        <span style="color:var(--text-muted);">Текущий оклад:</span> <strong id="salary-current-value">—</strong>
+      </div>
+      <div id="salary-history-row" style="font-size:0.82rem;color:var(--text-muted);margin-top:4px;display:none;">
+        Предыдущий оклад (из истории): <span id="salary-prev-value">—</span>
+      </div>
+    </div>
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Новый оклад (руб.)</label>
       <input type="number" name="new_salary" value="{{ extra_data.new_salary|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
@@ -201,6 +210,19 @@
         document.getElementById("emp-salary").textContent = data.salary ? (data.salary + " руб.") : "—";
         document.getElementById("emp-hiredate").textContent = data.hire_date || "—";
         document.getElementById("employee-info").style.display = "block";
+        // Показать блок текущего/предыдущего оклада для salary_change
+        var salaryInfoBlock = document.getElementById("salary-current-info");
+        if (salaryInfoBlock && docType === "salary_change") {
+          document.getElementById("salary-current-value").textContent = data.salary ? (data.salary + " руб.") : "не задан";
+          salaryInfoBlock.style.display = "block";
+          var histRow = document.getElementById("salary-history-row");
+          if (data.previous_salary) {
+            document.getElementById("salary-prev-value").textContent = data.previous_salary + " руб." + (data.previous_salary_date ? " (с " + data.previous_salary_date + ")" : "");
+            histRow.style.display = "block";
+          } else {
+            histRow.style.display = "none";
+          }
+        }
       });
   });
   // Триггерим при загрузке если сотрудник уже выбран
