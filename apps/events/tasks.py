@@ -2,6 +2,7 @@ import requests
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
 from django.utils import timezone
 from datetime import timedelta
 
@@ -44,6 +45,39 @@ def _send_email_to_company(company, subject, html_body, plain_body):
         pass
 
 
+def _has_email_notify(company):
+    """Проверяет, доступна ли фича email_notify для плана компании."""
+    from apps.billing.services import get_plan_features
+    sub = getattr(company, 'subscription', None)
+    plan_key = sub.plan if sub else 'start'
+    features = get_plan_features(plan_key)
+    return features.get('email_notify', False)
+
+
+def _send_hr_email(company, icon, title, employee_name, position, event_date, description):
+    """Отправляет HR-уведомление по email, используя шаблон hr_event.html."""
+    subject = title
+    context = {
+        'icon': icon,
+        'title': title,
+        'employee_name': employee_name,
+        'position': position,
+        'company_name': company.name,
+        'event_date': event_date,
+        'description': description,
+    }
+    html_body = render_to_string('emails/hr_event.html', context)
+    plain_body = (
+        f"{title}\n\n"
+        f"Сотрудник: {employee_name}\n"
+        f"Должность: {position}\n"
+        f"Компания: {company.name}\n"
+        f"Дата: {event_date}\n\n"
+        f"{description}"
+    )
+    _send_email_to_company(company, subject, html_body, plain_body)
+
+
 @shared_task(name="events.check_probation_endings")
 def check_probation_endings():
     """Напоминание об истечении испытательного срока через 7, 3 и 1 день."""
@@ -66,6 +100,18 @@ def check_probation_endings():
                 f"Примите решение: оформить постоянно или уволить."
             )
             _send_telegram(text)
+
+            # Email-уведомление (если доступно по плану)
+            if _has_email_notify(emp.company):
+                _send_hr_email(
+                    company=emp.company,
+                    icon='⚠️',
+                    title=f'Испытательный срок истекает {label}',
+                    employee_name=emp.full_name,
+                    position=emp.position,
+                    event_date=emp.probation_end_date.strftime('%d.%m.%Y'),
+                    description='Примите решение: оформить сотрудника на постоянную основу или подготовить документы на увольнение.',
+                )
     return f"Checked probation endings for {today}"
 
 
@@ -92,6 +138,18 @@ def check_contract_endings():
                 f"Подготовьте продление или уведомление об увольнении."
             )
             _send_telegram(text)
+
+            # Email-уведомление (если доступно по плану)
+            if _has_email_notify(emp.company):
+                _send_hr_email(
+                    company=emp.company,
+                    icon='📋',
+                    title=f'Срочный договор истекает {label}',
+                    employee_name=emp.full_name,
+                    position=emp.position,
+                    event_date=emp.contract_end_date.strftime('%d.%m.%Y'),
+                    description='Подготовьте продление договора или уведомление сотрудника об увольнении.',
+                )
     return f"Checked contract endings for {today}"
 
 
