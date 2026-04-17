@@ -65,19 +65,37 @@ class VacationScheduleEntry(models.Model):
     period3_start = models.DateField(null=True, blank=True, verbose_name='Период 3 начало')
     period3_end = models.DateField(null=True, blank=True, verbose_name='Период 3 конец')
 
+    # Северный отпуск
+    days_north = models.IntegerField(default=0, verbose_name='Северный отпуск (дней)')
+    north_start = models.DateField(null=True, blank=True, verbose_name='Северный отпуск начало')
+    north_end = models.DateField(null=True, blank=True, verbose_name='Северный отпуск конец')
+
+    # Дополнительный отпуск
+    days_extra = models.IntegerField(default=0, verbose_name='Доп. отпуск (дней)')
+    extra_start = models.DateField(null=True, blank=True, verbose_name='Доп. отпуск начало')
+    extra_end = models.DateField(null=True, blank=True, verbose_name='Доп. отпуск конец')
+
     @property
     def days_used(self):
         total = 0
-        for i in range(1, 4):
-            s = getattr(self, f'period{i}_start')
-            e = getattr(self, f'period{i}_end')
+        for (s, e) in [
+            (self.period1_start, self.period1_end),
+            (self.period2_start, self.period2_end),
+            (self.period3_start, self.period3_end),
+            (self.north_start, self.north_end),
+            (self.extra_start, self.extra_end),
+        ]:
             if s and e:
                 total += (e - s).days + 1
         return total
 
     @property
+    def days_total_all(self):
+        return self.days_total + self.days_north + self.days_extra
+
+    @property
     def days_remaining(self):
-        return self.days_total - self.days_used
+        return self.days_total_all - self.days_used
 
     class Meta:
         verbose_name = 'Запись графика отпусков'

@@ -332,6 +332,14 @@ def vacation_schedule_save(request):
             e_val = row.get(f"period{i}_end") or None
             setattr(entry, f"period{i}_start", _parse_date(s_val) if s_val else None)
             setattr(entry, f"period{i}_end", _parse_date(e_val) if e_val else None)
+
+        entry.days_north = int(row.get('days_north') or 0)
+        entry.north_start = _parse_date(row.get('north_start'))
+        entry.north_end = _parse_date(row.get('north_end'))
+        entry.days_extra = int(row.get('days_extra') or 0)
+        entry.extra_start = _parse_date(row.get('extra_start'))
+        entry.extra_end = _parse_date(row.get('extra_end'))
+
         entry.save()
         saved += 1
 
@@ -455,16 +463,30 @@ def generate_t7_pdf(company, year, entries):
                 periods.append(f'{s.strftime("%d.%m.%Y")} - {e.strftime("%d.%m.%Y")}')
         planned = ', '.join(periods) if periods else ''
 
+        # Примечание: северный и доп. отпуск
+        notes_parts = []
+        if entry.days_north:
+            note = f'Северный: {entry.days_north}д.'
+            if entry.north_start and entry.north_end:
+                note += f' {entry.north_start.strftime("%d.%m.%Y")}\u2013{entry.north_end.strftime("%d.%m.%Y")}'
+            notes_parts.append(note)
+        if entry.days_extra:
+            note = f'Доп.: {entry.days_extra}д.'
+            if entry.extra_start and entry.extra_end:
+                note += f' {entry.extra_start.strftime("%d.%m.%Y")}\u2013{entry.extra_end.strftime("%d.%m.%Y")}'
+            notes_parts.append(note)
+        notes_text = '<br/>'.join(notes_parts)
+
         table_data.append([
             Paragraph(str(idx), small_center),
             Paragraph(dept, small),
             Paragraph(emp.full_name, small),
             Paragraph(emp.position or '', small),
-            Paragraph(str(entry.days_total), small_center),
+            Paragraph(str(entry.days_total_all), small_center),
             Paragraph(planned, small),
             Paragraph('', small),
             Paragraph('', small_center),
-            Paragraph('', small),
+            Paragraph(notes_text, small),
         ])
 
     # Add empty rows if less than 5
