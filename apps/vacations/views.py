@@ -377,10 +377,14 @@ def vacation_schedule_pdf(request):
     if schedule:
         entries = list(schedule.entries.select_related('employee').order_by('employee__last_name'))
 
-    pdf_bytes = generate_t7_pdf(company, year, entries)
+    try:
+        pdf_bytes = generate_t7_pdf(company, year, entries)
+    except Exception:
+        return HttpResponse("Ошибка генерации PDF", status=500, content_type='text/plain; charset=utf-8')
 
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="vacation_schedule_T7_{year}.pdf"'
+    response['Content-Length'] = len(pdf_bytes)
     return response
 
 
