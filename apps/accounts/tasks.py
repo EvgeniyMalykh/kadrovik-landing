@@ -93,14 +93,17 @@ def send_verification_email_pending(email, verify_url):
     plain_message = strip_tags(html_message)
 
     try:
-        send_mail(
+        reply_to = getattr(settings, "REPLY_TO_EMAIL", None)
+        from django.core.mail import EmailMultiAlternatives
+        msg = EmailMultiAlternatives(
             subject=subject,
-            message=plain_message,
+            body=plain_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            html_message=html_message,
-            fail_silently=False,
+            to=[email],
+            reply_to=[reply_to] if reply_to else None,
         )
+        msg.attach_alternative(html_message, "text/html")
+        msg.send(fail_silently=False)
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Email send failed for {email}: {e}")
@@ -141,14 +144,17 @@ def send_password_reset_email(email, reset_url):
     try:
         from django.core.mail import send_mail
         from django.conf import settings
-        send_mail(
+        reply_to = getattr(settings, "REPLY_TO_EMAIL", None)
+        from django.core.mail import EmailMultiAlternatives
+        msg = EmailMultiAlternatives(
             subject=subject,
-            message=plain_message,
+            body=plain_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            html_message=html_message,
-            fail_silently=False,
+            to=[email],
+            reply_to=[reply_to] if reply_to else None,
         )
+        msg.attach_alternative(html_message, "text/html")
+        msg.send(fail_silently=False)
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Password reset email failed for {email}: {e}")
