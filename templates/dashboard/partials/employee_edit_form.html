@@ -50,6 +50,24 @@
                 </select>
             </div>
         </div>
+        <!-- Семейное положение + Гражданство -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Семейное положение</label>
+            <select name="marital_status" class="form-control">
+              <option value="">—</option>
+              <option value="single" {% if emp.marital_status == "single" %}selected{% endif %}>Холост / Не замужем</option>
+              <option value="married" {% if emp.marital_status == "married" %}selected{% endif %}>Женат / Замужем</option>
+              <option value="divorced" {% if emp.marital_status == "divorced" %}selected{% endif %}>Разведён / Разведена</option>
+              <option value="widowed" {% if emp.marital_status == "widowed" %}selected{% endif %}>Вдовец / Вдова</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Гражданство</label>
+            <input type="text" name="citizenship" class="form-control"
+                   value="{{ emp.citizenship|default:'Российская Федерация' }}" placeholder="Российская Федерация">
+          </div>
+        </div>
         <div class="form-row-2">
             <div class="form-group">
                 <label>Телефон</label>

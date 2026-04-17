@@ -73,6 +73,20 @@ class Employee(models.Model):
         ],
         blank=True, default='', verbose_name='Образование'
     )
+    marital_status = models.CharField(
+        max_length=30,
+        choices=[
+            ('', '—'),
+            ('single', 'Холост / Не замужем'),
+            ('married', 'Женат / Замужем'),
+            ('divorced', 'Разведён / Разведена'),
+            ('widowed', 'Вдовец / Вдова'),
+        ],
+        blank=True, default='', verbose_name='Семейное положение'
+    )
+    citizenship = models.CharField(
+        max_length=100, blank=True, default='Российская Федерация', verbose_name='Гражданство'
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

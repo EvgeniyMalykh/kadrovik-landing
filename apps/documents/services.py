@@ -254,11 +254,15 @@ def generate_t2_pdf(employee) -> bytes:
                    "two_higher": "Два высших", "postgraduate": "Аспирантура / учёная степень"}
     _edu_raw = getattr(employee, 'education', '') or ''
     _edu_val = _edu_labels.get(_edu_raw, _edu_raw)
+    _marital_labels = {"single": "Холост / Не замужем", "married": "Женат / Замужем", "divorced": "Разведён / Разведена", "widowed": "Вдовец / Вдова"}
+    _marital_raw = getattr(employee, "marital_status", "") or ""
+    _marital_val = _marital_labels.get(_marital_raw, "")
     rows = [
         ["1. Фамилия, имя, отчество:", full_name],
         ["2. Дата рождения:", birth],
         ["3. Место рождения:", getattr(employee, "birth_place", "") or ""],
-        ["4. Гражданство:", "Российская Федерация"],
+        ["4. Гражданство:", getattr(employee, "citizenship", "") or "Российская Федерация"],
+        ["4а. Семейное положение:", _marital_val],
         ["5. ИНН:", employee.inn or ""],
         ["6. СНИЛС:", employee.snils or ""],
         ["7. Образование:", _edu_val],
