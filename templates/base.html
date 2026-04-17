@@ -54,6 +54,10 @@
                 <span class="nav-icon">&#127958;&#65039;</span>
                 <span>Отпуска</span>
             </a>
+            <a href="/vacations/schedule/" class="nav-item {% block nav_vacation_schedule %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#128197;</span>
+                <span>График отпусков</span>
+            </a>
             <a href="{% url 'dashboard:company' %}" class="nav-item {% block nav_company %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#127962;</span>
                 <span>Компания</span>

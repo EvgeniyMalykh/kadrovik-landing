@@ -1,6 +1,7 @@
 from django.db import models
 from apps.employees.models import Employee
 from apps.documents.models import Document
+from apps.companies.models import Company
 
 
 class Vacation(models.Model):
@@ -36,3 +37,52 @@ class Vacation(models.Model):
         if self.start_date and self.end_date:
             self.days_count = (self.end_date - self.start_date).days + 1
         super().save(*args, **kwargs)
+
+
+class VacationSchedule(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='vacation_schedules')
+    year = models.IntegerField(verbose_name='Год')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [['company', 'year']]
+        verbose_name = 'График отпусков'
+        verbose_name_plural = 'Графики отпусков'
+
+    def __str__(self):
+        return f'{self.company.name} — {self.year}'
+
+
+class VacationScheduleEntry(models.Model):
+    schedule = models.ForeignKey(VacationSchedule, on_delete=models.CASCADE, related_name='entries')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='vacation_schedule_entries')
+    days_total = models.IntegerField(default=28, verbose_name='Дней положено')
+
+    period1_start = models.DateField(null=True, blank=True, verbose_name='Период 1 начало')
+    period1_end = models.DateField(null=True, blank=True, verbose_name='Период 1 конец')
+    period2_start = models.DateField(null=True, blank=True, verbose_name='Период 2 начало')
+    period2_end = models.DateField(null=True, blank=True, verbose_name='Период 2 конец')
+    period3_start = models.DateField(null=True, blank=True, verbose_name='Период 3 начало')
+    period3_end = models.DateField(null=True, blank=True, verbose_name='Период 3 конец')
+
+    @property
+    def days_used(self):
+        total = 0
+        for i in range(1, 4):
+            s = getattr(self, f'period{i}_start')
+            e = getattr(self, f'period{i}_end')
+            if s and e:
+                total += (e - s).days + 1
+        return total
+
+    @property
+    def days_remaining(self):
+        return self.days_total - self.days_used
+
+    class Meta:
+        verbose_name = 'Запись графика отпусков'
+        verbose_name_plural = 'Записи графика отпусков'
+        ordering = ['employee__last_name']
+
+    def __str__(self):
+        return f'{self.employee.full_name} — {self.schedule.year}'

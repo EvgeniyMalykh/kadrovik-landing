@@ -1,11 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from apps.companies.models import Company, CompanyMember
 from apps.employees.models import Employee
-from .models import Vacation
+from .models import Vacation, VacationSchedule, VacationScheduleEntry
 import re
+import json
+from datetime import date, datetime
 
 
 def _parse_date(val):
@@ -263,3 +265,240 @@ def vacation_request_public(request, company_id):
         "company": company,
         "form_data": {},
     })
+
+
+# ─── ГРАФИК ОТПУСКОВ ──────────────────────────────────────────────────────────
+
+@login_required
+def vacation_schedule(request):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:employees")
+    company = member.company
+
+    current_year = date.today().year
+    year = int(request.GET.get("year", current_year))
+    years = [current_year - 1, current_year, current_year + 1]
+
+    schedule, _ = VacationSchedule.objects.get_or_create(company=company, year=year)
+
+    employees = Employee.objects.filter(company=company, status='working').order_by('last_name')
+
+    entries = []
+    for emp in employees:
+        entry, _ = VacationScheduleEntry.objects.get_or_create(
+            schedule=schedule, employee=emp,
+            defaults={'days_total': 28},
+        )
+        entries.append(entry)
+
+    return render(request, "dashboard/vacation_schedule.html", {
+        "entries": entries,
+        "year": year,
+        "years": years,
+        "company": company,
+        "schedule": schedule,
+    })
+
+
+@login_required
+@require_POST
+def vacation_schedule_save(request):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return JsonResponse({"error": "no company"}, status=400)
+    company = member.company
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    year = data.get("year", date.today().year)
+    schedule, _ = VacationSchedule.objects.get_or_create(company=company, year=year)
+    rows = data.get("rows", [])
+
+    saved = 0
+    for row in rows:
+        entry_id = row.get("entry_id")
+        try:
+            entry = VacationScheduleEntry.objects.get(id=entry_id, schedule=schedule)
+        except VacationScheduleEntry.DoesNotExist:
+            continue
+
+        entry.days_total = int(row.get("days_total", 28))
+        for i in range(1, 4):
+            s_val = row.get(f"period{i}_start") or None
+            e_val = row.get(f"period{i}_end") or None
+            setattr(entry, f"period{i}_start", _parse_date(s_val) if s_val else None)
+            setattr(entry, f"period{i}_end", _parse_date(e_val) if e_val else None)
+        entry.save()
+        saved += 1
+
+    return JsonResponse({"success": True, "saved": saved})
+
+
+@login_required
+def vacation_schedule_pdf(request):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:employees")
+    company = member.company
+
+    year = int(request.GET.get("year", date.today().year))
+    schedule = VacationSchedule.objects.filter(company=company, year=year).first()
+
+    entries = []
+    if schedule:
+        entries = list(schedule.entries.select_related('employee').order_by('employee__last_name'))
+
+    pdf_bytes = generate_t7_pdf(company, year, entries)
+
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="vacation_schedule_T7_{year}.pdf"'
+    return response
+
+
+def generate_t7_pdf(company, year, entries):
+    import io
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    import os
+
+    # Register fonts
+    font_name = 'Helvetica'
+    try:
+        font_paths = [
+            '/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf',
+            '/usr/share/fonts/liberation/LiberationSerif-Regular.ttf',
+        ]
+        for path in font_paths:
+            if os.path.exists(path):
+                pdfmetrics.registerFont(TTFont('LiberationSerif', path))
+                font_name = 'LiberationSerif'
+                break
+    except Exception:
+        pass
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=15 * mm,
+        rightMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=15 * mm,
+    )
+
+    normal = ParagraphStyle('Normal', fontName=font_name, fontSize=8, leading=10)
+    center = ParagraphStyle('Center', fontName=font_name, fontSize=8, leading=10, alignment=TA_CENTER)
+    title_style = ParagraphStyle('Title', fontName=font_name, fontSize=12, leading=14, alignment=TA_CENTER)
+    small = ParagraphStyle('Small', fontName=font_name, fontSize=7, leading=9)
+    small_center = ParagraphStyle('SmallCenter', fontName=font_name, fontSize=7, leading=9, alignment=TA_CENTER)
+    right = ParagraphStyle('Right', fontName=font_name, fontSize=8, leading=10, alignment=TA_RIGHT)
+
+    elements = []
+
+    # Header
+    header_data = [
+        [Paragraph(company.name or '', normal),
+         '',
+         Paragraph('УТВЕРЖДАЮ', right)],
+        ['', '',
+         Paragraph(f'{company.director_position or "Директор"} ________________', right)],
+        ['', '',
+         Paragraph(f'"____" _____________ {year} г.', right)],
+    ]
+    header_table = Table(header_data, colWidths=[120 * mm, 60 * mm, 90 * mm])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+    ]))
+    elements.append(header_table)
+    elements.append(Spacer(1, 5 * mm))
+
+    elements.append(Paragraph('ГРАФИК ОТПУСКОВ', title_style))
+    elements.append(Paragraph('Унифицированная форма № Т-7', center))
+    elements.append(Spacer(1, 3 * mm))
+    elements.append(Paragraph(f'на {year} год', center))
+    elements.append(Spacer(1, 5 * mm))
+
+    # Table header
+    col_widths = [10 * mm, 40 * mm, 55 * mm, 35 * mm, 20 * mm, 45 * mm, 45 * mm, 20 * mm, 30 * mm]
+
+    table_data = [
+        [Paragraph('№<br/>п/п', small_center),
+         Paragraph('Структурное<br/>подразделение', small_center),
+         Paragraph('Фамилия, имя,<br/>отчество', small_center),
+         Paragraph('Должность', small_center),
+         Paragraph('Кол-во<br/>дней', small_center),
+         Paragraph('Запланированная<br/>дата', small_center),
+         Paragraph('Фактическая<br/>дата', small_center),
+         Paragraph('Перенос', small_center),
+         Paragraph('Примечание', small_center)],
+    ]
+
+    for idx, entry in enumerate(entries, 1):
+        emp = entry.employee
+        dept = emp.department.name if emp.department else ''
+
+        periods = []
+        for i in range(1, 4):
+            s = getattr(entry, f'period{i}_start')
+            e = getattr(entry, f'period{i}_end')
+            if s and e:
+                periods.append(f'{s.strftime("%d.%m.%Y")} - {e.strftime("%d.%m.%Y")}')
+        planned = ', '.join(periods) if periods else ''
+
+        table_data.append([
+            Paragraph(str(idx), small_center),
+            Paragraph(dept, small),
+            Paragraph(emp.full_name, small),
+            Paragraph(emp.position or '', small),
+            Paragraph(str(entry.days_total), small_center),
+            Paragraph(planned, small),
+            Paragraph('', small),
+            Paragraph('', small_center),
+            Paragraph('', small),
+        ])
+
+    # Add empty rows if less than 5
+    for i in range(max(0, 5 - len(entries))):
+        table_data.append([
+            Paragraph(str(len(entries) + i + 1), small_center),
+            '', '', '', '', '', '', '', '',
+        ])
+
+    main_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    main_table.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.9, 0.9, 0.9)),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 3),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    elements.append(main_table)
+    elements.append(Spacer(1, 10 * mm))
+
+    # Footer
+    director_position = company.director_position or 'Директор'
+    director_name = company.director_name or ''
+    elements.append(Paragraph(
+        f'{director_position}: _________________ / {director_name} /',
+        normal
+    ))
+    elements.append(Spacer(1, 5 * mm))
+    elements.append(Paragraph(
+        f'Дата составления: "____" _____________ {year} г.',
+        normal
+    ))
+
+    doc.build(elements)
+    return buffer.getvalue()
