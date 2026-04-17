@@ -1435,3 +1435,19 @@ def chat_poll(request):
             pass
 
     return JsonResponse({'messages': messages})
+
+
+@require_POST
+@login_required
+def delete_document(request, doc_id):
+    from django.http import JsonResponse
+    from apps.documents.models import Document
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return JsonResponse({"success": False, "error": "Нет доступа"}, status=403)
+    try:
+        doc = Document.objects.get(id=doc_id, company=member.company)
+        doc.delete()
+        return JsonResponse({"success": True})
+    except Document.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Документ не найден"}, status=404)

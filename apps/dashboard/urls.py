@@ -14,6 +14,7 @@ urlpatterns = [
     path("employees/", views.employees_list, name="employees"),
     path("employees/add/", views.employee_add, name="employee_add"),
     path("employees/<int:employee_id>/edit/", views.employee_edit, name="employee_edit"),
+    path("documents/<int:doc_id>/delete/", views.delete_document, name="delete_document"),
     path("employees/<int:employee_id>/delete/", views.employee_delete, name="employee_delete"),
     # Кадровые приказы
     path("employees/<int:employee_id>/t1/", views.download_t1, name="download_t1"),
