@@ -24,10 +24,17 @@ function openVacationDrawer() {
     fetch('/vacations/add/', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
         .then(r => r.text())
         .then(html => {
-            document.getElementById('modal-content').innerHTML = html;
+            var container = document.getElementById('modal-content');
+            container.innerHTML = html;
+            // Execute <script> tags that innerHTML doesn't run
+            container.querySelectorAll('script').forEach(function(oldScript) {
+                var newScript = document.createElement('script');
+                newScript.textContent = oldScript.textContent;
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
             openModal();
-            if (window.htmx) htmx.process(document.getElementById('modal-content'));
-            if (window.initDateMasks) initDateMasks(document.getElementById('modal-content'));
+            if (window.htmx) htmx.process(container);
+            if (window.initDateMasks) initDateMasks(container);
         });
 }
 </script>

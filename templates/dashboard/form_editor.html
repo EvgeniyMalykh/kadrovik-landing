@@ -182,8 +182,8 @@
 <script>
 (function() {
   var docType = "{{ doc_type }}";
-  var savedDocId = "{{ document.id|default:'' }}";
-  var savedEmployeeId = "{{ document.employee_id|default:'' }}";
+  var savedDocId = "{% if document %}{{ document.id }}{% endif %}";
+  var savedEmployeeId = "{% if document %}{{ document.employee_id }}{% endif %}";
 
   // --- Автозаполнение при выборе сотрудника ---
   var empSelect = document.getElementById("employee-select");

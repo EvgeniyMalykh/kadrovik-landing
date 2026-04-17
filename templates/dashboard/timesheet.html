@@ -259,16 +259,17 @@ function updateTotals() {
         cells.forEach(function(c) {
             var code  = c.dataset.code || '';
             var h     = parseFloat(c.dataset.hours) || 0;
-            // Считаем дни присутствия/отсутствия по уважительной причине
-            // Я, Я½, ОТ, ОД, Б, К — всё кроме В (выходной), П (праздник), НН (прогул)
-            var countCodes = ['Я','Я½','ОТ','ОД','Б','К'];
-            if (countCodes.indexOf(code) !== -1) {
-                days++;
-            }
-            // Считаем фактически отработанные часы: только Я и Я½ (+ ручные значения > 0)
-            if (h > 0) {
+            if (code === 'Я') {
+                days += 1;
                 hours += h;
+            } else if (code === 'Я½') {
+                days += 0.5;
+                hours += h;
+            } else if (['ОТ','ОД','Б','К'].indexOf(code) !== -1) {
+                days += 1;
+                // hours += 0 — absence codes don't add hours
             }
+            // В, П, НН — days += 0, hours += 0
         });
         row.querySelector('.ts-total-days').textContent  = days;
         row.querySelector('.ts-total-hours').textContent = hours;

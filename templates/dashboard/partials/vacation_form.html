@@ -2,7 +2,7 @@
     <h3>Заявление об отпуске</h3>
     <button type="button" class="drawer-close" onclick="closeModal()">✕</button>
 </div>
-<form id="vacation-add-form" onsubmit="submitVacationForm(event)">
+<form id="vacation-add-form" method="POST" onsubmit="submitVacationForm(event)">
     {% csrf_token %}
     <div class="drawer-body">
 
@@ -145,7 +145,10 @@ function submitVacationForm(e) {
         },
         body: formData
     })
-    .then(r => r.json())
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
     .then(function(data) {
         if (data.success) {
             // Show success block with print link
