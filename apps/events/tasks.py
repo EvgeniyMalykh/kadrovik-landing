@@ -1,3 +1,4 @@
+import logging
 import requests
 from celery import shared_task
 from django.conf import settings
@@ -5,6 +6,8 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
 from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 
 
 def _send_telegram(text):
@@ -231,3 +234,163 @@ def check_subscription_expirations():
             notified += 1
 
     return f"Subscription expiration check for {today}: notified {notified}"
+
+
+@shared_task(name="events.check_birthdays")
+def check_birthdays():
+    """Уведомлять за 3 дня и в день рождения сотрудника."""
+    from apps.employees.models import Employee
+    from apps.companies.models import Company
+
+    today = timezone.now().date()
+    notify_days = [0, 3]  # в день рождения и за 3 дня
+    notified = 0
+
+    for company in Company.objects.all():
+        employees = Employee.objects.filter(company=company, status='active')
+
+        messages = []
+        email_items = []
+        for emp in employees:
+            if not emp.birth_date:
+                continue
+            try:
+                bday_this_year = emp.birth_date.replace(year=today.year)
+            except ValueError:
+                continue  # 29 февраля в не-високосный год
+
+            days_until = (bday_this_year - today).days
+            if days_until not in notify_days:
+                continue
+
+            age = today.year - emp.birth_date.year
+            if days_until == 0:
+                text = (
+                    f"🎂 <b>Сегодня день рождения</b>\n"
+                    f"Сотрудник: {emp.full_name}\n"
+                    f"Исполняется {age} лет"
+                )
+                description = f'Исполняется {age} лет'
+            else:
+                text = (
+                    f"🎂 <b>Через {days_until} дня день рождения</b>\n"
+                    f"Сотрудник: {emp.full_name}\n"
+                    f"Исполняется {age} лет"
+                )
+                description = f'Через {days_until} дня, исполняется {age} лет'
+
+            messages.append(text)
+            email_items.append((emp, description, bday_this_year, days_until))
+
+        if not messages:
+            continue
+
+        # Telegram
+        try:
+            _send_telegram('\n\n'.join(messages))
+        except Exception as e:
+            logger.error(f'Birthday Telegram error company {company.id}: {e}')
+
+        # Email (если тариф позволяет)
+        if _has_email_notify(company):
+            for emp, description, bday, days_until in email_items:
+                try:
+                    title = 'Сегодня день рождения сотрудника' if days_until == 0 else 'Скоро день рождения сотрудника'
+                    _send_hr_email(
+                        company=company,
+                        icon='🎂',
+                        title=title,
+                        employee_name=emp.full_name,
+                        position=emp.position or '',
+                        event_date=bday.strftime('%d.%m.%Y'),
+                        description=description,
+                    )
+                except Exception as e:
+                    logger.error(f'Birthday email error: {e}')
+
+        notified += len(messages)
+
+    return f"Birthday check for {today}: notified {notified}"
+
+
+@shared_task(name="events.check_vacation_events")
+def check_vacation_events():
+    """Уведомлять за 1 день до начала и в день начала отпуска."""
+    from apps.vacations.models import Vacation
+    from apps.companies.models import Company
+
+    today = timezone.now().date()
+    notified = 0
+
+    for company in Company.objects.all():
+        vacations = Vacation.objects.filter(
+            employee__company=company,
+            employee__status='active',
+            start_date__in=[today, today + timedelta(days=1)],
+        ).select_related('employee')
+
+        if not vacations.exists():
+            continue
+
+        vac_type_map = {
+            'annual': 'Ежегодный отпуск',
+            'unpaid': 'Отпуск без содержания',
+            'maternity': 'Декретный отпуск',
+            'educational': 'Учебный отпуск',
+        }
+
+        messages = []
+        email_items = []
+        for vac in vacations:
+            emp = vac.employee
+            days_until = (vac.start_date - today).days
+            vac_type_name = vac_type_map.get(vac.vacation_type, 'Отпуск')
+
+            if days_until == 0:
+                text = (
+                    f"🏖️ <b>Сегодня начинается отпуск</b>\n"
+                    f"Сотрудник: {emp.full_name}\n"
+                    f"Тип: {vac_type_name}\n"
+                    f"Период: {vac.start_date.strftime('%d.%m.%Y')} — {vac.end_date.strftime('%d.%m.%Y')}"
+                )
+                title = 'Сегодня начинается отпуск'
+            else:
+                text = (
+                    f"🏖️ <b>Завтра начинается отпуск</b>\n"
+                    f"Сотрудник: {emp.full_name}\n"
+                    f"Тип: {vac_type_name}\n"
+                    f"Период: {vac.start_date.strftime('%d.%m.%Y')} — {vac.end_date.strftime('%d.%m.%Y')}"
+                )
+                title = 'Завтра начинается отпуск'
+
+            messages.append(text)
+            email_items.append((emp, vac, title))
+
+        if not messages:
+            continue
+
+        # Telegram
+        try:
+            _send_telegram('\n\n'.join(messages))
+        except Exception as e:
+            logger.error(f'Vacation Telegram error company {company.id}: {e}')
+
+        # Email (если тариф позволяет)
+        if _has_email_notify(company):
+            for emp, vac, title in email_items:
+                try:
+                    _send_hr_email(
+                        company=company,
+                        icon='🏖️',
+                        title=title,
+                        employee_name=emp.full_name,
+                        position=emp.position or '',
+                        event_date=vac.start_date.strftime('%d.%m.%Y'),
+                        description=f'{vac.get_vacation_type_display()} до {vac.end_date.strftime("%d.%m.%Y")}',
+                    )
+                except Exception as e:
+                    logger.error(f'Vacation email error: {e}')
+
+        notified += len(messages)
+
+    return f"Vacation event check for {today}: notified {notified}"
