@@ -946,7 +946,7 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
                     work_hours += hrs
                     row.append(code + "\n" + str(hrs))
                 else:
-                    # В, П, ОТ, ОД, Б, НН — нерабочие коды
+                    # В, П, ОТ, ДО, Б, НН — нерабочие коды
                     row.append(code + "\n")
             else:
                 dtype = day_types[d-1]

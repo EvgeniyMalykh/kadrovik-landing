@@ -119,7 +119,7 @@
 /* Цвета кодов */
 .code-Я   { color: #34d399; }
 .code-ОТ  { color: #60a5fa; }
-.code-ОД  { color: #93c5fd; }
+.code-ДО  { color: #93c5fd; }
 .code-Б   { color: #fbbf24; }
 .code-К   { color: #a78bfa; }
 .code-НН  { color: #f87171; }
@@ -216,8 +216,8 @@
     <span class="cell-menu-badge" style="background:#22c55e;color:#fff">ОТ</span>
     <span>Отпуск</span>
   </div>
-  <div class="cell-menu-item" data-code="ОД">
-    <span class="cell-menu-badge" style="background:#86efac;color:#1e293b">ОД</span>
+  <div class="cell-menu-item" data-code="ДО">
+    <span class="cell-menu-badge" style="background:#86efac;color:#1e293b">ДО</span>
     <span>Доп. отпуск</span>
   </div>
   <div class="cell-menu-item" data-code="Б">
@@ -259,7 +259,7 @@ function getDefaultHours(code) {
     // Отсутствие (выходные, праздники, прогул) = 0
     if (['В','П','НН'].includes(code)) return 0;
     // Отпуск, доп.отпуск, больничный = 0 рабочих часов
-    if (['ОТ','ОД','Б'].includes(code)) return 0;
+    if (['ОТ','ДО','Б'].includes(code)) return 0;
     if (code === 'Я½') return 4;
     if (['Я','К','РВ','Я/С'].includes(code)) return 8;
     return 0;
@@ -389,7 +389,7 @@ function updateTotals() {
                 days += 1;
                 hours += h;
             }
-            // ОТ, ОД, Б, НН, В, П — days += 0, hours += 0
+            // ОТ, ДО, Б, НН, В, П — days += 0, hours += 0
             // В, П, НН — days += 0, hours += 0
         });
         row.querySelector('.ts-total-days').textContent  = days;

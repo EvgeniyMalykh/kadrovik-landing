@@ -147,7 +147,7 @@ class TimeRecord(models.Model):
     class Code(models.TextChoices):
         WORK      = 'Я',  'Явка (рабочий день)'
         VACATION  = 'ОТ', 'Отпуск ежегодный'
-        VACATION_U= 'ОД', 'Отпуск доп.'
+        VACATION_U= 'ДО', 'Отпуск доп.'
         SICK      = 'Б',  'Больничный'
         HOLIDAY   = 'П',  'Праздник'
         WEEKEND   = 'В',  'Выходной'
