@@ -235,7 +235,7 @@ def vacation_request_public(request, company_id):
                 first_name=first_name,
                 middle_name=middle_name,
                 position=position,
-                status='working',
+                status='active',
             )
 
         v = Vacation.objects.create(
@@ -282,7 +282,7 @@ def vacation_schedule(request):
 
     schedule, _ = VacationSchedule.objects.get_or_create(company=company, year=year)
 
-    employees = Employee.objects.filter(company=company, status='working').order_by('last_name')
+    employees = Employee.objects.filter(company=company, status='active').order_by('last_name')
 
     entries = []
     for emp in employees:
