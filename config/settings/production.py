@@ -10,6 +10,11 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = False  # nginx handles SSL redirect
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+CSRF_TRUSTED_ORIGINS = [
+    'https://app.kadrovik-auto.ru',
+    'https://kadrovik-auto.ru',
+    'https://www.kadrovik-auto.ru',
+]
 
 # Database
 DATABASES = {
