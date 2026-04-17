@@ -480,37 +480,32 @@ def generate_t7_pdf(company, year, entries):
         dept = emp.department.name if emp.department else ''
 
         periods = []
+        days_planned = 0
         for i in range(1, 4):
             s = getattr(entry, f'period{i}_start')
             e = getattr(entry, f'period{i}_end')
             if s and e:
                 periods.append(f'{s.strftime("%d.%m.%Y")} - {e.strftime("%d.%m.%Y")}')
-        planned = ', '.join(periods) if periods else ''
-
-        # Примечание: северный и доп. отпуск
-        notes_parts = []
-        if entry.days_north:
-            note = f'Северный: {entry.days_north}д.'
-            if entry.north_start and entry.north_end:
-                note += f' {entry.north_start.strftime("%d.%m.%Y")}\u2013{entry.north_end.strftime("%d.%m.%Y")}'
-            notes_parts.append(note)
-        if entry.days_extra:
-            note = f'Доп.: {entry.days_extra}д.'
-            if entry.extra_start and entry.extra_end:
-                note += f' {entry.extra_start.strftime("%d.%m.%Y")}\u2013{entry.extra_end.strftime("%d.%m.%Y")}'
-            notes_parts.append(note)
-        notes_text = '<br/>'.join(notes_parts)
+                days_planned += (e - s).days + 1
+        if entry.north_start and entry.north_end:
+            periods.append(f'Сев: {entry.north_start.strftime("%d.%m.%Y")} - {entry.north_end.strftime("%d.%m.%Y")}')
+            days_planned += (entry.north_end - entry.north_start).days + 1
+        if entry.extra_start and entry.extra_end:
+            periods.append(f'Доп: {entry.extra_start.strftime("%d.%m.%Y")} - {entry.extra_end.strftime("%d.%m.%Y")}')
+            days_planned += (entry.extra_end - entry.extra_start).days + 1
+        planned = '\n'.join(periods) if periods else ''
+        days_display = days_planned if days_planned > 0 else entry.days_total_all
 
         table_data.append([
             Paragraph(str(idx), small_center),
             Paragraph(dept, small),
             Paragraph(emp.full_name, small),
             Paragraph(emp.position or '', small),
-            Paragraph(str(entry.days_total_all), small_center),
+            Paragraph(str(days_display), small_center),
             Paragraph(planned, small),
             Paragraph('', small),
             Paragraph('', small_center),
-            Paragraph(notes_text, small),
+            Paragraph('', small),
         ])
 
     # Add empty rows if less than 5
