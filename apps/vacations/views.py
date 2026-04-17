@@ -81,6 +81,41 @@ def vacation_add(request):
             end_date=end,
             reason=reason,
         )
+        # Создаём запись в журнале документов
+        try:
+            from apps.documents.models import Document
+            from apps.billing.services import PLANS
+            sub = getattr(company, "subscription", None)
+            plan_key = sub.plan if sub else "start"
+            plan_data = PLANS.get(plan_key, PLANS["start"])
+            # Авто-номер: следующий по типу vacation для этой компании
+            import re as _re_doc
+            existing_nums = Document.objects.filter(company=company, doc_type="vacation").values_list("number", flat=True)
+            max_n = 0
+            for num in existing_nums:
+                if num:
+                    m = _re_doc.search(r"(\d+)", str(num))
+                    if m:
+                        max_n = max(max_n, int(m.group(1)))
+            doc_number = f"О-{max_n + 1}"
+            doc = Document.objects.create(
+                company=company,
+                employee=emp,
+                doc_type="vacation",
+                number=doc_number,
+                date=start,
+                extra_data={
+                    "vacation_type": vtype,
+                    "start_date": str(start),
+                    "end_date": str(end),
+                    "days_count": str(v.days_count),
+                    "reason": reason,
+                },
+            )
+            v.document = doc
+            v.save(update_fields=["document"])
+        except Exception as _doc_err:
+            pass  # Не ломаем сохранение отпуска если документ не создался
         # Return JSON with vacation id so JS can show print button
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept', '').startswith('application/json'):
             return JsonResponse({"success": True, "vacation_id": v.id, "employee_name": emp.full_name})
