@@ -254,27 +254,31 @@ def generate_t2_pdf(employee) -> bytes:
                    "two_higher": "Два высших", "postgraduate": "Аспирантура / учёная степень"}
     _edu_raw = getattr(employee, 'education', '') or ''
     _edu_val = _edu_labels.get(_edu_raw, _edu_raw)
-    _marital_labels = {"single": "Холост / Не замужем", "married": "Женат / Замужем", "divorced": "Разведён / Разведена", "widowed": "Вдовец / Вдова"}
-    _marital_raw = getattr(employee, "marital_status", "") or ""
-    _marital_val = _marital_labels.get(_marital_raw, "")
+    _marital_labels = {
+        "single": "Не женат / Не замужем", "married": "Женат / Замужем",
+        "divorced": "Разведён / Разведена", "widowed": "Вдовец / Вдова",
+        "cohabiting": "Гражданский брак",
+    }
+    _marital_raw = getattr(employee, 'marital_status', '') or ''
+    _marital_val = _marital_labels.get(_marital_raw, _marital_raw)
     rows = [
         ["1. Фамилия, имя, отчество:", full_name],
         ["2. Дата рождения:", birth],
         ["3. Место рождения:", getattr(employee, "birth_place", "") or ""],
         ["4. Гражданство:", getattr(employee, "citizenship", "") or "Российская Федерация"],
-        ["4а. Семейное положение:", _marital_val],
-        ["5. ИНН:", employee.inn or ""],
-        ["6. СНИЛС:", employee.snils or ""],
-        ["7. Образование:", _edu_val],
-        ["8. Профессия (должность):", employee.position or ""],
-        ["9. Дата приёма:", hire],
-        ["10. Испытательный срок (до):", prob],
-        ["11. Оклад:", f"{employee.salary} руб." if employee.salary else ""],
-        ["12. Телефон:", employee.phone or ""],
-        ["13. Email:", employee.email or ""],
-        ["14. Серия/номер паспорта:", f"{employee.passport_series} {employee.passport_number}".strip()],
-        ["15. Паспорт выдан:", employee.passport_issued_by or ""],
-        ["16. Адрес регистрации:", employee.passport_registration or ""],
+        ["5. Семейное положение:", _marital_val],
+        ["6. ИНН:", employee.inn or ""],
+        ["7. СНИЛС:", employee.snils or ""],
+        ["8. Образование:", _edu_val],
+        ["9. Профессия (должность):", employee.position or ""],
+        ["10. Дата приёма:", hire],
+        ["11. Испытательный срок (до):", prob],
+        ["12. Оклад:", f"{employee.salary} руб." if employee.salary else ""],
+        ["13. Телефон:", employee.phone or ""],
+        ["14. Email:", employee.email or ""],
+        ["15. Серия/номер паспорта:", f"{employee.passport_series} {employee.passport_number}".strip()],
+        ["16. Паспорт выдан:", employee.passport_issued_by or ""],
+        ["17. Адрес регистрации:", employee.passport_registration or ""],
     ]
     t = Table(rows, colWidths=[80*mm, 95*mm])
     t.setStyle(TableStyle([
