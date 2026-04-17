@@ -10,6 +10,7 @@ from apps.employees.models import Employee, Department
 from apps.companies.models import Company, CompanyMember
 from apps.documents.services import generate_t1_pdf, generate_t2_pdf, generate_t8_pdf, generate_t6_pdf
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 
 
 @login_required
@@ -111,7 +112,13 @@ def _save_employee_from_post(post, employee):
     employee.middle_name = post.get("middle_name", "")
     employee.position    = post.get("position", "")
     salary_raw = post.get('salary')
-    employee.salary = salary_raw if salary_raw not in (None, '') else None
+    if salary_raw not in (None, ''):
+        try:
+            employee.salary = Decimal(salary_raw)
+        except (InvalidOperation, ValueError):
+            employee.salary = None
+    else:
+        employee.salary = None
 
     # Структурное подразделение
     dept_id = post.get("department_id")
