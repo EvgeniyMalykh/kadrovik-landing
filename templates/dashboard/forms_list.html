@@ -22,8 +22,24 @@
 
 <div class="page-header">
   <div>
-    <h1 class="page-title">Формы и документы</h1>
-    <p class="page-subtitle">Создание и журнал кадровых документов</p>
+    <h1 class="page-title">
+      {% if active_type %}История — 
+        {% if active_type == 'hire' %}Приём (Т-1)
+        {% elif active_type == 'dismissal' %}Увольнение (Т-8)
+        {% elif active_type == 'transfer' %}Перевод (Т-5)
+        {% elif active_type == 'vacation' %}Отпуск (Т-6)
+        {% elif active_type == 'salary_change' %}Изменение оклада
+        {% elif active_type == 'bonus' %}Премия
+        {% elif active_type == 'disciplinary' %}Дисц. взыскание
+        {% elif active_type == 'reference' %}Справки
+        {% elif active_type == 'gph_contract' %}Договоры ГПХ
+        {% elif active_type == 'gph_act' %}Акты ГПХ
+        {% elif active_type == 'timesheet' %}Табели (Т-13)
+        {% elif active_type == 'personal_card' %}Личные карточки (Т-2)
+        {% else %}{{ active_type }}{% endif %}
+      {% else %}История документов{% endif %}
+    </h1>
+    <p class="page-subtitle">Журнал кадровых документов компании</p>
   </div>
 </div>
 

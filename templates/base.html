@@ -27,6 +27,57 @@
     </script>
     <noscript><div><img src="https://mc.yandex.ru/watch/108578710" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <!-- /Yandex.Metrika counter -->
+<style>
+/* Нав-группа с подменю */
+.nav-group-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+}
+.nav-group-toggle .nav-chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.nav-group.open .nav-chevron {
+  transform: rotate(180deg);
+}
+.nav-submenu {
+  display: none;
+  flex-direction: column;
+  padding-left: 12px;
+  margin-top: 2px;
+  border-left: 2px solid var(--border-color, #e5e7eb);
+  margin-left: 10px;
+}
+.nav-group.open .nav-submenu {
+  display: flex;
+}
+.nav-subitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 0.83rem;
+  color: var(--text-secondary, #6b7280);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-subitem:hover {
+  background: var(--bg-hover, rgba(99,102,241,0.08));
+  color: var(--color-primary, #6366f1);
+}
+.nav-subitem.active {
+  background: rgba(99,102,241,0.12);
+  color: var(--color-primary, #6366f1);
+  font-weight: 600;
+}
+</style>
 </head>
 <body class="dashboard-body">
 
@@ -58,6 +109,56 @@
                 <span class="nav-icon">&#128197;</span>
                 <span>График отпусков</span>
             </a>
+            <!-- История с подменю -->
+            <div class="nav-group" id="nav-group-history">
+              <div class="nav-item nav-group-toggle {% block nav_history %}{% endblock %}" onclick="toggleNavGroup('nav-group-history')">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span>История</span>
+                <svg class="nav-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+              <div class="nav-submenu">
+                <a href="{% url 'dashboard:forms_list' %}" class="nav-subitem {% if active_type == '' and request.resolver_match.url_name == 'forms_list' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128196;</span> Все документы
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=hire" class="nav-subitem {% if active_type == 'hire' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128100;</span> Приём (Т-1)
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=dismissal" class="nav-subitem {% if active_type == 'dismissal' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128683;</span> Увольнение (Т-8)
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=transfer" class="nav-subitem {% if active_type == 'transfer' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128260;</span> Перевод (Т-5)
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=vacation" class="nav-subitem {% if active_type == 'vacation' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#127958;</span> Отпуск (Т-6)
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=salary_change" class="nav-subitem {% if active_type == 'salary_change' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128176;</span> Изменение оклада
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=bonus" class="nav-subitem {% if active_type == 'bonus' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#127942;</span> Премия
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=disciplinary" class="nav-subitem {% if active_type == 'disciplinary' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#9888;</span> Дисц. взыскание
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=reference" class="nav-subitem {% if active_type == 'reference' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128203;</span> Справка
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=gph_contract" class="nav-subitem {% if active_type == 'gph_contract' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128196;</span> Договор ГПХ
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=gph_act" class="nav-subitem {% if active_type == 'gph_act' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#9989;</span> Акт ГПХ
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=timesheet" class="nav-subitem {% if active_type == 'timesheet' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128197;</span> Табели (Т-13)
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=personal_card" class="nav-subitem {% if active_type == 'personal_card' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128100;</span> Личные карточки (Т-2)
+                </a>
+              </div>
+            </div>
+
             <a href="{% url 'dashboard:company' %}" class="nav-item {% block nav_company %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#127962;</span>
                 <span>Компания</span>
@@ -117,6 +218,20 @@
             sb.classList.remove("open");
             ov.classList.remove("active");
         }
+
+        function toggleNavGroup(groupId) {
+            var group = document.getElementById(groupId);
+            if (group) group.classList.toggle('open');
+        }
+
+        // Автораскрыть группу если внутри есть активный пункт
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.nav-group').forEach(function(group) {
+                if (group.querySelector('.nav-subitem.active')) {
+                    group.classList.add('open');
+                }
+            });
+        });
 
         // ─── Drawer ───────────────────────────────────────────────────────────
         function openModal() { document.getElementById("modal-overlay").style.display = "flex"; }

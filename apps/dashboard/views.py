@@ -973,17 +973,21 @@ def change_password_view(request):
 @login_required
 @subscription_required
 def forms_list(request):
-    """Журнал всех документов компании"""
+    """Журнал всех документов компании с фильтром по типу"""
     member = CompanyMember.objects.filter(user=request.user).first()
     if not member:
         return redirect("dashboard:employees")
     company = member.company
     from apps.documents.models import Document
+    doc_type = request.GET.get('type', '')
     documents = Document.objects.filter(company=company).select_related('employee').order_by('-created_at')
+    if doc_type:
+        documents = documents.filter(doc_type=doc_type)
     employees = Employee.objects.filter(company=company, status='active').order_by('last_name')
     return render(request, 'dashboard/forms_list.html', {
         'documents': documents,
         'employees': employees,
+        'active_type': doc_type,
     })
 
 
