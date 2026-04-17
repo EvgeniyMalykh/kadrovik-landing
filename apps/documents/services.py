@@ -536,7 +536,7 @@ def generate_t5_pdf(employee, new_position, new_salary=None, order_number="ПР-
     return buffer.getvalue()
 
 
-def generate_salary_change_pdf(employee, new_salary, order_number="З-001") -> bytes:
+def generate_salary_change_pdf(employee, new_salary, order_number="З-001", previous_salary=None) -> bytes:
     """Приказ об изменении оклада."""
     font_name = _register_fonts()
     buffer = io.BytesIO()
@@ -564,10 +564,11 @@ def generate_salary_change_pdf(employee, new_salary, order_number="З-001") -> b
     story.append(Spacer(1, 5*mm))
     full_name = (employee.last_name + " " + employee.first_name + " " + employee.middle_name).strip()
     position = employee.position or "должность"
-    # Берём прежний оклад из истории (последняя запись), а не из текущего employee.salary
-    from apps.employees.models import SalaryHistory
-    salary_hist = employee.salary_history.order_by('-effective_date', '-created_at').first()
-    previous_salary = salary_hist.salary if salary_hist else employee.salary
+    # Прежний оклад: используем явно переданное значение, иначе из истории
+    if not previous_salary:
+        from apps.employees.models import SalaryHistory
+        salary_hist = employee.salary_history.order_by('-effective_date', '-created_at').first()
+        previous_salary = salary_hist.salary if salary_hist else None
     old_salary_text = (" Прежний оклад: " + str(previous_salary) + " руб.") if previous_salary else ""
     story.append(Paragraph("Основание: дополнительное соглашение к трудовому договору N ______ от ___________ г. (ст. 72 ТК РФ)", normal))
     story.append(Spacer(1, 3*mm))

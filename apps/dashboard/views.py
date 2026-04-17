@@ -530,7 +530,17 @@ def download_salary_change(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_salary_change_pdf
     new_salary = request.GET.get("salary", str(employee.salary or "0"))
-    pdf = generate_salary_change_pdf(employee, new_salary, request.GET.get("order", "З-001"))
+    # Прежний оклад: сначала из документа (надёжный источник), потом из GET-параметра
+    old_salary = ""
+    from apps.documents.models import Document
+    last_doc = Document.objects.filter(
+        employee=employee, doc_type='salary_change'
+    ).order_by('-date', '-id').first()
+    if last_doc and last_doc.extra_data and last_doc.extra_data.get('old_salary'):
+        old_salary = last_doc.extra_data['old_salary']
+    if not old_salary:
+        old_salary = request.GET.get("old_salary", "")
+    pdf = generate_salary_change_pdf(employee, new_salary, request.GET.get("order", "З-001"), previous_salary=old_salary)
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"SalaryChange_{employee.last_name}.pdf\""
     return r
@@ -1026,13 +1036,19 @@ def form_save(request, doc_type):
                 new_salary_val = None
             if new_salary_val and employee.salary != new_salary_val:
                 from apps.employees.models import SalaryHistory
+                old_salary = employee.salary  # сохраняем СТАРЫЙ оклад ДО обновления
                 effective = _parse_date_flexible(extra_data.get('change_date')) or date.today()
-                if employee.salary:
+                if old_salary:
                     SalaryHistory.objects.create(
                         employee=employee,
-                        salary=employee.salary,
+                        salary=old_salary,
                         effective_date=effective,
                     )
+                # Сохраняем старый оклад в extra_data документа для PDF
+                extra_data['old_salary'] = str(old_salary) if old_salary else '0'
+                document.extra_data = extra_data
+                document.save()
+                # Только ПОТОМ обновляем оклад сотрудника
                 employee.salary = new_salary_val
                 employee.save()
 

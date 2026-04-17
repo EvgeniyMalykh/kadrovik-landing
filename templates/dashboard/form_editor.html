@@ -193,6 +193,7 @@
   var docType = "{{ doc_type }}";
   var savedDocId = "{% if document %}{{ document.id }}{% endif %}";
   var savedEmployeeId = "{% if document %}{{ document.employee_id }}{% endif %}";
+  var employeeCurrentSalary = "";  // текущий оклад сотрудника ДО изменения (для PDF)
 
   // --- Автозаполнение при выборе сотрудника ---
   var empSelect = document.getElementById("employee-select");
@@ -210,6 +211,10 @@
         document.getElementById("emp-salary").textContent = data.salary ? (data.salary + " руб.") : "—";
         document.getElementById("emp-hiredate").textContent = data.hire_date || "—";
         document.getElementById("employee-info").style.display = "block";
+        // Запоминаем текущий оклад ДО изменения (для корректного отображения в PDF)
+        if (docType === "salary_change") {
+          employeeCurrentSalary = data.salary || "";
+        }
         // Показать блок текущего/предыдущего оклада для salary_change
         var salaryInfoBlock = document.getElementById("salary-current-info");
         if (salaryInfoBlock && docType === "salary_change") {
@@ -343,7 +348,7 @@
     } else if (docType === "salary_change") {
       var salary = document.querySelector('[name="new_salary"]').value || "";
       var order2 = document.querySelector('[name="doc_number"]').value || "З-001";
-      url = "/dashboard/employees/" + empId + "/salary-change/?salary=" + encodeURIComponent(salary) + "&order=" + encodeURIComponent(order2);
+      url = "/dashboard/employees/" + empId + "/salary-change/?salary=" + encodeURIComponent(salary) + "&order=" + encodeURIComponent(order2) + "&old_salary=" + encodeURIComponent(employeeCurrentSalary);
     }
     if (url) {
       btn.href = url;
