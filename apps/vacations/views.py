@@ -535,9 +535,9 @@ def generate_t7_pdf(company, year, entries):
 
     # Footer
     director_position = 'Ответственное лицо'
-    director_name = company.director_name or ''
+    director_name = ''
     elements.append(Paragraph(
-        f'{director_position}: _________________ / {director_name} /',
+        f'{director_position}: _______________________________',
         normal
     ))
     elements.append(Spacer(1, 5 * mm))

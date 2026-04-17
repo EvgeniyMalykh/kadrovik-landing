@@ -30,7 +30,7 @@
           {% if s.updated_at %}{{ s.updated_at|date:"d.m.Y H:i" }}{% else %}—{% endif %}
         </td>
         <td>
-          <a href="{% url 'vacations:schedule' %}?year={{ s.year }}" class="btn-secondary btn-sm">Открыть</a>
+          <a href="{% url 'vacations:schedule' %}?year={{ s.year }}" class="btn-secondary btn-sm" title="Редактировать график">✏️ Редактировать</a>
           <a href="{% url 'vacations:schedule_pdf' %}?year={{ s.year }}" class="btn-secondary btn-sm">PDF Т-7</a>
         </td>
       </tr>
