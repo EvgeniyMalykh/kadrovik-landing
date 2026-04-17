@@ -52,9 +52,94 @@
         + Добавить сотрудника
     </button>
 </div>
+
+<!-- Вкладки: Активные / Уволенные / Все -->
+<ul class="nav nav-tabs mb-3" style="border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:1rem !important;display:flex;gap:0;">
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'active' %}active{% endif %}"
+       href="?status=active{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}"
+       style="display:inline-block;padding:10px 20px;text-decoration:none;font-weight:600;font-size:0.9rem;border-radius:8px 8px 0 0;
+              {% if status_filter == 'active' %}background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-bottom:2px solid #3b82f6;{% else %}color:#94a3b8;border:1px solid transparent;{% endif %}">
+      Активные <span style="background:{% if status_filter == 'active' %}rgba(59,130,246,0.2){% else %}rgba(148,163,184,0.15){% endif %};padding:2px 8px;border-radius:10px;font-size:0.8rem;margin-left:4px;">{{ active_count }}</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'fired' %}active{% endif %}"
+       href="?status=fired{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}"
+       style="display:inline-block;padding:10px 20px;text-decoration:none;font-weight:600;font-size:0.9rem;border-radius:8px 8px 0 0;
+              {% if status_filter == 'fired' %}background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-bottom:2px solid #ef4444;{% else %}color:#94a3b8;border:1px solid transparent;{% endif %}">
+      Уволенные <span style="background:{% if status_filter == 'fired' %}rgba(239,68,68,0.2){% else %}rgba(148,163,184,0.15){% endif %};padding:2px 8px;border-radius:10px;font-size:0.8rem;margin-left:4px;">{{ fired_count }}</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == 'all' %}active{% endif %}"
+       href="?status=all{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}"
+       style="display:inline-block;padding:10px 20px;text-decoration:none;font-weight:600;font-size:0.9rem;border-radius:8px 8px 0 0;
+              {% if status_filter == 'all' %}background:rgba(148,163,184,0.15);color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);border-bottom:2px solid #94a3b8;{% else %}color:#94a3b8;border:1px solid transparent;{% endif %}">
+      Все
+    </a>
+  </li>
+</ul>
+
+<!-- Поиск и фильтры -->
+<form method="GET" class="row g-2 mb-3" id="search-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem !important;">
+  <input type="hidden" name="status" value="{{ status_filter }}">
+  <div style="flex:2;min-width:200px;">
+    <input type="text" name="q" value="{{ q }}" class="form-control"
+           placeholder="Поиск по ФИО, должности, отделу, таб. номеру..."
+           style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.05);color:#e2e8f0;font-size:0.9rem;">
+  </div>
+  <div style="flex:1;min-width:150px;">
+    <select name="department" class="form-select"
+            style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.05);color:#e2e8f0;font-size:0.9rem;">
+      <option value="">Все отделы</option>
+      {% for dept in departments %}
+        <option value="{{ dept.id }}" {% if department_filter == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="flex:1;min-width:140px;">
+    <select name="contract" class="form-select"
+            style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.05);color:#e2e8f0;font-size:0.9rem;">
+      <option value="">Тип договора</option>
+      <option value="permanent" {% if contract_filter == 'permanent' %}selected{% endif %}>Бессрочный</option>
+      <option value="fixed" {% if contract_filter == 'fixed' %}selected{% endif %}>Срочный</option>
+      <option value="gph" {% if contract_filter == 'gph' %}selected{% endif %}>ГПХ</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:6px;">
+    <button type="submit" class="btn-primary" style="padding:10px 20px;white-space:nowrap;">Найти</button>
+    {% if q or department_filter or contract_filter %}
+      <a href="?status={{ status_filter }}" class="btn-secondary" style="padding:10px 14px;text-decoration:none;white-space:nowrap;">&#10005;</a>
+    {% endif %}
+  </div>
+</form>
+
+{% if total_count == 0 and q or total_count == 0 and department_filter or total_count == 0 and contract_filter %}
+<div style="text-align:center;padding:60px 20px;color:#94a3b8;">
+    <div style="font-size:2.5rem;margin-bottom:12px;">&#128269;</div>
+    <p style="font-size:1rem;margin:0 0 12px;">Ничего не найдено</p>
+    <a href="?status={{ status_filter }}" class="btn-secondary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem;">Сбросить фильтры</a>
+</div>
+{% else %}
 <div class="card">
     <div id="employees-table">
         {% include "dashboard/partials/employees_table.html" %}
     </div>
 </div>
+{% endif %}
+
+<script>
+// Live-фильтр: auto-submit при вводе текста поиска
+document.addEventListener('DOMContentLoaded', function() {
+  var searchInput = document.querySelector('input[name="q"]');
+  if (!searchInput) return;
+  var form = document.getElementById('search-form');
+  var timer;
+  searchInput.addEventListener('input', function() {
+    clearTimeout(timer);
+    timer = setTimeout(function() { form.submit(); }, 600);
+  });
+});
+</script>
 {% endblock %}

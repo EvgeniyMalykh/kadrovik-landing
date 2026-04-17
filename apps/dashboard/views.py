@@ -42,15 +42,16 @@ def subscription_required(view_func):
 def employees_list(request):
     member = CompanyMember.objects.filter(user=request.user).first()
     if member:
-        employees = Employee.objects.filter(company=member.company).select_related("department")
         company = member.company
     else:
-        employees = Employee.objects.none()
-        company = None
+        return redirect('dashboard:login')
+
     from datetime import date as _date
     from apps.billing.models import Subscription
     from django.utils import timezone
     import datetime as _dt
+    from django.db.models import Q
+
     sub = getattr(company, "subscription", None) if company else None
     # Для старых аккаунтов без подписки — создаём trial
     if company and not sub:
@@ -70,6 +71,51 @@ def employees_list(request):
     sub_ctx = get_subscription_context(company)
     # Если подписка истекла — рендерим страницу с флагом (не редирект, т.к. главная)
     subscription_expired = bool(sub and not sub.is_active)
+
+    # Параметры фильтрации
+    q = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', 'active')
+    department_filter = request.GET.get('department', '')
+    contract_filter = request.GET.get('contract', '')
+
+    employees = Employee.objects.filter(company=company).select_related('department')
+
+    # Фильтр по статусу
+    if status_filter == 'active':
+        employees = employees.filter(status='active')
+    elif status_filter == 'fired':
+        employees = employees.filter(status='fired')
+    # 'all' — без фильтра по статусу
+
+    # Поиск по ФИО, должности, отделу, таб. номеру, телефону
+    if q:
+        employees = employees.filter(
+            Q(last_name__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(middle_name__icontains=q) |
+            Q(position__icontains=q) |
+            Q(department__name__icontains=q) |
+            Q(personnel_number__icontains=q) |
+            Q(phone__icontains=q)
+        )
+
+    # Фильтр по отделу
+    if department_filter:
+        employees = employees.filter(department_id=department_filter)
+
+    # Фильтр по типу договора
+    if contract_filter:
+        employees = employees.filter(contract_type=contract_filter)
+
+    employees = employees.order_by('last_name', 'first_name')
+
+    # Счётчики для вкладок
+    active_count = Employee.objects.filter(company=company, status='active').count()
+    fired_count = Employee.objects.filter(company=company, status='fired').count()
+
+    # Отделы для фильтра
+    departments = Department.objects.filter(company=company).order_by('name')
+
     return render(request, "dashboard/employees.html", {
         "employees": employees,
         "company": company,
@@ -77,8 +123,18 @@ def employees_list(request):
         "sub": sub,
         "trial_days_left": trial_days_left,
         "subscription_expired": subscription_expired,
+        "q": q,
+        "status_filter": status_filter,
+        "department_filter": department_filter,
+        "contract_filter": contract_filter,
+        "active_count": active_count,
+        "fired_count": fired_count,
+        "departments": departments,
+        "total_count": employees.count(),
         **sub_ctx,
     })
+
+
 
 
 
@@ -2172,3 +2228,183 @@ def _sfr_export_generate(request, company):
     response = HttpResponse(xml_bytes, content_type='application/xml; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename=' + filename
     return response
+
+
+# ===== СОБЫТИЯ =====
+
+@login_required
+def events_list(request):
+    """Страница ленты HR-событий компании."""
+    from apps.events.models import HREvent
+    from apps.employees.models import Employee
+    from apps.vacations.models import Vacation
+    from django.utils import timezone
+    from datetime import timedelta
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+    employees = Employee.objects.filter(company=company, status='active')
+
+    today = timezone.now().date()
+    upcoming_days = 30
+
+    events = []
+
+    # 1. Дни рождения (в следующие 30 дней)
+    for emp in employees:
+        if not emp.birth_date:
+            continue
+        try:
+            bday_this_year = emp.birth_date.replace(year=today.year)
+        except ValueError:
+            # 29 февраля
+            bday_this_year = emp.birth_date.replace(year=today.year, day=28)
+        if bday_this_year < today:
+            try:
+                bday_this_year = emp.birth_date.replace(year=today.year + 1)
+            except ValueError:
+                bday_this_year = emp.birth_date.replace(year=today.year + 1, day=28)
+        days_until = (bday_this_year - today).days
+        if 0 <= days_until <= upcoming_days:
+            age = today.year - emp.birth_date.year + (1 if bday_this_year.year > today.year else 0)
+            events.append({
+                'type': 'birthday',
+                'icon': '\U0001f382',
+                'color': 'info',
+                'title': f'\u0414\u0435\u043d\u044c \u0440\u043e\u0436\u0434\u0435\u043d\u0438\u044f \u2014 {emp.last_name} {emp.first_name}',
+                'description': f'\u0418\u0441\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f {age} \u043b\u0435\u0442',
+                'date': bday_this_year,
+                'days_until': days_until,
+                'employee': emp,
+                'urgency': 'today' if days_until == 0 else ('soon' if days_until <= 3 else 'upcoming'),
+            })
+
+    # 2. Испытательный срок (заканчивается в следующие 14 дней)
+    for emp in employees:
+        if not emp.probation_end_date:
+            continue
+        days_until = (emp.probation_end_date - today).days
+        if 0 <= days_until <= 14:
+            events.append({
+                'type': 'probation',
+                'icon': '\u23f0',
+                'color': 'warning',
+                'title': f'\u0418\u0441\u043f\u044b\u0442\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0439 \u0441\u0440\u043e\u043a \u2014 {emp.last_name} {emp.first_name}',
+                'description': f'\u0417\u0430\u043a\u0430\u043d\u0447\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u0447\u0435\u0440\u0435\u0437 {days_until} \u0434\u043d.',
+                'date': emp.probation_end_date,
+                'days_until': days_until,
+                'employee': emp,
+                'urgency': 'today' if days_until == 0 else ('soon' if days_until <= 3 else 'upcoming'),
+            })
+
+    # 3. Срочные договоры (заканчиваются в следующие 14 дней)
+    for emp in employees:
+        if emp.contract_type != 'fixed_term' or not emp.contract_end_date:
+            continue
+        days_until = (emp.contract_end_date - today).days
+        if 0 <= days_until <= 14:
+            events.append({
+                'type': 'contract',
+                'icon': '\U0001f4c4',
+                'color': 'danger',
+                'title': f'\u0421\u0440\u043e\u0447\u043d\u044b\u0439 \u0434\u043e\u0433\u043e\u0432\u043e\u0440 \u2014 {emp.last_name} {emp.first_name}',
+                'description': f'\u0418\u0441\u0442\u0435\u043a\u0430\u0435\u0442 \u0447\u0435\u0440\u0435\u0437 {days_until} \u0434\u043d.',
+                'date': emp.contract_end_date,
+                'days_until': days_until,
+                'employee': emp,
+                'urgency': 'today' if days_until == 0 else ('soon' if days_until <= 3 else 'upcoming'),
+            })
+
+    # 4. Отпуска (начинаются в следующие 7 дней или текущие)
+    try:
+        vacations = Vacation.objects.filter(
+            employee__company=company,
+            start_date__lte=today + timedelta(days=7),
+            end_date__gte=today
+        ).select_related('employee')
+        for vac in vacations:
+            days_until = (vac.start_date - today).days
+            events.append({
+                'type': 'vacation',
+                'icon': '\U0001f3d6\ufe0f',
+                'color': 'success',
+                'title': f'\u041e\u0442\u043f\u0443\u0441\u043a \u2014 {vac.employee.last_name} {vac.employee.first_name}',
+                'description': vac.start_date.strftime('%d.%m') + ' — ' + vac.end_date.strftime('%d.%m.%Y'),
+                'date': vac.start_date,
+                'days_until': max(0, days_until),
+                'employee': vac.employee,
+                'urgency': 'today' if days_until <= 0 else ('soon' if days_until <= 2 else 'upcoming'),
+            })
+    except Exception:
+        pass
+
+    # Сортировать по дате
+    events.sort(key=lambda x: (x['date'], x['days_until']))
+
+    # Разбить на срочные и предстоящие
+    urgent_events = [e for e in events if e['days_until'] <= 3]
+    upcoming_events = [e for e in events if e['days_until'] > 3]
+
+    context = {
+        'events': events,
+        'urgent_events': urgent_events,
+        'upcoming_events': upcoming_events,
+        'today': today,
+    }
+    return render(request, 'dashboard/events.html', context)
+
+
+@login_required
+def events_count_api(request):
+    """JSON API — количество срочных событий (для колокольчика в header)."""
+    from apps.employees.models import Employee
+    from apps.vacations.models import Vacation
+    from django.http import JsonResponse
+    from django.utils import timezone
+    from datetime import timedelta
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return JsonResponse({'count': 0})
+    company = member.company
+    employees = Employee.objects.filter(company=company, status='active')
+    today = timezone.now().date()
+    count = 0
+
+    for emp in employees:
+        # Дни рождения <= 3 дней
+        if emp.birth_date:
+            try:
+                bday = emp.birth_date.replace(year=today.year)
+            except ValueError:
+                bday = emp.birth_date.replace(year=today.year, day=28)
+            if bday < today:
+                try:
+                    bday = emp.birth_date.replace(year=today.year + 1)
+                except ValueError:
+                    bday = emp.birth_date.replace(year=today.year + 1, day=28)
+            if (bday - today).days <= 3:
+                count += 1
+        # Испытательный срок <= 7 дней
+        if emp.probation_end_date:
+            if 0 <= (emp.probation_end_date - today).days <= 7:
+                count += 1
+        # Срочный договор <= 7 дней
+        if emp.contract_type == 'fixed_term' and emp.contract_end_date:
+            if 0 <= (emp.contract_end_date - today).days <= 7:
+                count += 1
+
+    # Отпуска <= 3 дней
+    try:
+        vac_count = Vacation.objects.filter(
+            employee__company=company,
+            start_date__lte=today + timedelta(days=3),
+            start_date__gte=today,
+        ).count()
+        count += vac_count
+    except Exception:
+        pass
+
+    return JsonResponse({'count': count})
