@@ -110,8 +110,8 @@ def _save_employee_from_post(post, employee):
     employee.first_name  = post.get("first_name", "")
     employee.middle_name = post.get("middle_name", "")
     employee.position    = post.get("position", "")
-    salary_val = post.get('salary', '').strip()
-    employee.salary = salary_val if salary_val else (employee.salary if employee.pk else 0)
+    salary_raw = post.get('salary')
+    employee.salary = salary_raw if salary_raw not in (None, '') else None
 
     # Структурное подразделение
     dept_id = post.get("department_id")

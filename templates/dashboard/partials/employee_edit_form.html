@@ -86,7 +86,7 @@
             </div>
             <div class="form-group">
                 <label>Оклад (₽)</label>
-                <input type="number" name="salary" value="{{ emp.salary }}">
+                <input type="number" step="0.01" name="salary" class="form-control" value="{{ emp.salary|default:'' }}">
             </div>
         </div>
         <div class="form-row-2">
