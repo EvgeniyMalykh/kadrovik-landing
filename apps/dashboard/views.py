@@ -721,6 +721,8 @@ def company_profile(request):
         company.ogrn             = request.POST.get("ogrn", company.ogrn)
         company.kpp              = request.POST.get("kpp", company.kpp)
         company.okpo             = request.POST.get("okpo", company.okpo)
+        company.sfr_reg_number   = request.POST.get("sfr_reg_number", company.sfr_reg_number)
+        company.okved            = request.POST.get("okved", company.okved)
         company.legal_address    = request.POST.get("legal_address", company.legal_address)
         company.actual_address   = request.POST.get("actual_address", company.actual_address)
         company.director_name    = request.POST.get("director_name", company.director_name)
@@ -2047,4 +2049,126 @@ def document_template_download(request, doc_type, employee_id):
     filename = f"{doc_type}_{employee.last_name}.docx"
     response = HttpResponse(docx_bytes, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+
+# ===== SFR EXPORT =====
+
+@login_required
+def sfr_export(request):
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+    from apps.employees.models import Employee
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-created_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+
+    context = {
+        'has_sfr_export': features.get('sfr_export', False),
+        'company': company,
+    }
+
+    if not features.get('sfr_export'):
+        return render(request, 'dashboard/sfr_export.html', context)
+
+    if request.method == 'POST':
+        return _sfr_export_generate(request, company)
+
+    # GET
+    employees = Employee.objects.filter(company=company).order_by('last_name')
+
+    period_start_str = request.GET.get('period_start', '')
+    period_end_str = request.GET.get('period_end', '')
+
+    import datetime as _dt
+    today = date.today()
+    try:
+        period_start = _dt.datetime.strptime(period_start_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        period_start = date(today.year, today.month, 1)
+    try:
+        period_end = _dt.datetime.strptime(period_end_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        period_end = today
+
+    events_preview = []
+    for emp in employees:
+        if emp.hire_date and period_start <= emp.hire_date <= period_end:
+            events_preview.append({
+                'employee': emp,
+                'event_type': 'hire',
+                'event_label': 'Приём',
+                'event_date': emp.hire_date,
+                'position': emp.position or '',
+            })
+        if emp.fire_date and period_start <= emp.fire_date <= period_end:
+            events_preview.append({
+                'employee': emp,
+                'event_type': 'dismiss',
+                'event_label': 'Увольнение',
+                'event_date': emp.fire_date,
+                'position': emp.position or '',
+            })
+
+    events_preview.sort(key=lambda x: x['event_date'])
+
+    context.update({
+        'events_preview': events_preview,
+        'period_start': period_start.strftime('%Y-%m-%d'),
+        'period_end': period_end.strftime('%Y-%m-%d'),
+        'has_sfr_reg_number': bool(company.sfr_reg_number),
+        'has_okved': bool(company.okved),
+    })
+
+    return render(request, 'dashboard/sfr_export.html', context)
+
+
+def _sfr_export_generate(request, company):
+    from apps.documents.sfr_generator import generate_efs1_xml
+    from apps.employees.models import Employee
+    import datetime as _dt
+
+    period_start_str = request.POST.get('period_start', '')
+    period_end_str = request.POST.get('period_end', '')
+
+    today = date.today()
+    try:
+        period_start = _dt.datetime.strptime(period_start_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        period_start = date(today.year, today.month, 1)
+    try:
+        period_end = _dt.datetime.strptime(period_end_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        period_end = today
+
+    employees = Employee.objects.filter(company=company)
+    events = []
+    for emp in employees:
+        if emp.hire_date and period_start <= emp.hire_date <= period_end:
+            events.append({
+                'employee': emp,
+                'event_type': 'hire',
+                'event_date': emp.hire_date,
+                'position': emp.position or '',
+            })
+        if emp.fire_date and period_start <= emp.fire_date <= period_end:
+            events.append({
+                'employee': emp,
+                'event_type': 'dismiss',
+                'event_date': emp.fire_date,
+                'position': emp.position or '',
+            })
+
+    xml_bytes = generate_efs1_xml(company, events, period_start, period_end)
+
+    filename = 'EFS1_' + (company.inn or 'noinn') + '_' + today.strftime('%Y%m%d') + '.xml'
+    response = HttpResponse(xml_bytes, content_type='application/xml; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename=' + filename
     return response

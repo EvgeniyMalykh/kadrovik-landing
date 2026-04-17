@@ -17,6 +17,8 @@ class Company(models.Model):
     ogrn = models.CharField('ОГРН', max_length=15, blank=True)
     kpp = models.CharField('КПП', max_length=9, blank=True)
     okpo = models.CharField('ОКПО', max_length=10, blank=True)
+    sfr_reg_number = models.CharField("Рег. номер СФР", max_length=20, blank=True)
+    okved = models.CharField("ОКВЭД", max_length=10, blank=True)
     legal_address = models.TextField('Юридический адрес')
     actual_address = models.TextField('Фактический адрес', blank=True)
     director_name = models.CharField('ФИО руководителя', max_length=255)
