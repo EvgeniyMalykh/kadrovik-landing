@@ -86,6 +86,11 @@
     </aside>
     <main class="main-content">
         <div class="content-wrapper">
+            {% if subscription and not subscription.is_active %}
+            <div style="background:#dc2626;color:#fff;padding:10px 20px;text-align:center;font-size:0.9rem;border-radius:8px;margin-bottom:1rem;">
+              &#9888;&#65039; Подписка истекла. <a href="/dashboard/subscription/" style="color:#fff;font-weight:600;text-decoration:underline;">Выберите тариф</a> для продолжения работы.
+            </div>
+            {% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>

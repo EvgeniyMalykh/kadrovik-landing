@@ -20,6 +20,7 @@ def subscription_features(request):
         member = CompanyMember.objects.filter(user=request.user).first()
         company = member.company if member else None
         ctx = get_subscription_context(company)
+        ctx['subscription'] = ctx.get('sub')
         return ctx
     except Exception:
         return {

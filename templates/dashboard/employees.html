@@ -2,6 +2,22 @@
 {% block title %}Сотрудники — Кадровый автопилот{% endblock %}
 {% block nav_employees %}active{% endblock %}
 {% block content %}
+{% if subscription_expired %}
+<div id="paywall-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:#1e293b;border-radius:16px;padding:40px;max-width:520px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+    <div style="font-size:48px;margin-bottom:16px;">&#128274;</div>
+    <h2 style="color:#f1f5f9;font-size:1.5rem;margin:0 0 12px;">Пробный период завершён</h2>
+    <p style="color:#94a3b8;margin:0 0 32px;line-height:1.6;">
+      Ваш пробный период истёк. Выберите тариф чтобы продолжить работу с кадровыми документами.
+    </p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="{% url 'billing:checkout' 'start' %}" style="background:#3b82f6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Старт — 790 &#8381;/мес</a>
+      <a href="{% url 'billing:checkout' 'business' %}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Бизнес — 1 990 &#8381;/мес</a>
+      <a href="{% url 'billing:checkout' 'pro' %}" style="background:#8b5cf6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Про — 4 900 &#8381;/мес</a>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% if trial_days_left is not None %}
 <div class="trial-banner {% if trial_days_left <= 2 %}trial-banner--urgent{% endif %}">
     <div class="trial-banner__icon">⏳</div>

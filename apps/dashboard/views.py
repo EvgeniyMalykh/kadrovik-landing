@@ -65,19 +65,17 @@ def employees_list(request):
     if sub and sub.plan == Subscription.Plan.TRIAL and sub.expires_at:
         delta = sub.expires_at - timezone.now()
         trial_days_left = max(0, delta.days)
-    # Если подписка истекла — редирект на тарифы
-    if sub and not sub.is_active:
-        from django.contrib import messages
-        messages.error(request, "Ваша подписка истекла. Выберите тариф для продолжения работы.")
-        return redirect("dashboard:subscription")
     from apps.billing.services import get_subscription_context
     sub_ctx = get_subscription_context(company)
+    # Если подписка истекла — рендерим страницу с флагом (не редирект, т.к. главная)
+    subscription_expired = bool(sub and not sub.is_active)
     return render(request, "dashboard/employees.html", {
         "employees": employees,
         "company": company,
         "today": _date.today().isoformat(),
         "sub": sub,
         "trial_days_left": trial_days_left,
+        "subscription_expired": subscription_expired,
         **sub_ctx,
     })
 
