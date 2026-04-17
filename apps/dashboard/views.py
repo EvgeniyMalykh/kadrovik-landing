@@ -1890,3 +1890,40 @@ def team_invite_cancel(request, invite_id):
     invite.delete()
     django_messages.success(request, 'Приглашение отменено.')
     return redirect('dashboard:team_list')
+
+
+@login_required
+def api_settings(request):
+    """Страница управления API-токеном."""
+    from apps.billing.services import PLANS
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    sub = getattr(member.company, 'subscription', None)
+    plan = sub.plan if sub else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+
+    token = None
+    if features.get('api'):
+        from rest_framework.authtoken.models import Token
+        token, _ = Token.objects.get_or_create(user=request.user)
+
+    context = {
+        'token': token,
+        'has_api': features.get('api', False),
+        'api_base_url': request.build_absolute_uri('/api/v1/'),
+    }
+    return render(request, 'dashboard/api_settings.html', context)
+
+
+@login_required
+def api_token_regenerate(request):
+    """Пересоздать API-токен."""
+    if request.method != 'POST':
+        return redirect('dashboard:api_settings')
+    from rest_framework.authtoken.models import Token
+    Token.objects.filter(user=request.user).delete()
+    Token.objects.create(user=request.user)
+    from django.contrib import messages
+    messages.success(request, 'API-токен обновлён.')
+    return redirect('dashboard:api_settings')

@@ -62,4 +62,8 @@ urlpatterns = [
     path("team/member/<int:member_id>/remove/", views.team_member_remove, name="team_member_remove"),
     path("team/invite/<int:invite_id>/cancel/", views.team_invite_cancel, name="team_invite_cancel"),
     path("invite/<uuid:token>/", views.invite_accept, name="invite_accept"),
+    # API
+    path("api/", views.api_settings, name="api_settings"),
+    path("api/token/regenerate/", views.api_token_regenerate, name="api_token_regenerate"),
+
 ]

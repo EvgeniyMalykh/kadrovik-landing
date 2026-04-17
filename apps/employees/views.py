@@ -4,13 +4,20 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.http import HttpResponse
 from .models import Employee, Department
-from .serializers import EmployeeSerializer, EmployeeCreateSerializer, DepartmentSerializer
+from .serializers import (
+    EmployeeSerializer, EmployeeCreateSerializer, DepartmentSerializer,
+    HREventSerializer, DocumentSerializer, CompanySerializer,
+)
+from .permissions import HasAPIAccess
 from apps.documents.services import generate_t1_pdf
+from apps.events.models import HREvent
+from apps.documents.models import Document
+from apps.companies.models import Company, CompanyMember
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     serializer_class = DepartmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasAPIAccess]
 
     def get_queryset(self):
         user = self.request.user
@@ -20,7 +27,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasAPIAccess]
 
     def get_queryset(self):
         user = self.request.user
@@ -47,3 +54,36 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
+
+
+class HREventViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [HasAPIAccess]
+    serializer_class = HREventSerializer
+
+    def get_queryset(self):
+        member = CompanyMember.objects.filter(user=self.request.user).first()
+        if not member:
+            return HREvent.objects.none()
+        return HREvent.objects.filter(company=member.company).select_related('employee').order_by('-event_date')
+
+
+class DocumentViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [HasAPIAccess]
+    serializer_class = DocumentSerializer
+
+    def get_queryset(self):
+        member = CompanyMember.objects.filter(user=self.request.user).first()
+        if not member:
+            return Document.objects.none()
+        return Document.objects.filter(company=member.company).select_related('employee').order_by('-created_at')
+
+
+class CompanyAPIViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [HasAPIAccess]
+    serializer_class = CompanySerializer
+
+    def get_queryset(self):
+        member = CompanyMember.objects.filter(user=self.request.user).first()
+        if not member:
+            return Company.objects.none()
+        return Company.objects.filter(id=member.company_id)
