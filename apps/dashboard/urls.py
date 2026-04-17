@@ -56,4 +56,10 @@ urlpatterns = [
     # Email верификация
     path("verify-email/<uuid:token>/", views.verify_email_view, name="verify_email"),
     path("resend-verification/", views.resend_verification_view, name="resend_verification"),
+    # Команда
+    path("team/", views.team_list, name="team_list"),
+    path("team/invite/", views.team_invite, name="team_invite"),
+    path("team/member/<int:member_id>/remove/", views.team_member_remove, name="team_member_remove"),
+    path("team/invite/<int:invite_id>/cancel/", views.team_invite_cancel, name="team_invite_cancel"),
+    path("invite/<uuid:token>/", views.invite_accept, name="invite_accept"),
 ]

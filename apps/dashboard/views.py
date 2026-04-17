@@ -1712,3 +1712,181 @@ def export_timesheet_excel(request):
     )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
+
+
+# ===== TEAM MANAGEMENT =====
+
+from apps.companies.models import CompanyInvite
+from django.contrib import messages as django_messages
+
+
+@login_required
+def team_list(request):
+    """Страница управления командой."""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+    members = CompanyMember.objects.filter(company=company).select_related('user').order_by('created_at')
+    pending_invites = CompanyInvite.objects.filter(company=company, accepted=False).order_by('-created_at')
+    context = {
+        'members': members,
+        'pending_invites': pending_invites,
+        'current_member': member,
+    }
+    return render(request, 'dashboard/team.html', context)
+
+
+@login_required
+def team_invite(request):
+    """Отправить приглашение."""
+    if request.method != 'POST':
+        return redirect('dashboard:team_list')
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    # Проверка тарифа
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+    subscription = Subscription.objects.filter(company=company).order_by('-created_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    plan_features = PLANS.get(plan, PLANS['trial'])['features']
+    if not plan_features.get('multi_user'):
+        django_messages.error(request, 'Функция доступна с тарифа Бизнес.')
+        return redirect('dashboard:team_list')
+
+    email = request.POST.get('email', '').strip().lower()
+    role = request.POST.get('role', 'hr')
+
+    if not email:
+        django_messages.error(request, 'Введите email.')
+        return redirect('dashboard:team_list')
+
+    # Проверка: пользователь уже в команде?
+    existing_user = User.objects.filter(email=email).first()
+    if existing_user and CompanyMember.objects.filter(company=company, user=existing_user).exists():
+        django_messages.warning(request, 'Этот пользователь уже в вашей команде.')
+        return redirect('dashboard:team_list')
+
+    # Создать или обновить приглашение
+    from django.utils import timezone
+    from datetime import timedelta as td
+    invite, created = CompanyInvite.objects.update_or_create(
+        company=company,
+        email=email,
+        defaults={
+            'invited_by': request.user,
+            'role': role,
+            'accepted': False,
+            'expires_at': timezone.now() + td(days=7),
+        }
+    )
+
+    # Отправить email
+    invite_url = request.build_absolute_uri(f'/dashboard/invite/{invite.token}/')
+    from django.core.mail import send_mail
+    from django.conf import settings as django_settings
+    subject = f'Приглашение в {company.name} — Кадровый автопилот'
+    plain = f'Вас приглашают присоединиться к компании {company.name}.\nПерейдите по ссылке: {invite_url}'
+    html = f"""
+    <html><body style="font-family: Arial, sans-serif; color: #333;">
+    <div style="max-width:600px;margin:0 auto;padding:20px;">
+    <h2 style="color:#1e3a5f;">Приглашение в команду</h2>
+    <p>Вас приглашают присоединиться к компании <strong>{company.name}</strong> в системе «Кадровый автопилот».</p>
+    <p style="margin:30px 0;">
+      <a href="{invite_url}" style="background:#1e3a5f;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:16px;">Принять приглашение</a>
+    </p>
+    <p style="color:#888;font-size:13px;">Ссылка действует 7 дней. Если вы не ожидали этого письма — просто проигнорируйте его.</p>
+    <hr style="border:none;border-top:1px solid #eee;margin-top:30px;">
+    <p style="color:#aaa;font-size:12px;">Кадровый автопилот | kadrovik-auto.ru</p>
+    </div></body></html>
+    """
+    try:
+        send_mail(subject, plain, django_settings.DEFAULT_FROM_EMAIL, [email], html_message=html, fail_silently=False)
+        django_messages.success(request, f'Приглашение отправлено на {email}.')
+    except Exception as e:
+        django_messages.error(request, f'Ошибка отправки email: {e}')
+
+    return redirect('dashboard:team_list')
+
+
+def invite_accept(request, token):
+    """Принятие приглашения (публичный URL)."""
+    from django.utils import timezone
+    invite = get_object_or_404(CompanyInvite, token=token, accepted=False)
+    if invite.is_expired():
+        return render(request, 'dashboard/invite_expired.html', {'invite': invite})
+
+    if request.method == 'POST':
+        if request.user.is_authenticated:
+            user = request.user
+        else:
+            from django.contrib.auth import get_user_model
+            UserModel = get_user_model()
+            email = request.POST.get('email', '').strip().lower()
+            password = request.POST.get('password', '')
+            confirm = request.POST.get('confirm_password', '')
+            is_new = request.POST.get('is_new') == '1'
+
+            if is_new:
+                if password != confirm:
+                    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пароли не совпадают'})
+                if len(password) < 6:
+                    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пароль должен быть не менее 6 символов'})
+                if UserModel.objects.filter(email=email).exists():
+                    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пользователь с таким email уже существует. Войдите в аккаунт.'})
+                user = UserModel.objects.create_user(email=email, password=password, username=email)
+            else:
+                user = authenticate(request, email=email, password=password)
+                if not user:
+                    user = authenticate(request, username=email, password=password)
+                if not user:
+                    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Неверный email или пароль'})
+            login(request, user)
+
+        # Добавить в компанию
+        CompanyMember.objects.get_or_create(
+            company=invite.company,
+            user=request.user,
+            defaults={'role': invite.role}
+        )
+        invite.accepted = True
+        invite.save()
+        django_messages.success(request, f'Вы присоединились к компании {invite.company.name}!')
+        return redirect('dashboard:home')
+
+    # GET — показать форму
+    already_member = request.user.is_authenticated and CompanyMember.objects.filter(company=invite.company, user=request.user).exists()
+    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'already_member': already_member})
+
+
+@login_required
+def team_member_remove(request, member_id):
+    """Удалить участника команды."""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    target = get_object_or_404(CompanyMember, id=member_id, company=member.company)
+    if target.role == 'owner':
+        django_messages.error(request, 'Нельзя удалить владельца компании.')
+        return redirect('dashboard:team_list')
+    if target.user == request.user:
+        django_messages.error(request, 'Нельзя удалить себя.')
+        return redirect('dashboard:team_list')
+    target.delete()
+    django_messages.success(request, 'Участник удалён из команды.')
+    return redirect('dashboard:team_list')
+
+
+@login_required
+def team_invite_cancel(request, invite_id):
+    """Отменить приглашение."""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    invite = get_object_or_404(CompanyInvite, id=invite_id, company=member.company, accepted=False)
+    invite.delete()
+    django_messages.success(request, 'Приглашение отменено.')
+    return redirect('dashboard:team_list')

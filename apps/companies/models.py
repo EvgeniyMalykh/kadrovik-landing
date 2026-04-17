@@ -1,5 +1,8 @@
+import uuid
+
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class Company(models.Model):
@@ -50,3 +53,30 @@ class CompanyMember(models.Model):
 
     def __str__(self):
         return f'{self.user} — {self.company} ({self.get_role_display()})'
+
+
+class CompanyInvite(models.Model):
+    class Role(models.TextChoices):
+        ADMIN = 'admin', 'Администратор'
+        HR = 'hr', 'Кадровик'
+        ACCOUNTANT = 'accountant', 'Бухгалтер'
+
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='invites')
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_invites')
+    email = models.EmailField()
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.HR)
+    accepted = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Приглашение'
+        verbose_name_plural = 'Приглашения'
+        unique_together = ('company', 'email')
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return f"{self.email} → {self.company.name}"
