@@ -340,10 +340,16 @@ def subscription(request):
     member = CompanyMember.objects.filter(user=request.user).first()
     sub = None
     payments = []
+    employee_count = 0
     if member:
         sub = getattr(member.company, "subscription", None)
-        payments = member.company.payments.all()[:10]
-    return render(request, "dashboard/subscription.html", {"sub": sub, "payments": payments})
+        payments = member.company.payments.order_by('-created_at')[:10]
+        employee_count = Employee.objects.filter(company=member.company).count()
+    return render(request, "dashboard/subscription.html", {
+        "sub": sub,
+        "payments": payments,
+        "employee_count": employee_count,
+    })
 
 
 def login_view(request):

@@ -42,6 +42,19 @@ def payment_success(request):
     return redirect("dashboard:subscription")
 
 
+@login_required
+def cancel_autorenew(request):
+    """Отключает автопродление подписки."""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if member:
+        sub = getattr(member.company, 'subscription', None)
+        if sub:
+            sub.auto_renew = False
+            sub.payment_method_id = ''
+            sub.save(update_fields=['auto_renew', 'payment_method_id'])
+    return redirect("dashboard:subscription")
+
+
 @csrf_exempt
 @require_POST
 def yukassa_webhook(request):
