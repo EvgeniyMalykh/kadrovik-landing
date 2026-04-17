@@ -32,6 +32,9 @@ urlpatterns = [
     path("employees/<int:employee_id>/gph-contract/", views.download_gph_contract, name="download_gph_contract"),
     path("employees/<int:employee_id>/gph-act/", views.download_gph_act, name="download_gph_act"),
     # Табель — на всю компанию
+    # Excel export
+    path("export/employees/", views.export_employees_excel, name="export_employees_excel"),
+    path("export/timesheet/", views.export_timesheet_excel, name="export_timesheet_excel"),
     path("t13/", views.download_t13, name="download_t13"),
     path("timesheet/", views.timesheet_edit, name="timesheet_edit"),
     path("timesheet/save/", views.timesheet_save, name="timesheet_save"),

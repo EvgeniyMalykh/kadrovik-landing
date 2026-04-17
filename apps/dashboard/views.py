@@ -1461,3 +1461,254 @@ def delete_document(request, doc_id):
         return JsonResponse({"success": True})
     except Document.DoesNotExist:
         return JsonResponse({"success": False, "error": "Документ не найден"}, status=404)
+
+
+# ─── EXCEL EXPORT ────────────────────────────────────────────────────────────
+
+def _require_plan(request, min_plan):
+    """Проверяет тариф пользователя. Возвращает True если доступ разрешён."""
+    PLAN_RANK = {'trial': 0, 'start': 1, 'business': 2, 'pro': 3}
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return False
+    sub = getattr(member.company, 'subscription', None)
+    if not sub or not sub.is_active:
+        return False
+    return PLAN_RANK.get(sub.plan, 0) >= PLAN_RANK.get(min_plan, 2)
+
+
+@login_required
+@subscription_required
+def export_employees_excel(request):
+    """Экспорт списка сотрудников в Excel. Тариф Бизнес+."""
+    from django.http import HttpResponse, JsonResponse
+    if not _require_plan(request, 'business'):
+        return JsonResponse({'error': 'Функция доступна на тарифах Бизнес и Корпоратив'}, status=403)
+
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    company = member.company
+    employees = Employee.objects.filter(company=company).select_related('department').order_by('last_name')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Сотрудники'
+
+    header_fill = PatternFill('solid', fgColor='1E40AF')
+    header_font = Font(bold=True, color='FFFFFF', size=10)
+    cell_font   = Font(size=10)
+    border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'),  bottom=Side(style='thin')
+    )
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left   = Alignment(horizontal='left',   vertical='center', wrap_text=True)
+
+    ws.merge_cells('A1:K1')
+    ws['A1'] = f'{company.name} — Список сотрудников'
+    ws['A1'].font = Font(bold=True, size=13)
+    ws['A1'].alignment = center
+    ws.row_dimensions[1].height = 28
+
+    headers = ['#', 'Фамилия', 'Имя', 'Отчество', 'Должность', 'Отдел', 'Таб. номер', 'Дата приёма', 'Оклад', 'Телефон', 'Статус']
+    col_widths = [5, 18, 14, 14, 22, 18, 13, 14, 12, 16, 12]
+
+    for col_idx, (h, w) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=2, column=col_idx, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center
+        cell.border = border
+        ws.column_dimensions[get_column_letter(col_idx)].width = w
+    ws.row_dimensions[2].height = 22
+
+    STATUS_LABELS = {'active': 'Работает', 'fired': 'Уволен', 'vacation': 'В отпуске'}
+
+    for row_idx, emp in enumerate(employees, 3):
+        row = [
+            row_idx - 2,
+            emp.last_name or '',
+            emp.first_name or '',
+            emp.middle_name or '',
+            emp.position or '',
+            emp.department.name if emp.department else '',
+            emp.personnel_number or '',
+            emp.hire_date.strftime('%d.%m.%Y') if emp.hire_date else '',
+            f'{emp.salary:,.2f} ₽' if emp.salary else '',
+            emp.phone or '',
+            STATUS_LABELS.get(emp.status, emp.status),
+        ]
+        alt_fill = PatternFill('solid', fgColor='EFF6FF') if row_idx % 2 == 0 else None
+        for col_idx, val in enumerate(row, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.font = cell_font
+            cell.border = border
+            cell.alignment = center if col_idx in (1, 7, 8, 9, 11) else left
+            if alt_fill:
+                cell.fill = alt_fill
+
+    total_row = len(employees) + 3
+    ws.cell(row=total_row, column=1, value='ИТОГО:')
+    ws.cell(row=total_row, column=1).font = Font(bold=True, size=10)
+    ws.cell(row=total_row, column=2, value=f'{employees.count()} чел.')
+    ws.cell(row=total_row, column=2).font = Font(bold=True, size=10)
+
+    ws.freeze_panes = 'A3'
+
+    from io import BytesIO
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    from datetime import date as _d
+    filename = f'employees_{company.name}_{_d.today().strftime("%Y%m%d")}.xlsx'
+    response = HttpResponse(
+        buf.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@subscription_required
+def export_timesheet_excel(request):
+    """Экспорт табеля в Excel. Тариф Бизнес+."""
+    import calendar
+    import datetime
+    from django.http import HttpResponse, JsonResponse
+    from apps.employees.models import TimeRecord
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    if not _require_plan(request, 'business'):
+        return JsonResponse({'error': 'Функция доступна на тарифах Бизнес и Корпоратив'}, status=403)
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    company = member.company
+
+    try:
+        y = int(request.GET.get('year', datetime.date.today().year))
+        m = int(request.GET.get('month', datetime.date.today().month))
+    except (ValueError, TypeError):
+        y, m = datetime.date.today().year, datetime.date.today().month
+
+    month_names = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+                   'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+    days_in_month = calendar.monthrange(y, m)[1]
+    days = list(range(1, days_in_month + 1))
+
+    employees = Employee.objects.filter(company=company).select_related('department').order_by('last_name')
+    start = datetime.date(y, m, 1)
+    end = datetime.date(y, m, days_in_month)
+    records = TimeRecord.objects.filter(employee__in=employees, date__gte=start, date__lte=end)
+    rec_map = {(r.employee_id, r.date.day): r for r in records}
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f'Табель {month_names[m-1]} {y}'
+
+    header_fill  = PatternFill('solid', fgColor='1E3A5F')
+    subhead_fill = PatternFill('solid', fgColor='2563EB')
+    weekend_fill = PatternFill('solid', fgColor='FEE2E2')
+    ya_fill      = PatternFill('solid', fgColor='D1FAE5')
+    border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'),  bottom=Side(style='thin')
+    )
+    center = Alignment(horizontal='center', vertical='center')
+    hfont  = Font(bold=True, color='FFFFFF', size=9)
+    sfont  = Font(size=9)
+
+    total_cols = 4 + days_in_month + 2
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=total_cols)
+    ws.cell(1, 1).value = f'{company.name} — Табель (Т-13) — {month_names[m-1]} {y}'
+    ws.cell(1, 1).font = Font(bold=True, size=13)
+    ws.cell(1, 1).alignment = center
+    ws.row_dimensions[1].height = 26
+
+    fixed_headers = ['#', 'ФИО', 'Должность', 'Отдел']
+    col_w = [4, 22, 18, 14]
+    for ci, (h, w) in enumerate(zip(fixed_headers, col_w), 1):
+        c = ws.cell(2, ci, h)
+        c.fill = header_fill; c.font = hfont; c.alignment = center; c.border = border
+        ws.column_dimensions[get_column_letter(ci)].width = w
+
+    holidays = _get_ru_holidays_dashboard(y)
+    for di, d in enumerate(days, 5):
+        dd = datetime.date(y, m, d)
+        is_wknd = dd.weekday() >= 5 or dd in holidays
+        c = ws.cell(2, di, d)
+        c.fill = weekend_fill if is_wknd else subhead_fill
+        c.font = Font(bold=True, color='000000' if is_wknd else 'FFFFFF', size=8)
+        c.alignment = center; c.border = border
+        ws.column_dimensions[get_column_letter(di)].width = 4.5
+
+    ws.cell(2, 5 + days_in_month, 'Дней').fill = subhead_fill
+    ws.cell(2, 5 + days_in_month).font = hfont
+    ws.cell(2, 5 + days_in_month).alignment = center
+    ws.cell(2, 5 + days_in_month).border = border
+    ws.column_dimensions[get_column_letter(5 + days_in_month)].width = 7
+
+    ws.cell(2, 6 + days_in_month, 'Часов').fill = subhead_fill
+    ws.cell(2, 6 + days_in_month).font = hfont
+    ws.cell(2, 6 + days_in_month).alignment = center
+    ws.cell(2, 6 + days_in_month).border = border
+    ws.column_dimensions[get_column_letter(6 + days_in_month)].width = 7
+
+    ws.row_dimensions[2].height = 20
+
+    for ri, emp in enumerate(employees, 3):
+        ws.cell(ri, 1, ri - 2).font = sfont; ws.cell(ri, 1).alignment = center; ws.cell(ri, 1).border = border
+        ws.cell(ri, 2, emp.full_name).font = sfont; ws.cell(ri, 2).border = border
+        ws.cell(ri, 3, emp.position or '').font = sfont; ws.cell(ri, 3).border = border
+        ws.cell(ri, 4, emp.department.name if emp.department else '').font = sfont; ws.cell(ri, 4).border = border
+
+        total_days = 0
+        total_hours = 0
+        for di, d in enumerate(days, 5):
+            rec = rec_map.get((emp.id, d))
+            dd = datetime.date(y, m, d)
+            is_wknd = dd.weekday() >= 5 or dd in holidays
+            code = rec.code if rec else ('В' if is_wknd else '')
+            hours = rec.hours if rec else 0
+            c = ws.cell(ri, di, code)
+            c.font = Font(size=8)
+            c.alignment = center
+            c.border = border
+            if is_wknd and not rec:
+                c.fill = weekend_fill
+            elif code == 'Я':
+                c.fill = ya_fill
+                total_days += 1
+                total_hours += hours or 8
+            elif code and code not in ('В', 'П', ''):
+                total_days += 1
+                total_hours += hours or 0
+
+        ws.cell(ri, 5 + days_in_month, total_days).font = Font(bold=True, size=9)
+        ws.cell(ri, 5 + days_in_month).alignment = center
+        ws.cell(ri, 5 + days_in_month).border = border
+        ws.cell(ri, 6 + days_in_month, total_hours).font = Font(bold=True, size=9)
+        ws.cell(ri, 6 + days_in_month).alignment = center
+        ws.cell(ri, 6 + days_in_month).border = border
+        ws.row_dimensions[ri].height = 16
+
+    ws.freeze_panes = 'E3'
+
+    from io import BytesIO
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = f'timesheet_{y}_{m:02d}_{company.name}.xlsx'
+    response = HttpResponse(
+        buf.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
