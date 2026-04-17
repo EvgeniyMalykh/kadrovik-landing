@@ -200,11 +200,22 @@ def employee_add(request):
     departments = list(member.company.departments.values('id', 'name')) if hasattr(member.company, 'departments') else []
     from apps.employees.models import Department as _Dept
     departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
+    # Автотабельный номер
+    import re as _re_pn
+    existing_nums = Employee.objects.filter(company=member.company).values_list('personnel_number', flat=True)
+    max_pn = 0
+    for pn in existing_nums:
+        if pn:
+            m = _re_pn.search(r'(\d+)', str(pn))
+            if m:
+                max_pn = max(max_pn, int(m.group(1)))
+    next_personnel_number = str(max_pn + 1).zfill(3)
     return render(request, "dashboard/partials/employee_form.html", {
         "departments": departments,
         "can_add_employee": sub_ctx["can_add_employee"],
         "max_employees": sub_ctx["max_employees"],
         "employee_count": sub_ctx["employee_count"],
+        "next_personnel_number": next_personnel_number,
     })
 
 
@@ -852,6 +863,29 @@ def forms_list(request):
     })
 
 
+
+def _next_doc_number(company, doc_type):
+    \"\"\"Генерирует следующий номер документа по типу для компании.\"\"\"
+    from apps.documents.models import Document
+    PREFIX = {
+        "vacation":     "О",
+        "gph_contract": "ГПХ",
+        "gph_act":      "АКТ",
+        "reference":    "С",
+        "salary_change":"З",
+    }
+    prefix = PREFIX.get(doc_type, "Д")
+    existing = Document.objects.filter(company=company, doc_type=doc_type).values_list("number", flat=True)
+    max_n = 0
+    for num in existing:
+        if num:
+            import re
+            m = re.search(r"(\d+)", str(num))
+            if m:
+                max_n = max(max_n, int(m.group(1)))
+    return f"{prefix}-{max_n + 1}"
+
+
 @login_required
 @subscription_required
 def form_editor(request, doc_type):
@@ -878,12 +912,14 @@ def form_editor(request, doc_type):
         from django.http import Http404
         raise Http404
 
+    next_number = _next_doc_number(company, doc_type) if not document else (document.number or _next_doc_number(company, doc_type))
     return render(request, 'dashboard/form_editor.html', {
         'doc_type': doc_type,
         'form_title': FORM_TITLES[doc_type],
         'document': document,
         'employees': employees,
         'extra_data': document.extra_data if document else {},
+        'next_number': next_number,
     })
 
 

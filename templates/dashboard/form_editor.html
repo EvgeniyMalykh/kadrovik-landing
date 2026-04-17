@@ -148,7 +148,15 @@
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">
           {% if doc_type == 'vacation' or doc_type == 'salary_change' %}Номер приказа{% elif doc_type == 'gph_contract' %}Номер договора{% elif doc_type == 'gph_act' %}Номер акта{% elif doc_type == 'reference' %}Номер справки{% else %}Номер документа{% endif %}
         </label>
-        <input type="text" name="doc_number" value="{{ document.number|default:'' }}" placeholder="Авто" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" name="doc_number" id="doc-number-input"
+                 value="{{ next_number|default:document.number|default:'' }}"
+                 placeholder="Авто"
+                 style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+          <button type="button" onclick="resetDocNumber()"
+                  title="Сбросить на авто-номер"
+                  style="flex-shrink:0;padding:0 10px;height:40px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);cursor:pointer;font-size:14px;white-space:nowrap;">&#8635; Авто</button>
+        </div>
       </div>
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">

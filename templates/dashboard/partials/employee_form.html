@@ -89,7 +89,14 @@
             </div>
             <div class="form-group">
                 <label>Табельный номер</label>
-                <input type="text" name="personnel_number" placeholder="001">
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <input type="text" name="personnel_number" id="personnel-number-input"
+                           value="{{ next_personnel_number|default:'' }}"
+                           placeholder="001" style="flex:1;">
+                    <button type="button" onclick="resetPersonnelNumber()"
+                            title="Сбросить на авто"
+                            style="flex-shrink:0;padding:0 10px;height:38px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);cursor:pointer;font-size:14px;">&#8635;</button>
+                </div>
             </div>
         </div>
         <div class="form-group">
