@@ -18,8 +18,11 @@ class Subscription(models.Model):
     plan          = models.CharField('Тариф', max_length=20, choices=Plan.choices, default=Plan.TRIAL)
     status        = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.ACTIVE)
     started_at    = models.DateTimeField(auto_now_add=True)
-    expires_at    = models.DateTimeField('Истекает', null=True, blank=True)
-    max_employees = models.PositiveIntegerField('Макс. сотрудников', default=10)
+    expires_at         = models.DateTimeField('Истекает', null=True, blank=True)
+    max_employees      = models.PositiveIntegerField('Макс. сотрудников', default=10)
+    # Рекуррентные платежи
+    payment_method_id  = models.CharField('ИД метода оплаты (рекуррент)', max_length=255, blank=True, default='')
+    auto_renew         = models.BooleanField('Автопродление', default=False)
 
     class Meta:
         verbose_name = 'Подписка'

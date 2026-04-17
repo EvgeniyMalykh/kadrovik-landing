@@ -71,3 +71,7 @@ EMAIL_HOST_PASSWORD = "dchpmpvepvhphulg"
 
 LOGIN_URL = "/dashboard/login/"
 REPLY_TO_EMAIL = "evgeniymalykh@gmail.com"
+
+# ЮKassa
+YUKASSA_SHOP_ID  = '1332087'
+YUKASSA_SECRET_KEY = 'live_OmueBYSyeOrmeDFAq6FSnp3sD7h_ZDJrLeXAxPkpshg'

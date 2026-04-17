@@ -1,9 +1,6 @@
 import json
-import hashlib
-import hmac
-from django.conf import settings
-from django.shortcuts import redirect
-from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect, render
+from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -14,7 +11,7 @@ from apps.billing.services import create_payment, activate_subscription, PLANS
 
 @login_required
 def checkout(request, plan_key):
-    """Инициирует оплату. Если ЮKassa не настроена — симулирует успех (демо)."""
+    """Инициирует оплату через ЮKassa с save_payment_method для рекуррента."""
     if plan_key not in PLANS:
         return redirect("dashboard:subscription")
 
@@ -30,10 +27,9 @@ def checkout(request, plan_key):
         return redirect("dashboard:subscription")
 
     if confirmation_url:
-        # Реальный редирект на страницу оплаты ЮKassa
         return redirect(confirmation_url)
     else:
-        # Заглушка — активируем сразу (для тестирования без ключей)
+        # Заглушка — если ключи не настроены
         activate_subscription(member.company, plan_key)
         payment.status = Payment.Status.SUCCESS
         payment.save(update_fields=["status"])
@@ -42,41 +38,67 @@ def checkout(request, plan_key):
 
 @login_required
 def payment_success(request):
-    """Страница после успешной оплаты."""
-    member = CompanyMember.objects.filter(user=request.user).first()
-    sub = getattr(member.company, "subscription", None) if member else None
+    """Страница после возврата с ЮKassa — статус уточняем по webhook."""
     return redirect("dashboard:subscription")
 
 
 @csrf_exempt
 @require_POST
 def yukassa_webhook(request):
-    """Webhook от ЮKassa — подтверждает оплату и активирует подписку."""
+    """
+    Webhook от ЮKassa.
+    Обрабатывает события:
+      - payment.succeeded  — активирует подписку
+      - payment.canceled   — помечает платёж как failed
+    При первом платеже сохраняет payment_method_id для рекуррента.
+    """
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return HttpResponse(status=400)
 
-    event = data.get("event")
-    if event != "payment.succeeded":
-        return HttpResponse(status=200)
+    event = data.get("event", "")
+    obj = data.get("object", {})
 
-    payment_data = data.get("object", {})
-    yukassa_id   = payment_data.get("id", "")
-    metadata     = payment_data.get("metadata", {})
-    payment_db_id = metadata.get("payment_db_id")
-    plan_key      = metadata.get("plan")
+    # ── payment.succeeded ─────────────────────────────────────────────────────
+    if event == "payment.succeeded":
+        yukassa_id    = obj.get("id", "")
+        metadata      = obj.get("metadata", {})
+        payment_db_id = metadata.get("payment_db_id")
+        plan_key      = metadata.get("plan")
 
-    if not payment_db_id or not plan_key:
-        return HttpResponse(status=400)
+        if not payment_db_id or not plan_key:
+            return HttpResponse(status=400)
 
-    try:
-        payment = Payment.objects.get(id=payment_db_id)
+        try:
+            payment = Payment.objects.get(id=payment_db_id)
+        except Payment.DoesNotExist:
+            return HttpResponse(status=404)
+
         payment.status = Payment.Status.SUCCESS
         payment.yukassa_payment_id = yukassa_id
         payment.save(update_fields=["status", "yukassa_payment_id"])
-        activate_subscription(payment.company, plan_key)
-    except Payment.DoesNotExist:
-        return HttpResponse(status=404)
+
+        # Сохраняем payment_method_id если он есть (первый платёж с save_payment_method)
+        payment_method = obj.get("payment_method", {})
+        saved = payment_method.get("saved", False)
+        method_id = payment_method.get("id", "") if saved else ""
+
+        activate_subscription(payment.company, plan_key, payment_method_id=method_id or None)
+
+    # ── payment.canceled ──────────────────────────────────────────────────────
+    elif event == "payment.canceled":
+        yukassa_id    = obj.get("id", "")
+        metadata      = obj.get("metadata", {})
+        payment_db_id = metadata.get("payment_db_id")
+
+        if payment_db_id:
+            try:
+                payment = Payment.objects.get(id=payment_db_id)
+                payment.status = Payment.Status.FAILED
+                payment.yukassa_payment_id = yukassa_id
+                payment.save(update_fields=["status", "yukassa_payment_id"])
+            except Payment.DoesNotExist:
+                pass
 
     return HttpResponse(status=200)

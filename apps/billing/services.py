@@ -1,19 +1,16 @@
 import uuid
-import requests
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from apps.billing.models import Payment, Subscription
 
 
-YUKASSA_API_URL = "https://api.yookassa.ru/v3/payments"
-
 # Лимиты и фичи по тарифам
 PLANS = {
     "trial": {
         "name": "Пробный",
         "price": 0,
-        "max_employees": 50,  # trial = как Бизнес
+        "max_employees": 50,
         "months": 0,
         "features": {
             "documents":         True,
@@ -84,7 +81,6 @@ PLANS = {
     },
 }
 
-# Названия тарифов для тултипов
 FEATURE_PLAN_LABEL = {
     "email_notify":     "Бизнес",
     "multi_user":       "Бизнес",
@@ -97,16 +93,11 @@ FEATURE_PLAN_LABEL = {
 
 
 def get_plan_features(plan_key):
-    """Возвращает словарь фич для тарифа."""
     plan = PLANS.get(plan_key, PLANS["start"])
     return plan["features"]
 
 
 def get_subscription_context(company):
-    """
-    Возвращает словарь для шаблона:
-      sub, plan_features, plan_key, max_employees, employee_count, can_add_employee
-    """
     from apps.employees.models import Employee
     sub = getattr(company, "subscription", None) if company else None
     plan_key = sub.plan if sub else "start"
@@ -125,14 +116,20 @@ def get_subscription_context(company):
     }
 
 
+def _get_yookassa():
+    """Настраивает и возвращает модуль yookassa."""
+    import yookassa
+    yookassa.Configuration.account_id = getattr(settings, 'YUKASSA_SHOP_ID', '')
+    yookassa.Configuration.secret_key = getattr(settings, 'YUKASSA_SECRET_KEY', '')
+    return yookassa
+
+
 def create_payment(company, plan_key, return_url):
     """
-    Создаёт платёж в ЮKassa и возвращает (payment_db, confirmation_url).
-    Если YUKASSA_SHOP_ID не задан — возвращает (payment_db, None) для режима заглушки.
+    Создаёт первый платёж с save_payment_method=True для рекуррента.
+    Возвращает (payment_db, confirmation_url).
     """
     plan = PLANS[plan_key]
-    shop_id = getattr(settings, "YUKASSA_SHOP_ID", "")
-    secret_key = getattr(settings, "YUKASSA_SECRET_KEY", "")
 
     payment = Payment.objects.create(
         company=company,
@@ -141,39 +138,123 @@ def create_payment(company, plan_key, return_url):
         status=Payment.Status.PENDING,
     )
 
+    shop_id = getattr(settings, 'YUKASSA_SHOP_ID', '')
+    secret_key = getattr(settings, 'YUKASSA_SECRET_KEY', '')
+
     if not shop_id or not secret_key:
         return payment, None
 
-    idempotence_key = str(uuid.uuid4())
-    payload = {
-        "amount": {"value": str(plan["price"]) + ".00", "currency": "RUB"},
-        "confirmation": {"type": "redirect", "return_url": return_url},
-        "capture": True,
-        "description": f"Подписка «{plan['name']}» — {company.name}",
-        "metadata": {"payment_db_id": payment.id, "plan": plan_key, "company_id": company.id},
-    }
-
     try:
-        resp = requests.post(
-            YUKASSA_API_URL,
-            json=payload,
-            auth=(shop_id, secret_key),
-            headers={"Idempotence-Key": idempotence_key},
-            timeout=10,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        payment.yukassa_payment_id = data["id"]
+        yookassa = _get_yookassa()
+        idempotence_key = str(uuid.uuid4())
+
+        yk_payment = yookassa.Payment.create({
+            "amount": {
+                "value": f"{plan['price']:.2f}",
+                "currency": "RUB",
+            },
+            "confirmation": {
+                "type": "redirect",
+                "return_url": return_url,
+            },
+            "capture": True,
+            "save_payment_method": True,
+            "description": f"Подписка «{plan['name']}» — {company.name}",
+            "metadata": {
+                "payment_db_id": str(payment.id),
+                "plan": plan_key,
+                "company_id": str(company.id),
+            },
+            "receipt": {
+                "customer": {
+                    "email": company.companymember_set.filter(
+                        role='owner'
+                    ).first() and company.companymember_set.filter(
+                        role='owner'
+                    ).first().user.email or "noreply@kadrovik-auto.ru",
+                },
+                "items": [{
+                    "description": f"Подписка «{plan['name']}» на 1 месяц",
+                    "quantity": "1.00",
+                    "amount": {
+                        "value": f"{plan['price']:.2f}",
+                        "currency": "RUB",
+                    },
+                    "vat_code": 1,
+                    "payment_mode": "full_payment",
+                    "payment_subject": "service",
+                }],
+            },
+        }, idempotence_key)
+
+        payment.yukassa_payment_id = yk_payment.id
         payment.save(update_fields=["yukassa_payment_id"])
-        confirmation_url = data["confirmation"]["confirmation_url"]
+
+        confirmation_url = yk_payment.confirmation.confirmation_url
         return payment, confirmation_url
+
     except Exception as e:
         payment.status = Payment.Status.FAILED
         payment.save(update_fields=["status"])
         raise
 
 
-def activate_subscription(company, plan_key):
+def create_recurring_payment(company, plan_key):
+    """
+    Автосписание с сохранённого метода оплаты (рекуррент).
+    Вызывается Celery-задачей при продлении подписки.
+    """
+    sub = getattr(company, 'subscription', None)
+    if not sub or not sub.payment_method_id:
+        return None
+
+    plan = PLANS.get(plan_key, PLANS['start'])
+
+    payment = Payment.objects.create(
+        company=company,
+        amount=plan["price"],
+        plan=plan_key,
+        status=Payment.Status.PENDING,
+    )
+
+    try:
+        yookassa = _get_yookassa()
+        idempotence_key = str(uuid.uuid4())
+
+        yk_payment = yookassa.Payment.create({
+            "amount": {
+                "value": f"{plan['price']:.2f}",
+                "currency": "RUB",
+            },
+            "capture": True,
+            "payment_method_id": sub.payment_method_id,
+            "description": f"Автопродление подписки «{plan['name']}» — {company.name}",
+            "metadata": {
+                "payment_db_id": str(payment.id),
+                "plan": plan_key,
+                "company_id": str(company.id),
+                "recurring": "true",
+            },
+        }, idempotence_key)
+
+        payment.yukassa_payment_id = yk_payment.id
+        payment.save(update_fields=["yukassa_payment_id"])
+
+        # Если сразу succeeded
+        if yk_payment.status == 'succeeded':
+            payment.status = Payment.Status.SUCCESS
+            payment.save(update_fields=["status"])
+            activate_subscription(company, plan_key)
+
+        return payment
+
+    except Exception as e:
+        payment.status = Payment.Status.FAILED
+        payment.save(update_fields=["status"])
+        raise
+
+
+def activate_subscription(company, plan_key, payment_method_id=None):
     """Активирует / продлевает подписку после успешной оплаты."""
     plan = PLANS[plan_key]
     sub, _ = Subscription.objects.get_or_create(company=company)
@@ -181,5 +262,8 @@ def activate_subscription(company, plan_key):
     sub.status = Subscription.Status.ACTIVE
     sub.max_employees = plan["max_employees"]
     sub.expires_at = timezone.now() + timedelta(days=30 * plan["months"])
+    if payment_method_id:
+        sub.payment_method_id = payment_method_id
+        sub.auto_renew = True
     sub.save()
     return sub
