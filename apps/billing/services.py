@@ -126,7 +126,7 @@ def _get_yookassa():
 
 def create_payment(company, plan_key, return_url):
     """
-    Создаёт первый платёж с save_payment_method=True для рекуррента.
+    Создаёт платёж через ЮKassa.
     Возвращает (payment_db, confirmation_url).
     """
     plan = PLANS[plan_key]
@@ -158,7 +158,6 @@ def create_payment(company, plan_key, return_url):
                 "return_url": return_url,
             },
             "capture": True,
-            "save_payment_method": True,
             "description": f"Подписка «{plan['name']}» — {company.name}",
             "metadata": {
                 "payment_db_id": str(payment.id),
@@ -167,9 +166,9 @@ def create_payment(company, plan_key, return_url):
             },
             "receipt": {
                 "customer": {
-                    "email": company.companymember_set.filter(
+                    "email": company.members.filter(
                         role='owner'
-                    ).first() and company.companymember_set.filter(
+                    ).first() and company.members.filter(
                         role='owner'
                     ).first().user.email or "noreply@kadrovik-auto.ru",
                 },
