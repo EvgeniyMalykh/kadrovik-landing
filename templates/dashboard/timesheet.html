@@ -266,13 +266,11 @@ function updateTotals() {
             } else if (code === 'Я½') {
                 days += 0.5;
                 hours += h;
-            } else if (['ОТ','ОД','Б'].indexOf(code) !== -1) {
-                days += 1;
-                // hours += 0 — absence codes don't add hours
             } else if (code === 'К') {
                 days += 1;
                 hours += h;
             }
+            // ОТ, ОД, Б, НН, В, П — days += 0, hours += 0
             // В, П, НН — days += 0, hours += 0
         });
         row.querySelector('.ts-total-days').textContent  = days;
