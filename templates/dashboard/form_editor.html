@@ -150,7 +150,7 @@
         </label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="text" name="doc_number" id="doc-number-input"
-                 value="{{ next_number|default:document.number|default:'' }}"
+                 value="{{ next_number|default:'' }}"
                  placeholder="Авто"
                  style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
           <button type="button" onclick="resetDocNumber()"
