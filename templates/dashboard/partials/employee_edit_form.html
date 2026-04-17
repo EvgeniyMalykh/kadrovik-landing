@@ -6,7 +6,7 @@
       hx-post="{% url 'dashboard:employee_edit' emp.id %}"
       hx-target="#employees-table"
       hx-swap="innerHTML"
-      hx-on::after-request="closeModal()">
+      hx-on::after-request="if(event.detail.successful){closeModal();var t=document.getElementById('save-toast');if(t){t.style.display='flex';setTimeout(function(){t.style.display='none';},2500)}}">
     {% csrf_token %}
     <div class="drawer-body">
 
