@@ -56,8 +56,13 @@ EMAIL_BACKEND = "apps.accounts.email_backend.RedisRelayEmailBackend"
 REDIS_RELAY_URL = os.environ.get("REDIS_RELAY_URL", "redis://redis:6379/2")
 GAS_URL = os.environ.get("GAS_URL", "")
 EMAIL_RELAY_QUEUE_KEY = "email_relay_queue"
-DEFAULT_FROM_EMAIL = "Кадровый автопилот <zhenyamalykh@yandex.ru>"
-SERVER_EMAIL = "zhenyamalykh@yandex.ru"
+DEFAULT_FROM_EMAIL = "Кадровый автопилот <evgeniymalykh@gmail.com>"
+SERVER_EMAIL = "evgeniymalykh@gmail.com"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "evgeniymalykh@gmail.com"
+EMAIL_HOST_PASSWORD = "dchpmpvepvhphulg"
 
 LOGIN_URL = "/dashboard/login/"
 REPLY_TO_EMAIL = "evgeniymalykh@gmail.com"
