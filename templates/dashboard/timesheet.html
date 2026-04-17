@@ -100,6 +100,8 @@
 <div id="save-status" style="margin-top:1rem;font-size:0.85rem;color:var(--text-muted);"></div>
 
 <style>
+/* Табель — на весь экран */
+.content-wrapper { max-width: 100% !important; padding: 20px 24px !important; }
 .ts-table { border-collapse: collapse; font-size: 0.75rem; width: 100%; }
 .ts-table th, .ts-table td { border: 1px solid var(--border); padding: 2px 3px; text-align: center; }
 .ts-day-hdr { min-width: 28px; font-size: 0.7rem; }
@@ -168,7 +170,10 @@ function getDefaultCode(dayIdx) {
     return 'Я';
 }
 function getDefaultHours(code) {
+    // Отсутствие (выходные, праздники, прогул) = 0
     if (['В','П','НН'].includes(code)) return 0;
+    // Отпуск, доп.отпуск, больничный, командировка = 0 рабочих часов
+    if (['ОТ','ОД','Б','К'].includes(code)) return 0;
     if (code === 'Я½') return 4;
     return 8;
 }
@@ -254,18 +259,19 @@ function updateTotals() {
         cells.forEach(function(c) {
             var code  = c.dataset.code || '';
             var h     = parseFloat(c.dataset.hours) || 0;
-            // Считаем рабочие дни: Я, Я½, ОТ, ОД, Б, К (всё кроме В, П, НН, пустых)
-            var workCodes = ['Я','Я½','ОТ','ОД','Б','К'];
-            if (workCodes.indexOf(code) !== -1) {
+            // Считаем дни присутствия/отсутствия по уважительной причине
+            // Я, Я½, ОТ, ОД, Б, К — всё кроме В (выходной), П (праздник), НН (прогул)
+            var countCodes = ['Я','Я½','ОТ','ОД','Б','К'];
+            if (countCodes.indexOf(code) !== -1) {
                 days++;
             }
-            // Считаем часы: все ненулевые
+            // Считаем фактически отработанные часы: только Я и Я½ (+ ручные значения > 0)
             if (h > 0) {
                 hours += h;
             }
         });
         row.querySelector('.ts-total-days').textContent  = days;
-        row.querySelector('.ts-total-hours').textContent = hours > 0 ? hours : 0;
+        row.querySelector('.ts-total-hours').textContent = hours;
     });
 }
 
