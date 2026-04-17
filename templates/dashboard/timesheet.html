@@ -127,6 +127,8 @@
 .code-П   { color: #9ca3af; }
 .code-В   { color: #6b7280; }
 .code-Я½  { color: #6ee7b7; }
+.code-РВ  { color: #f472b6; }
+.code-ЯС  { color: #fb923c; }
 
 .ts-legend { font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
 
@@ -156,9 +158,9 @@ var YEAR = {{ year }};
 var MONTH = {{ month }};
 
 // Циклический порядок кодов при клике
-var CYCLE_WORK = ['Я','ОТ','ОД','Б','К','НН','Я½','В'];
-var CYCLE_WEEKEND = ['В','Я','ОТ','Б','НН'];
-var CYCLE_HOLIDAY = ['П','Я','ОТ','Б','НН'];
+var CYCLE_WORK = ['Я','ОТ','ОД','Б','К','НН','Я½','РВ','Я/С','В'];
+var CYCLE_WEEKEND = ['В','Я','ОТ','Б','НН','РВ','Я/С'];
+var CYCLE_HOLIDAY = ['П','Я','ОТ','Б','НН','РВ','Я/С'];
 
 // Хранилище изменений: {"empId_day": {code, hours}}
 var changes = {};
@@ -175,7 +177,8 @@ function getDefaultHours(code) {
     // Отпуск, доп.отпуск, больничный = 0 рабочих часов
     if (['ОТ','ОД','Б'].includes(code)) return 0;
     if (code === 'Я½') return 4;
-    return 8;
+    if (['Я','К','РВ','Я/С'].includes(code)) return 8;
+    return 0;
 }
 
 function initTable() {
@@ -201,7 +204,7 @@ function initTable() {
 
 function setCell(cell, code, hours) {
     cell.querySelector('.ts-code').textContent = code;
-    cell.querySelector('.ts-code').className = 'ts-code code-' + code.replace('½','');
+    cell.querySelector('.ts-code').className = 'ts-code code-' + code.replace('½','').replace('/','');
     cell.querySelector('.ts-hrs').textContent = hours > 0 ? hours + 'ч' : '';
     cell.dataset.code  = code;
     cell.dataset.hours = hours;
@@ -260,13 +263,10 @@ function updateTotals() {
             // fallback: если dataset не заполнен — берём из DOM
             var code  = c.dataset.code || c.querySelector('.ts-code').textContent.trim() || '';
             var h     = parseFloat(c.dataset.hours) || parseFloat(c.querySelector('.ts-hrs').textContent) || 0;
-            if (code === 'Я') {
-                days += 1;
-                hours += h;
-            } else if (code === 'Я½') {
+            if (code === 'Я½') {
                 days += 0.5;
                 hours += h;
-            } else if (code === 'К') {
+            } else if (['Я', 'К', 'РВ', 'Я/С'].includes(code)) {
                 days += 1;
                 hours += h;
             }

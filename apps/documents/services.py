@@ -926,7 +926,7 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
         tr_map = {}
 
     # Коды, при которых считаются рабочие дни и часы
-    _WORK_CODES = {"Я", "К", "Я½"}
+    _WORK_CODES = {"Я", "К", "Я½", "РВ", "Я/С"}
 
     for i, emp in enumerate(employees, 1):
         ln = emp.last_name or ""

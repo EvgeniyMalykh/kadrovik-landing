@@ -154,6 +154,8 @@ class TimeRecord(models.Model):
         TRIP      = 'К',  'Командировка'
         ABSENT    = 'НН', 'Неявка невыясненная'
         HALF      = 'Я½', 'Неполный день'
+        DAYOFF_WORK = 'РВ', 'Работа в выходной'
+        OVERTIME  = 'Я/С', 'Сверхурочные'
 
     employee  = models.ForeignKey(Employee, on_delete=models.CASCADE,
                                    related_name='time_records', verbose_name='Сотрудник')
