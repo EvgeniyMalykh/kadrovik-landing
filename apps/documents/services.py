@@ -248,14 +248,20 @@ def generate_t2_pdf(employee) -> bytes:
     hire  = employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else ""
     prob  = employee.probation_end_date.strftime("%d.%m.%Y") if employee.probation_end_date else "Без испытания"
 
+
+    _edu_labels = {"secondary": "Среднее", "secondary_special": "Среднее специальное",
+                   "incomplete_higher": "Неполное высшее", "higher": "Высшее",
+                   "two_higher": "Два высших", "postgraduate": "Аспирантура / учёная степень"}
+    _edu_raw = getattr(employee, 'education', '') or ''
+    _edu_val = _edu_labels.get(_edu_raw, _edu_raw)
     rows = [
         ["1. Фамилия, имя, отчество:", full_name],
         ["2. Дата рождения:", birth],
-        ["3. Место рождения:", ""],
+        ["3. Место рождения:", getattr(employee, "birth_place", "") or ""],
         ["4. Гражданство:", "Российская Федерация"],
         ["5. ИНН:", employee.inn or ""],
         ["6. СНИЛС:", employee.snils or ""],
-        ["7. Образование:", ""],
+        ["7. Образование:", _edu_val],
         ["8. Профессия (должность):", employee.position or ""],
         ["9. Дата приёма:", hire],
         ["10. Испытательный срок (до):", prob],
