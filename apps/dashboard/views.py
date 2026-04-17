@@ -552,6 +552,84 @@ def download_salary_change(request, employee_id):
 
 @login_required
 @subscription_required
+def download_transfer_order(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_transfer_order_pdf
+    new_position = request.GET.get("new_position", "")
+    new_salary = request.GET.get("new_salary", "")
+    transfer_date = request.GET.get("transfer_date", "")
+    reason = request.GET.get("reason", "")
+    pdf = generate_transfer_order_pdf(
+        employee,
+        new_position=new_position or (employee.position or "Новая должность"),
+        new_salary=new_salary or None,
+        order_number=request.GET.get("order", "ПР-001"),
+        transfer_date=transfer_date or None,
+        reason=reason or None,
+    )
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"Transfer_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+@subscription_required
+def download_dismissal_order(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_dismissal_order_pdf
+    pdf = generate_dismissal_order_pdf(
+        employee,
+        order_number=request.GET.get("order", "У-001"),
+        dismissal_date=request.GET.get("dismissal_date", "") or None,
+        dismissal_reason=request.GET.get("dismissal_reason", "") or None,
+        dismissal_basis_doc=request.GET.get("dismissal_basis_doc", "") or None,
+    )
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"Dismissal_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+@subscription_required
+def download_bonus_order(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_bonus_order_pdf
+    pdf = generate_bonus_order_pdf(
+        employee,
+        bonus_amount=request.GET.get("bonus_amount", "0"),
+        order_number=request.GET.get("order", "П-001"),
+        reason=request.GET.get("reason", "") or None,
+        payment_date=request.GET.get("payment_date", "") or None,
+    )
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"Bonus_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+@subscription_required
+def download_disciplinary_order(request, employee_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.documents.services import generate_disciplinary_order_pdf
+    pdf = generate_disciplinary_order_pdf(
+        employee,
+        penalty_type=request.GET.get("penalty_type", "Выговор"),
+        order_number=request.GET.get("order", "ДВ-001"),
+        violation_date=request.GET.get("violation_date", "") or None,
+        violation_description=request.GET.get("violation_description", "") or None,
+        reason=request.GET.get("reason", "") or None,
+    )
+    r = HttpResponse(pdf, content_type="application/pdf")
+    r["Content-Disposition"] = f"attachment; filename=\"Disciplinary_{employee.last_name}.pdf\""
+    return r
+
+
+@login_required
+@subscription_required
 def download_work_certificate(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -919,6 +997,10 @@ def _next_doc_number(company, doc_type):
         "gph_act":      "АКТ",
         "reference":    "С",
         "salary_change":"З",
+        "transfer":     "ПР",
+        "dismissal":    "У",
+        "bonus":        "П",
+        "disciplinary": "ДВ",
     }
     prefix = PREFIX.get(doc_type, "Д")
     existing = Document.objects.filter(company=company, doc_type=doc_type).values_list("number", flat=True)
@@ -953,6 +1035,10 @@ def form_editor(request, doc_type):
         'gph_act': 'Акт выполненных работ',
         'reference': 'Справка с места работы',
         'salary_change': 'Изменение оклада',
+        'transfer': 'Приказ о переводе (Т-5)',
+        'dismissal': 'Приказ об увольнении (Т-8)',
+        'bonus': 'Приказ о премии',
+        'disciplinary': 'Приказ о дисциплинарном взыскании',
     }
     if doc_type not in FORM_TITLES:
         from django.http import Http404
@@ -1010,6 +1096,10 @@ def form_save(request, doc_type):
         'gph_act': 'gph_act',
         'reference': 'reference',
         'salary_change': 'salary_change',
+        'transfer': 'transfer',
+        'dismissal': 'dismissal',
+        'bonus': 'bonus',
+        'disciplinary': 'disciplinary',
     }
     if doc_type not in FORM_TITLES:
         return JsonResponse({'error': 'invalid doc_type'}, status=400)
@@ -1056,6 +1146,32 @@ def form_save(request, doc_type):
                 # Только ПОТОМ обновляем оклад сотрудника
                 employee.salary = new_salary_val
                 employee.save()
+
+    # При сохранении dismissal — обновляем fire_date и статус сотрудника
+    if doc_type == 'dismissal' and employee:
+        dismissal_date_raw = extra_data.get('dismissal_date')
+        fire_date = _parse_date_flexible(dismissal_date_raw) or date.today()
+        employee.fire_date = fire_date
+        employee.status = 'fired'
+        employee.save()
+
+    # При сохранении transfer — обновляем должность и оклад сотрудника
+    if doc_type == 'transfer' and employee:
+        new_pos = extra_data.get('new_position')
+        if new_pos:
+            # Сохраняем старые данные в extra_data для PDF
+            extra_data['old_position'] = employee.position or ''
+            extra_data['old_salary'] = str(employee.salary) if employee.salary else ''
+            document.extra_data = extra_data
+            document.save()
+            employee.position = new_pos
+        new_sal = extra_data.get('new_salary')
+        if new_sal:
+            try:
+                employee.salary = Decimal(new_sal)
+            except (InvalidOperation, ValueError):
+                pass
+        employee.save()
 
     return JsonResponse({'success': True, 'doc_id': document.id, 'doc_type': doc_type})
 

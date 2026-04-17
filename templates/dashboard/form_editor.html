@@ -146,6 +146,91 @@
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Причина</label>
       <input type="text" name="reason" value="{{ extra_data.reason|default:'' }}" placeholder="Например: повышение квалификации" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
     </div>
+
+    {% elif doc_type == 'transfer' %}
+    <!-- ПРИКАЗ О ПЕРЕВОДЕ (Т-5) -->
+    <div id="transfer-current-info" style="display:none;margin-bottom:1.25rem;padding:12px 16px;background:var(--bg-secondary, #f8fafc);border-radius:8px;border:1px solid var(--border);">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">Текущие данные сотрудника</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:0.82rem;">
+        <div><span style="color:var(--text-muted);">Прежняя должность:</span> <strong id="transfer-old-position">—</strong></div>
+        <div><span style="color:var(--text-muted);">Прежний оклад:</span> <strong id="transfer-old-salary">—</strong></div>
+      </div>
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата перевода</label>
+      <input type="date" name="transfer_date" value="{{ extra_data.transfer_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Новая должность</label>
+      <input type="text" name="new_position" value="{{ extra_data.new_position|default:'' }}" placeholder="Введите новую должность" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Новый оклад (руб.)</label>
+      <input type="number" name="new_salary" value="{{ extra_data.new_salary|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Основание</label>
+      <input type="text" name="reason" value="{{ extra_data.reason|default:'' }}" placeholder="Например: Заявление работника" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+
+    {% elif doc_type == 'dismissal' %}
+    <!-- ПРИКАЗ ОБ УВОЛЬНЕНИИ (Т-8) -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата увольнения</label>
+      <input type="date" name="dismissal_date" value="{{ extra_data.dismissal_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Основание увольнения</label>
+      <select name="dismissal_reason" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <option value="По собственному желанию (п. 3 ч. 1 ст. 77 ТК РФ)" {% if extra_data.dismissal_reason == 'По собственному желанию (п. 3 ч. 1 ст. 77 ТК РФ)' %}selected{% endif %}>По собственному желанию (п. 3 ч. 1 ст. 77 ТК РФ)</option>
+        <option value="По соглашению сторон (п. 1 ч. 1 ст. 77 ТК РФ)" {% if extra_data.dismissal_reason == 'По соглашению сторон (п. 1 ч. 1 ст. 77 ТК РФ)' %}selected{% endif %}>По соглашению сторон (п. 1 ч. 1 ст. 77 ТК РФ)</option>
+        <option value="По истечении срока трудового договора (п. 2 ч. 1 ст. 77 ТК РФ)" {% if extra_data.dismissal_reason == 'По истечении срока трудового договора (п. 2 ч. 1 ст. 77 ТК РФ)' %}selected{% endif %}>По истечении срока трудового договора (п. 2 ч. 1 ст. 77 ТК РФ)</option>
+        <option value='За прогул (пп. "а" п. 6 ч. 1 ст. 81 ТК РФ)' {% if extra_data.dismissal_reason == 'За прогул (пп. "а" п. 6 ч. 1 ст. 81 ТК РФ)' %}selected{% endif %}>За прогул (пп. "а" п. 6 ч. 1 ст. 81 ТК РФ)</option>
+        <option value="По сокращению штата (п. 2 ч. 1 ст. 81 ТК РФ)" {% if extra_data.dismissal_reason == 'По сокращению штата (п. 2 ч. 1 ст. 81 ТК РФ)' %}selected{% endif %}>По сокращению штата (п. 2 ч. 1 ст. 81 ТК РФ)</option>
+      </select>
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Документ-основание</label>
+      <input type="text" name="dismissal_basis_doc" value="{{ extra_data.dismissal_basis_doc|default:'' }}" placeholder="Например: Заявление от 17.04.2026" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+
+    {% elif doc_type == 'bonus' %}
+    <!-- ПРИКАЗ О ПРЕМИИ -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Сумма премии (руб.)</label>
+      <input type="number" name="bonus_amount" value="{{ extra_data.bonus_amount|default:'' }}" step="0.01" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Основание</label>
+      <input type="text" name="reason" value="{{ extra_data.reason|default:'' }}" placeholder="Например: За выполнение плана за март 2026" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата выплаты</label>
+      <input type="date" name="payment_date" value="{{ extra_data.payment_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+
+    {% elif doc_type == 'disciplinary' %}
+    <!-- ПРИКАЗ О ДИСЦИПЛИНАРНОМ ВЗЫСКАНИИ -->
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Вид взыскания</label>
+      <select name="penalty_type" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+        <option value="Замечание" {% if extra_data.penalty_type == 'Замечание' %}selected{% endif %}>Замечание</option>
+        <option value="Выговор" {% if extra_data.penalty_type == 'Выговор' %}selected{% endif %}>Выговор</option>
+        <option value="Строгий выговор" {% if extra_data.penalty_type == 'Строгий выговор' %}selected{% endif %}>Строгий выговор</option>
+      </select>
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Дата нарушения</label>
+      <input type="date" name="violation_date" value="{{ extra_data.violation_date|default:'' }}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Описание нарушения</label>
+      <textarea name="violation_description" rows="3" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);resize:vertical;">{{ extra_data.violation_description|default:'' }}</textarea>
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Основание</label>
+      <input type="text" name="reason" value="{{ extra_data.reason|default:'' }}" placeholder="Например: Акт о нарушении трудовой дисциплины" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
+    </div>
     {% endif %}
 
     <!-- ═══════════════════════════════════════════════════════════ -->
@@ -155,7 +240,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem;">
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">
-          {% if doc_type == 'vacation' or doc_type == 'salary_change' %}Номер приказа{% elif doc_type == 'gph_contract' %}Номер договора{% elif doc_type == 'gph_act' %}Номер акта{% elif doc_type == 'reference' %}Номер справки{% else %}Номер документа{% endif %}
+          {% if doc_type == 'vacation' or doc_type == 'salary_change' or doc_type == 'transfer' or doc_type == 'dismissal' or doc_type == 'bonus' or doc_type == 'disciplinary' %}Номер приказа{% elif doc_type == 'gph_contract' %}Номер договора{% elif doc_type == 'gph_act' %}Номер акта{% elif doc_type == 'reference' %}Номер справки{% else %}Номер документа{% endif %}
         </label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="text" name="doc_number" id="doc-number-input"
@@ -169,7 +254,7 @@
       </div>
       <div>
         <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">
-          {% if doc_type == 'vacation' or doc_type == 'salary_change' %}Дата приказа{% elif doc_type == 'gph_contract' %}Дата договора{% elif doc_type == 'gph_act' %}Дата акта{% elif doc_type == 'reference' %}Дата справки{% else %}Дата документа{% endif %}
+          {% if doc_type == 'vacation' or doc_type == 'salary_change' or doc_type == 'transfer' or doc_type == 'dismissal' or doc_type == 'bonus' or doc_type == 'disciplinary' %}Дата приказа{% elif doc_type == 'gph_contract' %}Дата договора{% elif doc_type == 'gph_act' %}Дата акта{% elif doc_type == 'reference' %}Дата справки{% else %}Дата документа{% endif %}
         </label>
         <input type="date" name="doc_date" value="{% if document %}{{ document.date|date:'Y-m-d' }}{% endif %}" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
       </div>
@@ -226,6 +311,15 @@
             histRow.style.display = "block";
           } else {
             histRow.style.display = "none";
+          }
+        }
+        // Автозаполнение для приказа о переводе
+        if (docType === "transfer") {
+          var transferInfo = document.getElementById("transfer-current-info");
+          if (transferInfo) {
+            document.getElementById("transfer-old-position").textContent = data.position || "—";
+            document.getElementById("transfer-old-salary").textContent = data.salary ? (data.salary + " руб.") : "—";
+            transferInfo.style.display = "block";
           }
         }
       });
@@ -349,6 +443,32 @@
       var salary = document.querySelector('[name="new_salary"]').value || "";
       var order2 = document.querySelector('[name="doc_number"]').value || "З-001";
       url = "/dashboard/employees/" + empId + "/salary-change/?salary=" + encodeURIComponent(salary) + "&order=" + encodeURIComponent(order2) + "&old_salary=" + encodeURIComponent(employeeCurrentSalary);
+    } else if (docType === "transfer") {
+      var orderT = document.querySelector('[name="doc_number"]').value || "ПР-001";
+      var newPos = document.querySelector('[name="new_position"]').value || "";
+      var newSal = document.querySelector('[name="new_salary"]').value || "";
+      var tDate = document.querySelector('[name="transfer_date"]').value || "";
+      var tReason = document.querySelector('[name="reason"]').value || "";
+      url = "/dashboard/employees/" + empId + "/transfer-order/?order=" + encodeURIComponent(orderT) + "&new_position=" + encodeURIComponent(newPos) + "&new_salary=" + encodeURIComponent(newSal) + "&transfer_date=" + encodeURIComponent(tDate) + "&reason=" + encodeURIComponent(tReason);
+    } else if (docType === "dismissal") {
+      var orderD = document.querySelector('[name="doc_number"]').value || "У-001";
+      var dDate = document.querySelector('[name="dismissal_date"]').value || "";
+      var dReason = document.querySelector('[name="dismissal_reason"]').value || "";
+      var dBasis = document.querySelector('[name="dismissal_basis_doc"]').value || "";
+      url = "/dashboard/employees/" + empId + "/dismissal-order/?order=" + encodeURIComponent(orderD) + "&dismissal_date=" + encodeURIComponent(dDate) + "&dismissal_reason=" + encodeURIComponent(dReason) + "&dismissal_basis_doc=" + encodeURIComponent(dBasis);
+    } else if (docType === "bonus") {
+      var orderB = document.querySelector('[name="doc_number"]').value || "П-001";
+      var bAmount = document.querySelector('[name="bonus_amount"]').value || "";
+      var bReason = document.querySelector('[name="reason"]').value || "";
+      var bDate = document.querySelector('[name="payment_date"]').value || "";
+      url = "/dashboard/employees/" + empId + "/bonus-order/?order=" + encodeURIComponent(orderB) + "&bonus_amount=" + encodeURIComponent(bAmount) + "&reason=" + encodeURIComponent(bReason) + "&payment_date=" + encodeURIComponent(bDate);
+    } else if (docType === "disciplinary") {
+      var orderDi = document.querySelector('[name="doc_number"]').value || "ДВ-001";
+      var pType = document.querySelector('[name="penalty_type"]').value || "";
+      var vDate = document.querySelector('[name="violation_date"]').value || "";
+      var vDesc = document.querySelector('[name="violation_description"]').value || "";
+      var diReason = document.querySelector('[name="reason"]').value || "";
+      url = "/dashboard/employees/" + empId + "/disciplinary-order/?order=" + encodeURIComponent(orderDi) + "&penalty_type=" + encodeURIComponent(pType) + "&violation_date=" + encodeURIComponent(vDate) + "&violation_description=" + encodeURIComponent(vDesc) + "&reason=" + encodeURIComponent(diReason);
     }
     if (url) {
       btn.href = url;

@@ -588,6 +588,245 @@ def generate_salary_change_pdf(employee, new_salary, order_number="З-001", prev
     return buffer.getvalue()
 
 
+def generate_transfer_order_pdf(employee, new_position, new_salary=None, order_number="ПР-001", transfer_date=None, reason=None) -> bytes:
+    """Приказ о переводе работника на другую работу (Т-5) — через форму."""
+    font_name = _register_fonts()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+        leftMargin=20*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=20*mm)
+    small  = ParagraphStyle("S", fontName=font_name, fontSize=7, leading=9, alignment=TA_CENTER, textColor=colors.grey)
+    normal = ParagraphStyle("N", fontName=font_name, fontSize=9, leading=12)
+    center = ParagraphStyle("C", fontName=font_name, fontSize=9, leading=12, alignment=TA_CENTER)
+    title  = ParagraphStyle("T", fontName=font_name, fontSize=11, leading=14, alignment=TA_CENTER)
+    from datetime import date as dt_date
+    today = dt_date.today()
+    today_str = today.strftime("%d.%m.%Y")
+    transfer_date_str = transfer_date or today_str
+    story = []
+    co = _get_company_info(employee)
+    story.append(Paragraph(co["name"] or "Наименование организации", normal))
+    story.append(Paragraph("(наименование организации)", small))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph("Унифицированная форма № Т-5", center))
+    story.append(Paragraph("Утверждена Постановлением Госкомстата России от 05.01.2004 № 1", small))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph("ПРИКАЗ (РАСПОРЯЖЕНИЕ)", title))
+    story.append(Paragraph("о переводе работника на другую работу", center))
+    story.append(Spacer(1, 3*mm))
+    order_data = [["Номер документа", "Дата составления"], [order_number, today_str]]
+    ot = Table(order_data, colWidths=[80*mm, 80*mm])
+    ot.setStyle(TableStyle([
+        ("FONTNAME",(0,0),(-1,-1),font_name),("FONTSIZE",(0,0),(-1,-1),9),
+        ("ALIGN",(0,0),(-1,-1),"CENTER"),("GRID",(0,0),(-1,-1),0.5,colors.black),
+        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+    ]))
+    story.append(ot)
+    story.append(Spacer(1, 4*mm))
+    full_name = (employee.last_name + " " + employee.first_name + " " + (employee.middle_name or "")).strip()
+    old_position = employee.position or "—"
+    old_salary_str = (str(employee.salary) + " руб.") if employee.salary else "—"
+    salary_text = (str(new_salary) + " руб.") if new_salary else "Без изменений"
+    reason_text = reason or "Заявление работника / доп. соглашение к ТД"
+    rows = [
+        ["Фамилия, имя, отчество:", full_name],
+        ["Табельный номер:", str(employee.id)],
+        ["Прежняя должность:", old_position],
+        ["Прежний оклад:", old_salary_str],
+        ["Новая должность:", new_position],
+        ["Новый оклад:", salary_text],
+        ["Дата перевода:", transfer_date_str],
+        ["Основание:", reason_text],
+    ]
+    t = Table(rows, colWidths=[90*mm, 80*mm])
+    t.setStyle(TableStyle([
+        ("FONTNAME",(0,0),(-1,-1),font_name),("FONTSIZE",(0,0),(-1,-1),9),
+        ("LINEBELOW",(1,0),(1,-1),0.5,colors.black),
+        ("TOPPADDING",(0,0),(-1,-1),4),("BOTTOMPADDING",(0,0),(-1,-1),2),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 6*mm))
+    story.append(Paragraph("Руководитель организации: ________________  /___________________/", normal))
+    story.append(Spacer(1, 4*mm))
+    story.append(Paragraph("С приказом работник ознакомлен: ________________  ___.___.______", normal))
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def generate_dismissal_order_pdf(employee, order_number="У-001", dismissal_date=None, dismissal_reason=None, dismissal_basis_doc=None) -> bytes:
+    """Приказ об увольнении (Т-8) — через форму."""
+    font_name = _register_fonts()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+        leftMargin=20*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=20*mm)
+    small  = ParagraphStyle("S", fontName=font_name, fontSize=7, leading=9, alignment=TA_CENTER, textColor=colors.grey)
+    normal = ParagraphStyle("N", fontName=font_name, fontSize=9, leading=12)
+    center = ParagraphStyle("C", fontName=font_name, fontSize=9, leading=12, alignment=TA_CENTER)
+    title  = ParagraphStyle("T", fontName=font_name, fontSize=11, leading=14, alignment=TA_CENTER)
+    from datetime import date as dt_date
+    today = dt_date.today()
+    today_str = today.strftime("%d.%m.%Y")
+    dismiss_date_str = dismissal_date or today_str
+    dismiss_reason = dismissal_reason or "По собственному желанию (п. 3 ч. 1 ст. 77 ТК РФ)"
+    basis_doc = dismissal_basis_doc or "Заявление работника"
+    story = []
+    co = _get_company_info(employee)
+    story.append(Paragraph(co["name"] or "Наименование организации", normal))
+    story.append(Paragraph("(наименование организации)", small))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph("Унифицированная форма № Т-8", center))
+    story.append(Paragraph("Утверждена Постановлением Госкомстата России от 05.01.2004 № 1", small))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph("ПРИКАЗ (РАСПОРЯЖЕНИЕ)", title))
+    story.append(Paragraph("о прекращении (расторжении) трудового договора с работником (увольнении)", center))
+    story.append(Spacer(1, 3*mm))
+    order_data = [["Номер документа", "Дата составления"], [order_number, today_str]]
+    ot = Table(order_data, colWidths=[80*mm, 80*mm])
+    ot.setStyle(TableStyle([
+        ("FONTNAME",(0,0),(-1,-1),font_name),("FONTSIZE",(0,0),(-1,-1),9),
+        ("ALIGN",(0,0),(-1,-1),"CENTER"),("GRID",(0,0),(-1,-1),0.5,colors.black),
+        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+    ]))
+    story.append(ot)
+    story.append(Spacer(1, 4*mm))
+    full_name = (employee.last_name + " " + employee.first_name + " " + (employee.middle_name or "")).strip()
+    rows = [
+        ["Уволить:", full_name],
+        ["Должность:", employee.position or "—"],
+        ["Табельный номер:", str(employee.id)],
+        ["Структурное подразделение:", employee.department.name if employee.department else "—"],
+        ["Дата увольнения:", dismiss_date_str],
+        ["Основание:", dismiss_reason],
+        ["Документ-основание:", basis_doc],
+    ]
+    t = Table(rows, colWidths=[90*mm, 80*mm])
+    t.setStyle(TableStyle([
+        ("FONTNAME",(0,0),(-1,-1),font_name),("FONTSIZE",(0,0),(-1,-1),9),
+        ("LINEBELOW",(1,0),(1,-1),0.5,colors.black),
+        ("TOPPADDING",(0,0),(-1,-1),4),("BOTTOMPADDING",(0,0),(-1,-1),2),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 6*mm))
+    sig_data = [
+        ["Руководитель:", co["director_position"] or "Директор", "", ""],
+        [co["director_name"] or "", "", "подпись", "расшифровка подписи"],
+        ["", "", "", ""],
+        ["С приказом работник ознакомлен:", "", "____________", "___.___.______"],
+        ["", "", "подпись", "дата"],
+    ]
+    st = Table(sig_data, colWidths=[60*mm, 35*mm, 35*mm, 45*mm])
+    st.setStyle(TableStyle([
+        ("FONTNAME",(0,0),(-1,-1),font_name),("FONTSIZE",(0,0),(-1,-1),8),
+        ("LINEBELOW",(1,0),(1,0),0.5,colors.black),("LINEBELOW",(2,0),(2,0),0.5,colors.black),
+        ("LINEBELOW",(3,0),(3,0),0.5,colors.black),("LINEBELOW",(2,3),(2,3),0.5,colors.black),
+        ("LINEBELOW",(3,3),(3,3),0.5,colors.black),
+        ("ALIGN",(0,1),(-1,1),"CENTER"),("ALIGN",(0,4),(-1,4),"CENTER"),
+        ("TEXTCOLOR",(0,1),(-1,1),colors.grey),("TEXTCOLOR",(0,4),(-1,4),colors.grey),
+        ("FONTSIZE",(0,1),(-1,1),7),("FONTSIZE",(0,4),(-1,4),7),
+    ]))
+    story.append(st)
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def generate_bonus_order_pdf(employee, bonus_amount, order_number="П-001", reason=None, payment_date=None) -> bytes:
+    """Приказ о премии (произвольная форма)."""
+    font_name = _register_fonts()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+        leftMargin=20*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=20*mm)
+    normal = ParagraphStyle("N", fontName=font_name, fontSize=9, leading=12)
+    center = ParagraphStyle("C", fontName=font_name, fontSize=9, leading=12, alignment=TA_CENTER)
+    title  = ParagraphStyle("T", fontName=font_name, fontSize=11, leading=14, alignment=TA_CENTER)
+    small  = ParagraphStyle("S", fontName=font_name, fontSize=7, leading=9, alignment=TA_CENTER, textColor=colors.grey)
+    from datetime import date as dt_date
+    today = dt_date.today()
+    today_str = today.strftime("%d.%m.%Y")
+    reason_text = reason or "За добросовестное исполнение трудовых обязанностей"
+    payment_date_str = payment_date or today_str
+    story = []
+    co = _get_company_info(employee)
+    story.append(Paragraph(co["name"] or "Наименование организации", normal))
+    story.append(Paragraph("(наименование организации)", small))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph("ПРИКАЗ", title))
+    story.append(Paragraph("N " + order_number + " от " + today_str + " г.", center))
+    story.append(Paragraph("о поощрении работника", center))
+    story.append(Spacer(1, 5*mm))
+    full_name = (employee.last_name + " " + employee.first_name + " " + (employee.middle_name or "")).strip()
+    position = employee.position or "должность"
+    story.append(Paragraph(
+        "В связи с: <b>" + reason_text + "</b>", normal))
+    story.append(Spacer(1, 3*mm))
+    story.append(Paragraph("<b>ПРИКАЗЫВАЮ:</b>", normal))
+    story.append(Spacer(1, 3*mm))
+    story.append(Paragraph(
+        "1. Поощрить " + full_name + ", " + position +
+        ", премией в размере <b>" + str(bonus_amount) + " (рублей)</b>.",
+        normal))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph(
+        "2. Выплатить премию: " + payment_date_str + " г.", normal))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph(
+        "3. Бухгалтерии произвести начисление и выплату премии.", normal))
+    story.append(Spacer(1, 8*mm))
+    story.append(Paragraph("Руководитель организации: ________________  /___________________/", normal))
+    story.append(Spacer(1, 4*mm))
+    story.append(Paragraph("С приказом ознакомлен: ________________  " + today_str, normal))
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def generate_disciplinary_order_pdf(employee, penalty_type, order_number="ДВ-001", violation_date=None, violation_description=None, reason=None) -> bytes:
+    """Приказ о дисциплинарном взыскании (произвольная форма)."""
+    font_name = _register_fonts()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+        leftMargin=20*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=20*mm)
+    normal = ParagraphStyle("N", fontName=font_name, fontSize=9, leading=12)
+    center = ParagraphStyle("C", fontName=font_name, fontSize=9, leading=12, alignment=TA_CENTER)
+    title  = ParagraphStyle("T", fontName=font_name, fontSize=11, leading=14, alignment=TA_CENTER)
+    small  = ParagraphStyle("S", fontName=font_name, fontSize=7, leading=9, alignment=TA_CENTER, textColor=colors.grey)
+    from datetime import date as dt_date
+    today = dt_date.today()
+    today_str = today.strftime("%d.%m.%Y")
+    penalty = penalty_type or "Выговор"
+    violation_date_str = violation_date or today_str
+    violation_desc = violation_description or "Нарушение трудовой дисциплины"
+    reason_text = reason or "Акт о нарушении трудовой дисциплины"
+    story = []
+    co = _get_company_info(employee)
+    story.append(Paragraph(co["name"] or "Наименование организации", normal))
+    story.append(Paragraph("(наименование организации)", small))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph("ПРИКАЗ", title))
+    story.append(Paragraph("N " + order_number + " от " + today_str + " г.", center))
+    story.append(Paragraph("о применении дисциплинарного взыскания", center))
+    story.append(Spacer(1, 5*mm))
+    full_name = (employee.last_name + " " + employee.first_name + " " + (employee.middle_name or "")).strip()
+    position = employee.position or "должность"
+    story.append(Paragraph(
+        "В связи с нарушением трудовой дисциплины (дата нарушения: " + violation_date_str + "):", normal))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph(violation_desc, normal))
+    story.append(Spacer(1, 3*mm))
+    story.append(Paragraph("<b>ПРИКАЗЫВАЮ:</b>", normal))
+    story.append(Spacer(1, 3*mm))
+    story.append(Paragraph(
+        "1. К " + full_name + ", " + position +
+        ", применить дисциплинарное взыскание в виде: <b>" + penalty + "</b>.",
+        normal))
+    story.append(Spacer(1, 2*mm))
+    story.append(Paragraph(
+        "2. Основание: " + reason_text + ".", normal))
+    story.append(Spacer(1, 8*mm))
+    story.append(Paragraph("Руководитель организации: ________________  /___________________/", normal))
+    story.append(Spacer(1, 4*mm))
+    story.append(Paragraph("С приказом ознакомлен: ________________  " + today_str, normal))
+    doc.build(story)
+    return buffer.getvalue()
+
+
 def generate_work_certificate_pdf(employee) -> bytes:
     """Справка с места работы."""
     font_name = _register_fonts()

@@ -14,6 +14,9 @@ class Document(models.Model):
         CONTRACT = 'contract', 'Трудовой договор'
         GPH_CONTRACT = 'gph_contract', 'Договор ГПХ'
         GPH_ACT = 'gph_act', 'Акт выполненных работ'
+        DISMISSAL = 'dismissal', 'Приказ об увольнении'
+        BONUS = 'bonus', 'Приказ о премии'
+        DISCIPLINARY = 'disciplinary', 'Приказ о дисциплинарном взыскании'
         TIMESHEET = 'timesheet', 'Табель (Т-13)'
         PERSONAL_CARD = 'personal_card', 'Личная карточка (Т-2)'
 
