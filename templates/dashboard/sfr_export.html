@@ -20,11 +20,11 @@
 {% else %}
 
 {% if not has_sfr_reg_number or not has_okved %}
-<div style="background:#fef3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin-bottom:1rem;font-size:0.9rem;display:flex;align-items:center;gap:8px;">
+<div style="background:#fef3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin-bottom:1rem;font-size:0.9rem;display:flex;align-items:center;gap:8px;color:#856404;">
     <span>&#9888;&#65039;</span>
     <span>Для корректной выгрузки заполните
     {% if not has_sfr_reg_number %}рег. номер СФР{% endif %}{% if not has_sfr_reg_number and not has_okved %} и {% endif %}{% if not has_okved %}ОКВЭД{% endif %}
-    в <a href="/dashboard/company/" style="font-weight:600;">профиле компании</a></span>
+    в <a href="/dashboard/company/" style="font-weight:600;color:#664d03;">профиле компании</a></span>
 </div>
 {% endif %}
 
