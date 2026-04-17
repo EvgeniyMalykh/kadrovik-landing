@@ -41,7 +41,7 @@ class Employee(models.Model):
     contract_type = models.CharField('Тип договора', max_length=20, choices=ContractType.choices, default=ContractType.PERMANENT)
     contract_end_date = models.DateField('Дата окончания договора', null=True, blank=True)
     probation_end_date = models.DateField('Конец испытательного срока', null=True, blank=True)
-    salary = models.DecimalField('Оклад', max_digits=12, decimal_places=2)
+    salary = models.DecimalField('Оклад', max_digits=12, decimal_places=2, null=True, blank=True, default=0)
     personnel_number = models.CharField('Табельный номер', max_length=20, blank=True)
 
     # Паспортные данные
