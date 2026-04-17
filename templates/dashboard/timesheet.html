@@ -53,7 +53,7 @@
 
 <!-- Подсказка -->
 <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">
-    Кликните на ячейку чтобы изменить код. Правый клик — изменить количество часов.
+    Кликните на ячейку чтобы выбрать код из меню. Правый клик — изменить количество часов.
 </div>
 
 <!-- Таблица табеля -->
@@ -81,9 +81,8 @@
                 data-emp="{{ emp.id }}"
                 data-day="{{ d }}"
                 data-date="{{ year }}-{{ month|stringformat:'02d' }}-{{ d|stringformat:'02d' }}"
-                onclick="cycleCode(this)"
                 oncontextmenu="editHours(event, this)"
-                title="Клик — код / ПКМ — часы">
+                title="Клик — выбор кода / ПКМ — часы">
                 <span class="ts-code"></span>
                 <span class="ts-hrs"></span>
             </td>
@@ -132,6 +131,45 @@
 
 .ts-legend { font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
 
+/* Меню выбора кода */
+.cell-menu {
+  position: fixed;
+  z-index: 9999;
+  background: #1e2230;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  padding: 4px 0;
+  min-width: 200px;
+  display: none;
+}
+.cell-menu.active { display: block; }
+.cell-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #e2e8f0;
+  transition: background 0.15s;
+}
+.cell-menu-item:hover { background: #2d3748; }
+.cell-menu-badge {
+  display: inline-block;
+  width: 32px;
+  text-align: center;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+.cell-menu-separator {
+  height: 1px;
+  background: #334155;
+  margin: 3px 0;
+}
+
 /* Контекстное меню */
 #ctx-menu { position: fixed; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; z-index: 9999; min-width: 160px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
 #ctx-menu label { font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px; }
@@ -150,17 +188,63 @@
     </div>
 </div>
 
+<!-- Меню выбора кода ячейки -->
+<div id="cellMenu" class="cell-menu">
+  <div class="cell-menu-item" data-code="Я">
+    <span class="cell-menu-badge" style="background:#3b82f6;color:#fff">Я</span>
+    <span>Явка</span>
+  </div>
+  <div class="cell-menu-item" data-code="Я½">
+    <span class="cell-menu-badge" style="background:#7dd3fc;color:#1e293b">Я½</span>
+    <span>Полдня</span>
+  </div>
+  <div class="cell-menu-item" data-code="Я/С">
+    <span class="cell-menu-badge" style="background:#fb923c;color:#fff">Я/С</span>
+    <span>Сверхурочные</span>
+  </div>
+  <div class="cell-menu-separator"></div>
+  <div class="cell-menu-item" data-code="В">
+    <span class="cell-menu-badge" style="background:#64748b;color:#fff">В</span>
+    <span>Выходной</span>
+  </div>
+  <div class="cell-menu-item" data-code="РВ">
+    <span class="cell-menu-badge" style="background:#f472b6;color:#fff">РВ</span>
+    <span>Работа в выходной</span>
+  </div>
+  <div class="cell-menu-separator"></div>
+  <div class="cell-menu-item" data-code="ОТ">
+    <span class="cell-menu-badge" style="background:#22c55e;color:#fff">ОТ</span>
+    <span>Отпуск</span>
+  </div>
+  <div class="cell-menu-item" data-code="ОД">
+    <span class="cell-menu-badge" style="background:#86efac;color:#1e293b">ОД</span>
+    <span>Доп. отпуск</span>
+  </div>
+  <div class="cell-menu-item" data-code="Б">
+    <span class="cell-menu-badge" style="background:#facc15;color:#1e293b">Б</span>
+    <span>Больничный</span>
+  </div>
+  <div class="cell-menu-separator"></div>
+  <div class="cell-menu-item" data-code="К">
+    <span class="cell-menu-badge" style="background:#a855f7;color:#fff">К</span>
+    <span>Командировка</span>
+  </div>
+  <div class="cell-menu-item" data-code="НН">
+    <span class="cell-menu-badge" style="background:#ef4444;color:#fff">НН</span>
+    <span>Неявка невыясн.</span>
+  </div>
+  <div class="cell-menu-item" data-code="П">
+    <span class="cell-menu-badge" style="background:#7f1d1d;color:#fff">П</span>
+    <span>Прогул</span>
+  </div>
+</div>
+
 <script>
 // Данные из сервера
 var INITIAL = {{ rec_map_json|safe }};
 var DAY_TYPES = {{ day_types_json }};
 var YEAR = {{ year }};
 var MONTH = {{ month }};
-
-// Циклический порядок кодов при клике
-var CYCLE_WORK = ['Я','ОТ','ОД','Б','К','НН','Я½','РВ','Я/С','В'];
-var CYCLE_WEEKEND = ['В','Я','ОТ','Б','НН','РВ','Я/С'];
-var CYCLE_HOLIDAY = ['П','Я','ОТ','Б','НН','РВ','Я/С'];
 
 // Хранилище изменений: {"empId_day": {code, hours}}
 var changes = {};
@@ -210,22 +294,46 @@ function setCell(cell, code, hours) {
     cell.dataset.hours = hours;
 }
 
-function cycleCode(cell) {
-    var dayIdx = parseInt(cell.dataset.day) - 1;
-    var t = DAY_TYPES[dayIdx];
-    var cycle = t === 'holiday' ? CYCLE_HOLIDAY : (t === 'weekend' ? CYCLE_WEEKEND : CYCLE_WORK);
-    var cur = cell.dataset.code || getDefaultCode(dayIdx);
-    var idx = cycle.indexOf(cur);
-    var next = cycle[(idx + 1) % cycle.length];
-    var hours = getDefaultHours(next);
-    setCell(cell, next, hours);
-    markChange(cell, next, hours);
-    updateTotals();
+// --- Всплывающее меню выбора кода ---
+var cellMenu = document.getElementById('cellMenu');
+var cellMenuTarget = null;
+
+function openCellMenu(cell, e) {
+    cellMenuTarget = cell;
+    var rect = cell.getBoundingClientRect();
+    var menuH = 380;
+    var top = rect.bottom + 4;
+    if (top + menuH > window.innerHeight) top = rect.top - menuH - 4;
+    if (top < 0) top = 4;
+    cellMenu.style.top = top + 'px';
+    cellMenu.style.left = Math.min(rect.left, window.innerWidth - 210) + 'px';
+    cellMenu.classList.add('active');
 }
+
+function closeCellMenu() {
+    cellMenu.classList.remove('active');
+    cellMenuTarget = null;
+}
+
+cellMenu.addEventListener('click', function(e) {
+    var item = e.target.closest('.cell-menu-item');
+    if (!item || !cellMenuTarget) return;
+    var code = item.dataset.code;
+    var hours = getDefaultHours(code);
+    setCell(cellMenuTarget, code, hours);
+    markChange(cellMenuTarget, code, hours);
+    updateTotals();
+    closeCellMenu();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeCellMenu();
+});
 
 var ctxCell = null;
 function editHours(e, cell) {
     e.preventDefault();
+    closeCellMenu();
     ctxCell = cell;
     var menu = document.getElementById('ctx-menu');
     document.getElementById('ctx-hours').value = cell.dataset.hours || 8;
@@ -246,7 +354,18 @@ function closeCtx() {
     ctxCell = null;
 }
 document.addEventListener('click', function(e) {
+    // Закрыть меню часов если клик вне
     if (!document.getElementById('ctx-menu').contains(e.target)) closeCtx();
+    // Открытие меню кода при клике на ячейку
+    var cell = e.target.closest('.ts-cell');
+    if (cell && !cellMenu.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        openCellMenu(cell, e);
+        return;
+    }
+    // Закрыть меню кода если клик вне
+    if (!cellMenu.contains(e.target)) closeCellMenu();
 });
 
 function markChange(cell, code, hours) {
