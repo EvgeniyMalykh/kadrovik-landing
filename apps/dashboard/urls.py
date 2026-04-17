@@ -65,5 +65,9 @@ urlpatterns = [
     # API
     path("api/", views.api_settings, name="api_settings"),
     path("api/token/regenerate/", views.api_token_regenerate, name="api_token_regenerate"),
-
+    # Шаблоны документов
+    path("templates/", views.document_templates, name="document_templates"),
+    path("templates/<str:doc_type>/upload/", views.document_template_upload, name="document_template_upload"),
+    path("templates/<str:doc_type>/delete/", views.document_template_delete, name="document_template_delete"),
+    path("templates/<str:doc_type>/download/<int:employee_id>/", views.document_template_download, name="document_template_download"),
 ]

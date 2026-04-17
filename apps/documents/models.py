@@ -36,3 +36,47 @@ class Document(models.Model):
 
     def __str__(self):
         return f'{self.get_doc_type_display()} — {self.employee} №{self.number}'
+
+import os
+
+DOC_TYPES = [
+    ('hire', 'Приказ о приёме (Т-1)'),
+    ('personal_card', 'Личная карточка (Т-2)'),
+    ('transfer', 'Приказ о переводе (Т-5)'),
+    ('vacation', 'Приказ об отпуске (Т-6)'),
+    ('fire', 'Приказ об увольнении (Т-8)'),
+    ('contract', 'Трудовой договор'),
+    ('gph_contract', 'Договор ГПХ'),
+    ('gph_act', 'Акт выполненных работ'),
+    ('reference', 'Справка с места работы'),
+    ('bonus', 'Приказ о премии'),
+    ('disciplinary', 'Приказ о дисциплинарном взыскании'),
+    ('salary_change', 'Изменение оклада'),
+    ('dismissal', 'Приказ об увольнении'),
+]
+
+
+def template_upload_path(instance, filename):
+    return f'document_templates/{instance.company_id}/{instance.doc_type}/{filename}'
+
+
+class DocumentTemplate(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='document_templates')
+    doc_type = models.CharField('Тип документа', max_length=50, choices=DOC_TYPES)
+    file = models.FileField('Файл шаблона', upload_to=template_upload_path)
+    name = models.CharField('Название файла', max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('company', 'doc_type')
+        verbose_name = 'Шаблон документа'
+        verbose_name_plural = 'Шаблоны документов'
+
+    def __str__(self):
+        return f"{self.get_doc_type_display()} — {self.company.name}"
+
+    def delete(self, *args, **kwargs):
+        if self.file and os.path.isfile(self.file.path):
+            os.remove(self.file.path)
+        super().delete(*args, **kwargs)

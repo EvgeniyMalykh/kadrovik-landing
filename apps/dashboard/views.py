@@ -1927,3 +1927,124 @@ def api_token_regenerate(request):
     from django.contrib import messages
     messages.success(request, 'API-токен обновлён.')
     return redirect('dashboard:api_settings')
+
+
+# ===== DOCUMENT TEMPLATES =====
+
+@login_required
+def document_templates(request):
+    """Страница управления кастомными шаблонами документов."""
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+    from apps.documents.models import DocumentTemplate, DOC_TYPES
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    sub = getattr(company, 'subscription', None)
+    plan = sub.plan if sub else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+
+    templates_by_type = {t.doc_type: t for t in DocumentTemplate.objects.filter(company=company)}
+
+    context = {
+        'has_custom_templates': features.get('custom_templates', False),
+        'doc_types': DOC_TYPES,
+        'templates_by_type': templates_by_type,
+    }
+    return render(request, 'dashboard/document_templates.html', context)
+
+
+@login_required
+def document_template_upload(request, doc_type):
+    """Загрузить кастомный шаблон для типа документа."""
+    if request.method != 'POST':
+        return redirect('dashboard:document_templates')
+
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+    from apps.documents.models import DocumentTemplate
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    sub = getattr(company, 'subscription', None)
+    plan = sub.plan if sub else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+
+    if not features.get('custom_templates'):
+        django_messages.error(request, 'Кастомные шаблоны доступны только на тарифе Корпоратив.')
+        return redirect('dashboard:document_templates')
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        django_messages.error(request, 'Файл не выбран.')
+        return redirect('dashboard:document_templates')
+
+    if not uploaded_file.name.endswith('.docx'):
+        django_messages.error(request, 'Допускаются только файлы .docx.')
+        return redirect('dashboard:document_templates')
+
+    existing = DocumentTemplate.objects.filter(company=company, doc_type=doc_type).first()
+    if existing:
+        existing.delete()
+
+    DocumentTemplate.objects.create(
+        company=company,
+        doc_type=doc_type,
+        file=uploaded_file,
+        name=uploaded_file.name,
+    )
+    django_messages.success(request, 'Шаблон загружен.')
+    return redirect('dashboard:document_templates')
+
+
+@login_required
+def document_template_delete(request, doc_type):
+    """Удалить кастомный шаблон (вернуться к стандартному)."""
+    from apps.documents.models import DocumentTemplate
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+    template = get_object_or_404(DocumentTemplate, company=member.company, doc_type=doc_type)
+    template.delete()
+    django_messages.success(request, 'Шаблон удалён. Будет использоваться стандартный.')
+    return redirect('dashboard:document_templates')
+
+
+@login_required
+def document_template_download(request, doc_type, employee_id):
+    """Скачать документ на основе кастомного шаблона."""
+    from apps.documents.models import DocumentTemplate
+    from apps.documents.template_renderer import render_template_to_bytes, get_employee_context, get_company_context
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect('dashboard:login')
+
+    template = get_object_or_404(DocumentTemplate, company=member.company, doc_type=doc_type)
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+
+    context = {}
+    context.update(get_employee_context(employee))
+    context.update(get_company_context(member.company))
+
+    for key in ['doc_number', 'doc_date', 'reason', 'note']:
+        val = request.GET.get(key) or request.POST.get(key, '')
+        if val:
+            context[key] = val
+
+    try:
+        docx_bytes = render_template_to_bytes(template.file.path, context)
+    except Exception as e:
+        django_messages.error(request, f'Ошибка рендеринга шаблона: {e}')
+        return redirect('dashboard:document_templates')
+
+    filename = f"{doc_type}_{employee.last_name}.docx"
+    response = HttpResponse(docx_bytes, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
