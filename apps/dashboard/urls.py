@@ -35,6 +35,7 @@ urlpatterns = [
     path("timesheet/", views.timesheet_edit, name="timesheet_edit"),
     path("timesheet/save/", views.timesheet_save, name="timesheet_save"),
     # Формы и документы
+    path("documents/<int:doc_id>/delete/", views.delete_document, name="delete_document"),
     path("forms/", views.forms_list, name="forms_list"),
     path("forms/api/employee/<int:employee_id>/", views.employee_data_api, name="employee_data_api"),
     path("forms/<str:doc_type>/save/", views.form_save, name="form_save"),

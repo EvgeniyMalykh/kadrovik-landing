@@ -988,6 +988,23 @@ def forms_list(request):
 
 
 
+@require_POST
+@login_required
+def delete_document(request, doc_id):
+    """Удаление документа из журнала"""
+    from django.http import JsonResponse
+    from apps.documents.models import Document
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return JsonResponse({'success': False, 'error': 'Компания не найдена'}, status=403)
+    try:
+        doc = Document.objects.get(id=doc_id, company=member.company)
+        doc.delete()
+        return JsonResponse({'success': True})
+    except Document.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Документ не найден'}, status=404)
+
+
 def _next_doc_number(company, doc_type):
     """Генерирует следующий номер документа по типу для компании."""
     from apps.documents.models import Document
