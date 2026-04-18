@@ -970,6 +970,11 @@ def timesheet_save(request):
             d = dt_date.fromisoformat(rec["date"])
         except Exception:
             continue
+        # Если clear=true — удалить запись (ячейка очищена)
+        if rec.get("clear") or rec.get("code") == "":
+            TimeRecord.objects.filter(employee_id=emp_id, date=d).delete()
+            saved += 1
+            continue
         code = rec.get("code", "Я")[:3]
         hours = int(rec.get("hours", 8))
         TimeRecord.objects.update_or_create(

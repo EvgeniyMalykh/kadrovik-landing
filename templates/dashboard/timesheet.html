@@ -133,6 +133,8 @@
 .code-Я½  { color: #6ee7b7; }
 .code-РВ  { color: #f472b6; }
 .code-ЯС  { color: #fb923c; }
+.code-empty { color: #475569; font-style: italic; }
+.ts-cell.ts-empty { opacity: 0.4; }
 
 .ts-legend { font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
 
@@ -250,6 +252,11 @@
     <span class="cell-menu-badge" style="background:#7f1d1d;color:#fff">П</span>
     <span>Прогул</span>
   </div>
+  <div class="cell-menu-separator"></div>
+  <div class="cell-menu-item" id="cellMenuClear" style="color:#ef4444;">
+    <span class="cell-menu-badge" style="background:#1e293b;color:#ef4444;border:1px solid #ef4444;">✕</span>
+    <span>Очистить ячейку</span>
+  </div>
 </div>
 
 <script>
@@ -304,9 +311,17 @@ function initTable() {
 }
 
 function setCell(cell, code, hours) {
-    cell.querySelector('.ts-code').textContent = code;
-    cell.querySelector('.ts-code').className = 'ts-code code-' + code.replace('½','').replace('/','');
-    cell.querySelector('.ts-hrs').textContent = hours > 0 ? hours + 'ч' : '';
+    if (code === '') {
+        cell.querySelector('.ts-code').textContent = '–';
+        cell.querySelector('.ts-code').className = 'ts-code code-empty';
+        cell.querySelector('.ts-hrs').textContent = '';
+        cell.classList.add('ts-empty');
+    } else {
+        cell.querySelector('.ts-code').textContent = code;
+        cell.querySelector('.ts-code').className = 'ts-code code-' + code.replace('½','').replace('/','');
+        cell.querySelector('.ts-hrs').textContent = hours > 0 ? hours + 'ч' : '';
+        cell.classList.remove('ts-empty');
+    }
     cell.dataset.code  = code;
     cell.dataset.hours = hours;
 }
@@ -346,6 +361,18 @@ cellMenu.addEventListener('click', function(e) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeCellMenu();
+});
+
+// Очистка ячейки
+document.getElementById('cellMenuClear').addEventListener('click', function() {
+    if (!cellMenuTarget) return;
+    setCell(cellMenuTarget, '', 0);
+    var empId = cellMenuTarget.dataset.emp;
+    var day   = cellMenuTarget.dataset.day;
+    var key   = empId + '_' + day;
+    changes[key] = {employee_id: parseInt(empId), date: cellMenuTarget.dataset.date, code: '', hours: 0, clear: true};
+    updateTotals();
+    closeCellMenu();
 });
 
 var ctxCell = null;
