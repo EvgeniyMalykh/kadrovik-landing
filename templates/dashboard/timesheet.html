@@ -122,7 +122,7 @@
 /* Цвета кодов */
 .code-Я   { color: #34d399; }
 .code-ОТ  { color: #60a5fa; }
-.code-ДО  { color: #93c5fd; }
+.code-ОД  { color: #93c5fd; }
 .code-УЧ  { color: #86efac; }
 .code-ОЖ  { color: #f9a8d4; }
 .code-Б   { color: #fbbf24; }
@@ -223,8 +223,8 @@
     <span class="cell-menu-badge" style="background:#22c55e;color:#fff">ОТ</span>
     <span>Отпуск</span>
   </div>
-  <div class="cell-menu-item" data-code="ДО">
-    <span class="cell-menu-badge" style="background:#86efac;color:#1e293b">ДО</span>
+  <div class="cell-menu-item" data-code="ОД">
+    <span class="cell-menu-badge" style="background:#86efac;color:#1e293b">ОД</span>
     <span>Доп. отпуск</span>
   </div>
   <div class="cell-menu-item" data-code="УЧ">
@@ -279,7 +279,7 @@ function getDefaultHours(code, dayIdx) {
     // Отсутствие (выходные, праздники, прогул) = 0
     if (['В','П','НН'].includes(code)) return 0;
     // Отпуск, доп.отпуск, больничный = 0 рабочих часов
-    if (['ОТ','ДО','УЧ','ОЖ','Б'].includes(code)) return 0;
+    if (['ОТ','ОД','УЧ','ОЖ','Б'].includes(code)) return 0;
     if (code === 'Я½') return 4;
     // Предпраздничный сокращённый день — 7 часов
     if (['Я','К','РВ','Я/С'].includes(code)) {
