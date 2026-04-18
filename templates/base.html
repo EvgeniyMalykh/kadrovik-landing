@@ -159,14 +159,22 @@
               </div>
             </div>
 
+            <a href="{% url 'dashboard:events_list' %}" class="nav-item {% block nav_events %}{% endblock %}" onclick="closeSidebar()">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                События
+            </a>
+            {% if member_role == 'owner' or member_role == 'admin' %}
             <a href="{% url 'dashboard:company' %}" class="nav-item {% block nav_company %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#127962;</span>
                 <span>Компания</span>
             </a>
+            {% endif %}
+            {% if member_role == 'owner' or member_role == 'admin' %}
             <a href="{% url 'dashboard:team_list' %}" class="nav-item {% block nav_team %}{% endblock %}" onclick="closeSidebar()">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 Команда
             </a>
+            {% endif %}
             <a href="{% url 'dashboard:document_templates' %}" class="nav-item {% block nav_templates %}{% endblock %}" onclick="closeSidebar()">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 Шаблоны
@@ -175,10 +183,13 @@
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 СФР
             </a>
+            {% if member_role == 'owner' or member_role == 'admin' %}
             <a href="{% url 'dashboard:api_settings' %}" class="nav-item {% block nav_api %}{% endblock %}" onclick="closeSidebar()">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                 API
             </a>
+            {% endif %}
+            {% if member_role == 'owner' %}
             <a href="{% url 'dashboard:subscription' %}" class="nav-item {% block nav_subscription %}{% endblock %}" onclick="closeSidebar()">
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                 Подписка
@@ -187,12 +198,24 @@
                 {% if plan_key == 'business' %}<span class="plan-badge plan-badge--business">Бизнес</span>{% endif %}
                 {% if plan_key == 'pro' %}<span class="plan-badge plan-badge--pro">Про</span>{% endif %}
             </a>
+            {% endif %}
         </nav>
         <div class="sidebar-footer">
-            <div class="user-info">
+            <div class="user-info" style="position:relative;">
+                <a href="{% url 'dashboard:events_list' %}" id="events-bell" title="События" style="position:absolute;right:0;top:-8px;text-decoration:none;color:#94a3b8;transition:color 0.2s;" onmouseover="this.style.color='#f59e0b'" onmouseout="this.style.color='#94a3b8'">
+                  <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <span id="events-badge" style="display:none;position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;font-size:0.65rem;font-weight:700;padding:1px 5px;border-radius:10px;min-width:16px;text-align:center;">0</span>
+                </a>
                 <div class="user-avatar">{{ request.user.email|first|upper }}</div>
                 <div class="user-details">
                     <div class="user-email">{{ request.user.email }}</div>
+                    <div class="user-role-badge" style="font-size:0.72rem;color:#94a3b8;margin-top:2px;">
+                      {% if member_role == 'owner' %}Владелец
+                      {% elif member_role == 'admin' %}Администратор
+                      {% elif member_role == 'hr' %}Кадровик
+                      {% elif member_role == 'accountant' %}Бухгалтер
+                      {% endif %}
+                    </div>
                 </div>
             </div>
             <a href="{% url 'dashboard:change_password' %}" class="nav-item" style="font-size:0.82rem;" onclick="closeSidebar()">
@@ -433,5 +456,20 @@
 <div id="save-toast" style="display:none;position:fixed;bottom:24px;right:24px;background:#22c55e;color:#fff;padding:12px 24px;border-radius:10px;font-size:0.95rem;font-weight:600;z-index:99999;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
   ✓ Данные сохранены
 </div>
+
+<!-- Events bell badge loader -->
+<script>
+(function(){
+  fetch('/dashboard/events/count/')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.count > 0){
+        var badge = document.getElementById('events-badge');
+        if(badge){ badge.textContent = data.count; badge.style.display = 'block'; }
+      }
+    }).catch(function(){});
+})();
+</script>
+
 </body>
 </html>

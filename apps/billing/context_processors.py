@@ -21,6 +21,8 @@ def subscription_features(request):
         company = member.company if member else None
         ctx = get_subscription_context(company)
         ctx['subscription'] = ctx.get('sub')
+        ctx['member'] = member
+        ctx['member_role'] = member.role if member else None
         return ctx
     except Exception:
         return {

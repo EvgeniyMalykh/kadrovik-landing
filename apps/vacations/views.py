@@ -5,6 +5,21 @@ from django.http import JsonResponse, HttpResponse
 from django.db.models import Count
 from apps.companies.models import Company, CompanyMember
 from apps.employees.models import Employee
+
+# ===== ROLE-BASED ACCESS CONTROL =====
+ROLE_RANK = {
+    'owner': 4,
+    'admin': 3,
+    'hr': 2,
+    'accountant': 1,
+}
+
+def _check_role(request, min_role):
+    """Проверяет роль. Возвращает True если доступ разрешён."""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return False
+    return ROLE_RANK.get(member.role, 0) >= ROLE_RANK.get(min_role, 99)
 from .models import Vacation, VacationSchedule, VacationScheduleEntry
 import re
 import json
@@ -56,6 +71,11 @@ def vacation_add(request):
     if not member:
         return JsonResponse({"error": "no company"}, status=400)
     company = member.company
+
+    # Проверка роли — только hr и выше могут добавлять отпуска
+    if not _check_role(request, 'hr'):
+        return JsonResponse({"error": "Недостаточно прав"}, status=403)
+
     employees = list(Employee.objects.filter(company=company)
                      .order_by("last_name")
                      .values("id", "last_name", "first_name", "middle_name", "position"))
@@ -324,6 +344,10 @@ def vacation_schedule_save(request):
     member = CompanyMember.objects.filter(user=request.user).first()
     if not member:
         return JsonResponse({"error": "no company"}, status=400)
+
+    # Проверка роли — только hr и выше
+    if not _check_role(request, 'hr'):
+        return JsonResponse({"error": "Недостаточно прав"}, status=403)
     company = member.company
 
     try:

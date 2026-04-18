@@ -12,6 +12,48 @@ from apps.documents.services import generate_t1_pdf, generate_t2_pdf, generate_t
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from functools import wraps
+from django.contrib import messages
+from django.conf import settings
+
+# ===== ROLE-BASED ACCESS CONTROL =====
+
+ROLE_RANK = {
+    'owner': 4,
+    'admin': 3,
+    'hr': 2,
+    'accountant': 1,
+}
+
+def get_member_role(user):
+    """Получить роль текущего пользователя в его компании."""
+    member = CompanyMember.objects.filter(user=user).first()
+    return member.role if member else None
+
+
+def require_role(min_role):
+    """
+    Декоратор: требует роль не ниже min_role.
+    Порядок: owner > admin > hr > accountant
+
+    Использование:
+        @require_role('admin')  # нужна роль admin или выше
+        def some_view(request): ...
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                return redirect(settings.LOGIN_URL + '?next=' + request.path)
+            role = get_member_role(request.user)
+            if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get(min_role, 99):
+                messages.error(request, 'У вас недостаточно прав для этого действия.')
+                return redirect('dashboard:home')
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 
 @login_required
 def dashboard_home(request):
@@ -262,6 +304,7 @@ def _save_employee_from_post(post, employee):
 
 @login_required
 @subscription_required
+@require_role("hr")
 def employee_add(request):
     from apps.billing.services import get_subscription_context
     member = CompanyMember.objects.filter(user=request.user).first()
@@ -312,6 +355,10 @@ def employee_edit(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     if request.method == "POST":
+        role = get_member_role(request.user)
+        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
+            messages.error(request, 'Недостаточно прав для редактирования.')
+            return redirect('dashboard:employees')
         _save_employee_from_post(request.POST, employee)
         employee.save()
         employees = Employee.objects.filter(company=member.company).select_related("department")
@@ -332,6 +379,7 @@ def employee_edit(request, employee_id):
 
 @login_required
 @require_POST
+@require_role("admin")
 def employee_delete(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -772,6 +820,10 @@ def company_profile(request):
     company = member.company
     saved = False
     if request.method == "POST":
+        role = get_member_role(request.user)
+        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('admin', 0):
+            messages.error(request, 'Недостаточно прав для изменения настроек компании.')
+            return redirect('dashboard:company')
         company.name             = request.POST.get("name", company.name)
         company.inn              = request.POST.get("inn", company.inn)
         company.ogrn             = request.POST.get("ogrn", company.ogrn)
@@ -878,6 +930,7 @@ def _get_ru_holidays_dashboard(year):
 
 @login_required
 @subscription_required
+@require_role("hr")
 def timesheet_save(request):
     """Сохраняет отметки табеля из POST (JSON body)."""
     import json
@@ -1058,6 +1111,7 @@ def forms_list(request):
 
 @require_POST
 @login_required
+@require_role("admin")
 def delete_document(request, doc_id):
     """Удаление документа из журнала"""
     from django.http import JsonResponse
@@ -1143,6 +1197,7 @@ def form_editor(request, doc_type):
 @login_required
 @subscription_required
 @require_POST
+@require_role("hr")
 def form_save(request, doc_type):
     """Сохранение документа"""
     import json as _json_save
@@ -1507,6 +1562,7 @@ def chat_poll(request):
 
 @require_POST
 @login_required
+@require_role("admin")
 def delete_document(request, doc_id):
     from django.http import JsonResponse
     from apps.documents.models import Document
@@ -1796,6 +1852,7 @@ def team_list(request):
 
 
 @login_required
+@require_role("admin")
 def team_invite(request):
     """Отправить приглашение."""
     if request.method != 'POST':
@@ -1921,6 +1978,7 @@ def invite_accept(request, token):
 
 
 @login_required
+@require_role("admin")
 def team_member_remove(request, member_id):
     """Удалить участника команды."""
     member = CompanyMember.objects.filter(user=request.user).first()
@@ -1939,6 +1997,7 @@ def team_member_remove(request, member_id):
 
 
 @login_required
+@require_role("admin")
 def team_invite_cancel(request, invite_id):
     """Отменить приглашение."""
     member = CompanyMember.objects.filter(user=request.user).first()
@@ -1951,6 +2010,7 @@ def team_invite_cancel(request, invite_id):
 
 
 @login_required
+@require_role("admin")
 def api_settings(request):
     """Страница управления API-токеном."""
     from apps.billing.services import PLANS
@@ -1975,6 +2035,7 @@ def api_settings(request):
 
 
 @login_required
+@require_role("admin")
 def api_token_regenerate(request):
     """Пересоздать API-токен."""
     if request.method != 'POST':

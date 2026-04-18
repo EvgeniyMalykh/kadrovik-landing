@@ -9,6 +9,21 @@ from apps.companies.models import CompanyMember
 from apps.billing.models import Payment, Subscription
 from apps.billing.services import create_payment, activate_subscription, PLANS
 
+# ===== ROLE-BASED ACCESS CONTROL =====
+ROLE_RANK = {
+    'owner': 4,
+    'admin': 3,
+    'hr': 2,
+    'accountant': 1,
+}
+
+def _check_role(request, min_role):
+    """Проверяет роль. Возвращает True если доступ разрешён."""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return False
+    return ROLE_RANK.get(member.role, 0) >= ROLE_RANK.get(min_role, 99)
+
 
 @login_required
 def checkout(request, plan_key):
@@ -18,6 +33,10 @@ def checkout(request, plan_key):
 
     member = CompanyMember.objects.filter(user=request.user).first()
     if not member:
+        return redirect("dashboard:subscription")
+
+    if not _check_role(request, 'owner'):
+        messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
 
     return_url = request.build_absolute_uri("/dashboard/payment/success/")
@@ -47,6 +66,9 @@ def payment_success(request):
 @require_POST
 def cancel_autorenew(request):
     """Отключает автопродление и отвязывает карту (очищает payment_method_id)."""
+    if not _check_role(request, 'owner'):
+        messages.error(request, 'Управление подпиской доступно только владельцу.')
+        return redirect("dashboard:subscription")
     member = CompanyMember.objects.filter(user=request.user).first()
     if member:
         sub = getattr(member.company, 'subscription', None)
@@ -62,6 +84,9 @@ def cancel_autorenew(request):
 @require_POST
 def detach_card(request):
     """Отвязывает карту — удаляет payment_method_id из системы (требование ЮКассы)."""
+    if not _check_role(request, 'owner'):
+        messages.error(request, 'Управление подпиской доступно только владельцу.')
+        return redirect("dashboard:subscription")
     member = CompanyMember.objects.filter(user=request.user).first()
     if not member:
         return redirect("dashboard:login")
