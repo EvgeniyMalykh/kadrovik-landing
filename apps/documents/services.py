@@ -236,7 +236,7 @@ def generate_t2_pdf(employee) -> bytes:
     director = co["director_name"]
     inn_co = co["inn"]
     address_co = co["legal_address"]
-    story.append(Paragraph(company_name or "Наименование организации", normal))
+    story.append(Paragraph(company_name or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("Унифицированная форма № Т-2", center))
@@ -315,7 +315,7 @@ def generate_t8_pdf(employee, order_number="У-001") -> bytes:
     director = co["director_name"]
     inn_co = co["inn"]
     address_co = co["legal_address"]
-    story.append(Paragraph(company_name or "Наименование организации", normal))
+    story.append(Paragraph(company_name or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("Унифицированная форма № Т-8", center))
@@ -405,7 +405,7 @@ def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_numb
     director = co["director_name"]
     inn_co = co["inn"]
     address_co = co["legal_address"]
-    story.append(Paragraph(company_name or "Наименование организации", normal))
+    story.append(Paragraph(company_name or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("Унифицированная форма № Т-6", center))
@@ -486,7 +486,7 @@ def generate_t5_pdf(employee, new_position, new_salary=None, order_number="ПР-
     director = co["director_name"]
     inn_co = co["inn"]
     address_co = co["legal_address"]
-    story.append(Paragraph(company_name or "Наименование организации", normal))
+    story.append(Paragraph(company_name or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("Унифицированная форма № Т-5", center))
@@ -555,7 +555,7 @@ def generate_salary_change_pdf(employee, new_salary, order_number="З-001", prev
     director = co["director_name"]
     inn_co = co["inn"]
     address_co = co["legal_address"]
-    story.append(Paragraph(company_name or "Наименование организации", normal))
+    story.append(Paragraph(company_name or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("ПРИКАЗ", title))
@@ -604,7 +604,7 @@ def generate_transfer_order_pdf(employee, new_position, new_salary=None, order_n
     transfer_date_str = transfer_date or today_str
     story = []
     co = _get_company_info(employee)
-    story.append(Paragraph(co["name"] or "Наименование организации", normal))
+    story.append(Paragraph(co["name"] or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("Унифицированная форма № Т-5", center))
@@ -670,7 +670,7 @@ def generate_dismissal_order_pdf(employee, order_number="У-001", dismissal_date
     basis_doc = dismissal_basis_doc or "Заявление работника"
     story = []
     co = _get_company_info(employee)
-    story.append(Paragraph(co["name"] or "Наименование организации", normal))
+    story.append(Paragraph(co["name"] or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("Унифицированная форма № Т-8", center))
@@ -745,7 +745,7 @@ def generate_bonus_order_pdf(employee, bonus_amount, order_number="П-001", reas
     payment_date_str = payment_date or today_str
     story = []
     co = _get_company_info(employee)
-    story.append(Paragraph(co["name"] or "Наименование организации", normal))
+    story.append(Paragraph(co["name"] or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("ПРИКАЗ", title))
@@ -796,7 +796,7 @@ def generate_disciplinary_order_pdf(employee, penalty_type, order_number="ДВ-0
     reason_text = reason or "Акт о нарушении трудовой дисциплины"
     story = []
     co = _get_company_info(employee)
-    story.append(Paragraph(co["name"] or "Наименование организации", normal))
+    story.append(Paragraph(co["name"] or "Наименование организации", center))
     story.append(Paragraph("(наименование организации)", small))
     story.append(Spacer(1, 2*mm))
     story.append(Paragraph("ПРИКАЗ", title))
@@ -1130,7 +1130,7 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
     month_name = month_names[m-1]
     company_name = employees[0].company.name if employees and hasattr(employees[0], "company") and employees[0].company else ""
     story = []
-    story.append(Paragraph(company_name or "Организация", normal))
+    story.append(Paragraph(company_name or "Организация", center))
     story.append(Paragraph("Унифицированная форма N Т-13", title))
     story.append(Paragraph("ТАБЕЛЬ УЧЁТА РАБОЧЕГО ВРЕМЕНИ — " + month_name + " " + str(y) + " г.", title))
     story.append(Spacer(1, 3*mm))
