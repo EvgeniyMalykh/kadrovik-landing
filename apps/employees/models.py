@@ -148,7 +148,6 @@ class TimeRecord(models.Model):
         WORK      = 'Я',  'Явка (рабочий день)'
         VACATION  = 'ОТ', 'Отпуск ежегодный'
         VACATION_U= 'ДО', 'Отпуск доп.'
-        VACATION_ADD = 'ОД', 'Отпуск дополнительный оплачиваемый'
         VACATION_STUDY = 'УЧ', 'Учебный отпуск'
         VACATION_MATERNITY = 'ОЖ', 'Отпуск по беременности и родам'
         SICK      = 'Б',  'Больничный'

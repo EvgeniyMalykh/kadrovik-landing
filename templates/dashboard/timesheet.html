@@ -123,6 +123,8 @@
 .code-Я   { color: #34d399; }
 .code-ОТ  { color: #60a5fa; }
 .code-ДО  { color: #93c5fd; }
+.code-УЧ  { color: #86efac; }
+.code-ОЖ  { color: #f9a8d4; }
 .code-Б   { color: #fbbf24; }
 .code-К   { color: #a78bfa; }
 .code-НН  { color: #f87171; }
@@ -223,6 +225,14 @@
     <span class="cell-menu-badge" style="background:#86efac;color:#1e293b">ДО</span>
     <span>Доп. отпуск</span>
   </div>
+  <div class="cell-menu-item" data-code="УЧ">
+    <span class="cell-menu-badge" style="background:#4ade80;color:#1e293b">УЧ</span>
+    <span style="font-size:0.8rem">Учебный отпуск</span>
+  </div>
+  <div class="cell-menu-item" data-code="ОЖ">
+    <span class="cell-menu-badge" style="background:#f472b6;color:#fff">ОЖ</span>
+    <span style="font-size:0.8rem">Отпуск по БиР</span>
+  </div>
   <div class="cell-menu-item" data-code="Б">
     <span class="cell-menu-badge" style="background:#facc15;color:#1e293b">Б</span>
     <span>Больничный</span>
@@ -262,7 +272,7 @@ function getDefaultHours(code, dayIdx) {
     // Отсутствие (выходные, праздники, прогул) = 0
     if (['В','П','НН'].includes(code)) return 0;
     // Отпуск, доп.отпуск, больничный = 0 рабочих часов
-    if (['ОТ','ДО','Б'].includes(code)) return 0;
+    if (['ОТ','ДО','УЧ','ОЖ','Б'].includes(code)) return 0;
     if (code === 'Я½') return 4;
     // Предпраздничный сокращённый день — 7 часов
     if (['Я','К','РВ','Я/С'].includes(code)) {
@@ -397,7 +407,7 @@ function updateTotals() {
                 days += 1;
                 hours += h;
             }
-            // ОТ, ДО, Б, НН, В, П — days += 0, hours += 0
+            // ОТ, ДО, УЧ, ОЖ, Б, НН, В, П — days += 0, hours += 0
             // В, П, НН — days += 0, hours += 0
         });
         row.querySelector('.ts-total-days').textContent  = days;
