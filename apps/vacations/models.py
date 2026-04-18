@@ -7,8 +7,9 @@ from apps.companies.models import Company
 class Vacation(models.Model):
     class VacationType(models.TextChoices):
         ANNUAL = 'annual', 'Ежегодный оплачиваемый'
+        ADDITIONAL = 'additional', 'Дополнительный оплачиваемый'
         UNPAID = 'unpaid', 'За свой счёт (без сохранения зарплаты)'
-        MATERNITY = 'maternity', 'Декретный'
+        MATERNITY = 'maternity', 'По беременности и родам'
         EDUCATIONAL = 'educational', 'Учебный'
 
     employee     = models.ForeignKey(Employee, on_delete=models.CASCADE,

@@ -183,13 +183,28 @@ def vacation_print(request, vacation_id):
     })
 
 
+@login_required
+def vacation_additional_pdf(request, vacation_id):
+    """PDF-заявление на дополнительный оплачиваемый отпуск."""
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:employees")
+    v = get_object_or_404(Vacation, id=vacation_id, employee__company=member.company)
+    from apps.documents.services import generate_additional_vacation_application
+    pdf = generate_additional_vacation_application(v)
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="additional_vacation_{v.employee.last_name}.pdf"'
+    return response
+
+
 # ─── ПУБЛИЧНАЯ ФОРМА ДЛЯ РАБОТНИКА ──────────────────────────────────────────
 
 VACATION_TYPE_LABELS = {
     'annual':      'Ежегодный оплачиваемый',
+    'additional':  'Дополнительный оплачиваемый',
     'unpaid':      'За свой счёт (без сохранения зарплаты)',
     'educational': 'Учебный',
-    'maternity':   'Декретный',
+    'maternity':   'По беременности и родам',
 }
 
 def vacation_request_public(request, company_id):

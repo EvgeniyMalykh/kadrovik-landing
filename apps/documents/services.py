@@ -381,7 +381,19 @@ def generate_t8_pdf(employee, order_number="У-001") -> bytes:
     return buffer.getvalue()
 
 
-def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_number="О-001") -> bytes:
+_VACATION_TYPE_DISPLAY = {
+    'annual':      'Ежегодный основной оплачиваемый',
+    'additional':  'Дополнительный оплачиваемый',
+    'unpaid':      'Без сохранения заработной платы',
+    'educational': 'Учебный',
+    'maternity':   'По беременности и родам',
+}
+
+def _vacation_type_display(vacation_type):
+    return _VACATION_TYPE_DISPLAY.get(vacation_type, 'Ежегодный основной оплачиваемый')
+
+
+def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_number="О-001", vacation_type=None) -> bytes:
     """Приказ об отпуске Т-6."""
     font_name = _register_fonts()
     buffer = io.BytesIO()
@@ -433,7 +445,7 @@ def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_numb
         ["Профессия (должность):", employee.position or ""],
         ["Структурное подразделение:", employee.department.name if employee.department else ""],
         ["За период работы:", f"с {hire} по ___.___.______"],
-        ["Вид отпуска:", "Ежегодный основной оплачиваемый"],
+        ["Вид отпуска:", _vacation_type_display(vacation_type)],
         ["Количество календарных дней:", str(days)],
         ["Дата начала:", v_start.strftime("%d.%m.%Y")],
         ["Дата окончания:", v_end.strftime("%d.%m.%Y")],
@@ -466,6 +478,79 @@ def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_numb
     story.append(st)
     doc.build(story)
     return buffer.getvalue()
+
+def generate_additional_vacation_application(vacation) -> bytes:
+    """Заявление на дополнительный оплачиваемый отпуск (PDF)."""
+    font_name = _register_fonts()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+        leftMargin=25*mm, rightMargin=15*mm, topMargin=20*mm, bottomMargin=20*mm)
+
+    from datetime import date as dt_date
+    employee = vacation.employee
+    co = _get_company_info(employee)
+
+    normal = ParagraphStyle("N", fontName=font_name, fontSize=12, leading=16)
+    center = ParagraphStyle("C", fontName=font_name, fontSize=12, leading=16, alignment=TA_CENTER)
+    right  = ParagraphStyle("R", fontName=font_name, fontSize=12, leading=16, alignment=TA_RIGHT)
+    small  = ParagraphStyle("S", fontName=font_name, fontSize=10, leading=13)
+    title  = ParagraphStyle("T", fontName=font_name, fontSize=14, leading=18, alignment=TA_CENTER)
+
+    story = []
+
+    # Шапка — кому
+    director_position = co["director_position"] or "Директору"
+    director_name = co["director_name"] or "________________"
+    company_name = co["name"] or "________________"
+    story.append(Paragraph(f"{director_position}", right))
+    story.append(Paragraph(f"{company_name}", right))
+    story.append(Paragraph(f"{director_name}", right))
+    story.append(Spacer(1, 3*mm))
+
+    full_name = f"{employee.last_name} {employee.first_name} {employee.middle_name}".strip()
+    position = employee.position or ""
+    story.append(Paragraph(f"от {full_name}", right))
+    story.append(Paragraph(f"{position}", right))
+    story.append(Spacer(1, 10*mm))
+
+    story.append(Paragraph("Заявление", title))
+    story.append(Spacer(1, 8*mm))
+
+    start_str = vacation.start_date.strftime("%d.%m.%Y")
+    end_str = vacation.end_date.strftime("%d.%m.%Y")
+    days = vacation.days_count
+
+    body_text = (
+        f"Прошу предоставить мне дополнительный оплачиваемый отпуск "
+        f"с {start_str} по {end_str} ({days} календарных дней)."
+    )
+    story.append(Paragraph(body_text, normal))
+    story.append(Spacer(1, 6*mm))
+
+    if vacation.reason:
+        story.append(Paragraph(f"Основание: {vacation.reason}", normal))
+        story.append(Spacer(1, 6*mm))
+
+    today_str = dt_date.today().strftime("%d.%m.%Y")
+    sig_data = [
+        [today_str, "________________", full_name],
+        ["дата", "подпись", "расшифровка подписи"],
+    ]
+    st = Table(sig_data, colWidths=[40*mm, 50*mm, 70*mm])
+    st.setStyle(TableStyle([
+        ("FONTNAME", (0,0), (-1,-1), font_name), ("FONTSIZE", (0,0), (-1,-1), 10),
+        ("LINEBELOW", (0,0), (0,0), 0.5, colors.black),
+        ("LINEBELOW", (1,0), (1,0), 0.5, colors.black),
+        ("LINEBELOW", (2,0), (2,0), 0.5, colors.black),
+        ("ALIGN", (0,1), (-1,1), "CENTER"),
+        ("TEXTCOLOR", (0,1), (-1,1), colors.grey),
+        ("FONTSIZE", (0,1), (-1,1), 7),
+    ]))
+    story.append(st)
+
+    doc.build(story)
+    return buffer.getvalue()
+
 
 def generate_t5_pdf(employee, new_position, new_salary=None, order_number="ПР-001") -> bytes:
     """Приказ о переводе на другую работу Т-5."""
@@ -1185,7 +1270,7 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
                     work_hours += hrs
                     row.append(code + "\n" + str(hrs))
                 else:
-                    # В, П, ОТ, ДО, Б, НН — нерабочие коды
+                    # В, П, ОТ, ДО, ОД, УЧ, ОЖ, Б, НН — нерабочие коды
                     row.append(code + "\n")
             else:
                 dtype = day_types[d-1]

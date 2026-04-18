@@ -435,7 +435,7 @@ def download_t6(request, employee_id):
     from datetime import date as dt
     v_start = dt.fromisoformat(request.GET.get("start", dt.today().isoformat()))
     v_end   = dt.fromisoformat(request.GET.get("end",   dt.today().isoformat()))
-    pdf = generate_t6_pdf(employee, v_start, v_end, request.GET.get("order", "О-001"))
+    pdf = generate_t6_pdf(employee, v_start, v_end, request.GET.get("order", "О-001"), vacation_type=request.GET.get("vtype"))
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"T6_{employee.last_name}.pdf\""
     return r
