@@ -26,6 +26,12 @@
                 <div class="vac-type-card__sub">Ежегодный основной</div>
             </label>
             <label class="vac-type-card">
+                <input type="radio" name="vacation_type" value="additional" onchange="selectVacType(this)">
+                <div class="vac-type-card__icon">🌐</div>
+                <div class="vac-type-card__label">Дополнительный</div>
+                <div class="vac-type-card__sub">Оплачиваемый (северный и др.)</div>
+            </label>
+            <label class="vac-type-card">
                 <input type="radio" name="vacation_type" value="unpaid" onchange="selectVacType(this)">
                 <div class="vac-type-card__icon">📋</div>
                 <div class="vac-type-card__label">За свой счёт</div>
@@ -40,7 +46,7 @@
             <label class="vac-type-card">
                 <input type="radio" name="vacation_type" value="maternity" onchange="selectVacType(this)">
                 <div class="vac-type-card__icon">👶</div>
-                <div class="vac-type-card__label">Декретный</div>
+                <div class="vac-type-card__label">По беременности</div>
                 <div class="vac-type-card__sub">По беременности и родам</div>
             </label>
         </div>

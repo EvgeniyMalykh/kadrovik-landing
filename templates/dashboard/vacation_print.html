@@ -179,7 +179,7 @@
     <div class="doc-body">
         <p>
             Прошу предоставить мне
-            <span class="vac-type-text">{% if v.vacation_type == 'annual' %}ежегодный оплачиваемый отпуск{% elif v.vacation_type == 'unpaid' %}отпуск без сохранения заработной платы{% elif v.vacation_type == 'educational' %}учебный отпуск{% elif v.vacation_type == 'maternity' %}отпуск по беременности и родам{% else %}{{ v.get_vacation_type_display|lower }}{% endif %}</span>
+            <span class="vac-type-text">{% if v.vacation_type == 'annual' %}ежегодный оплачиваемый отпуск{% elif v.vacation_type == 'additional' %}дополнительный оплачиваемый отпуск{% elif v.vacation_type == 'unpaid' %}отпуск без сохранения заработной платы{% elif v.vacation_type == 'educational' %}учебный отпуск{% elif v.vacation_type == 'maternity' %}отпуск по беременности и родам{% else %}{{ v.get_vacation_type_display|lower }}{% endif %}</span>
             продолжительностью <span class="underline-val underline-val--short">{{ v.days_count }}&nbsp;({% spaceless %}{% if v.days_count == 1 %}один{% elif v.days_count == 2 %}два{% elif v.days_count == 3 %}три{% elif v.days_count == 4 %}четыре{% elif v.days_count == 5 %}пять{% elif v.days_count == 6 %}шесть{% elif v.days_count == 7 %}семь{% elif v.days_count == 8 %}восемь{% elif v.days_count == 9 %}девять{% elif v.days_count == 10 %}десять{% else %}{{ v.days_count }}{% endif %}{% endspaceless %}) календарных дней</span>
             с&nbsp;<span class="underline-val underline-val--date">{{ v.start_date|date:"d.m.Y" }}</span>
             по&nbsp;<span class="underline-val underline-val--date">{{ v.end_date|date:"d.m.Y" }}</span> включительно.

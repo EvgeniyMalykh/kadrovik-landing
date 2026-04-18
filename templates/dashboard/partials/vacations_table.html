@@ -32,6 +32,10 @@
             <td class="actions-cell" style="white-space:nowrap;">
                 <a href="{% url 'vacations:print' v.id %}" target="_blank"
                    class="btn-icon" title="Печать заявления" style="text-decoration:none;">🖨️</a>
+                {% if v.vacation_type == 'additional' %}
+                <a href="{% url 'vacations:additional_pdf' v.id %}" target="_blank"
+                   class="btn-icon" title="PDF заявление (доп. отпуск)" style="text-decoration:none;">📄</a>
+                {% endif %}
                 <button type="button" class="btn-icon btn-danger" title="Удалить"
                         onclick="deleteVacation({{ v.id }}, this)">🗑️</button>
             </td>
@@ -72,6 +76,12 @@
                class="btn-secondary btn-sm" title="Печать" style="text-decoration:none;display:flex;align-items:center;gap:5px;">
                 🖨️ Печать
             </a>
+            {% if v.vacation_type == 'additional' %}
+            <a href="{% url 'vacations:additional_pdf' v.id %}" target="_blank"
+               class="btn-secondary btn-sm" title="PDF заявление" style="text-decoration:none;display:flex;align-items:center;gap:5px;">
+                📄 PDF
+            </a>
+            {% endif %}
             <button type="button" class="btn-icon btn-danger" title="Удалить"
                     onclick="deleteVacation({{ v.id }}, this)">🗑️</button>
         </div>

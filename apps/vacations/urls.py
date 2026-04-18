@@ -8,6 +8,7 @@ urlpatterns = [
     path("add/", views.vacation_add, name="add"),
     path("<int:vacation_id>/delete/", views.vacation_delete, name="delete"),
     path("<int:vacation_id>/print/", views.vacation_print, name="print"),
+    path("<int:vacation_id>/additional-pdf/", views.vacation_additional_pdf, name="additional_pdf"),
     # Публичная форма для работника (без авторизации)
     path("request/<int:company_id>/", views.vacation_request_public, name="request_public"),
     # График отпусков
