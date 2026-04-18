@@ -1191,6 +1191,7 @@ def form_editor(request, doc_type):
         'employees': employees,
         'extra_data': document.extra_data if document else {},
         'next_number': next_number,
+        'company': company,
     })
 
 

@@ -7,7 +7,8 @@
   <div>
     <h1 class="page-title">{{ form_title }}</h1>
     <p class="page-subtitle">
-      {% if document %}Редактирование документа #{{ document.id }}{% else %}Создание нового документа{% endif %}
+      {% if company %}{{ company.name }}{% endif %}
+      {% if document %} &mdash; Редактирование документа #{{ document.id }}{% else %} &mdash; Создание нового документа{% endif %}
     </p>
   </div>
   <a href="{% url 'dashboard:forms_list' %}" class="btn-secondary" style="font-size:0.82rem;padding:8px 16px;text-decoration:none;border-radius:8px;">
