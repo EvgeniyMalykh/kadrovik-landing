@@ -182,7 +182,8 @@ class EmployeeTests(TestCase):
 
     def test_employee_edit_get_200(self):
         resp = self.client.get(
-            reverse("dashboard:employee_edit", args=[self.employee.id])
+            reverse("dashboard:employee_edit", args=[self.employee.id]),
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(resp.status_code, 200)
 
@@ -201,6 +202,7 @@ class EmployeeTests(TestCase):
                 "marital_status": "single",
                 "citizenship": "Российская Федерация",
             },
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(resp.status_code, 200)
         self.employee.refresh_from_db()
