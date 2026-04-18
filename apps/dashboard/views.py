@@ -876,8 +876,13 @@ def timesheet_edit(request):
     # Словарь: {(employee_id, day): record}
     rec_map = {(r.employee_id, r.date.day): r for r in records}
 
-    # Праздники и выходные
+    # Праздники, сокращённые и выходные
     holidays = _get_ru_holidays_dashboard(y)
+    try:
+        from apps.employees.utils import get_holidays_and_short_days
+        _, short_days_set = get_holidays_and_short_days(y, m)
+    except Exception:
+        short_days_set = set()
     day_types = []
     for d in days:
         dd = datetime.date(y, m, d)
@@ -885,6 +890,8 @@ def timesheet_edit(request):
             day_types.append('holiday')
         elif dd.weekday() >= 5:
             day_types.append('weekend')
+        elif dd in short_days_set:
+            day_types.append('short')
         else:
             day_types.append('work')
 
@@ -1756,6 +1763,11 @@ def export_timesheet_excel(request):
         ws.column_dimensions[get_column_letter(ci)].width = w
 
     holidays = _get_ru_holidays_dashboard(y)
+    try:
+        from apps.employees.utils import get_holidays_and_short_days
+        _, short_days = get_holidays_and_short_days(y, m)
+    except Exception:
+        short_days = set()
     for di, d in enumerate(days, 5):
         dd = datetime.date(y, m, d)
         is_wknd = dd.weekday() >= 5 or dd in holidays
@@ -1791,6 +1803,7 @@ def export_timesheet_excel(request):
             rec = rec_map.get((emp.id, d))
             dd = datetime.date(y, m, d)
             is_wknd = dd.weekday() >= 5 or dd in holidays
+            is_short = dd in short_days
             code = rec.code if rec else ('В' if is_wknd else '')
             hours = rec.hours if rec else 0
             c = ws.cell(ri, di, code)
@@ -1802,7 +1815,7 @@ def export_timesheet_excel(request):
             elif code == 'Я':
                 c.fill = ya_fill
                 total_days += 1
-                total_hours += hours or 8
+                total_hours += hours or (7 if is_short else 8)
             elif code and code not in ('В', 'П', ''):
                 total_days += 1
                 total_hours += hours or 0

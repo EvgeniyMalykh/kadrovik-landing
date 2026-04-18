@@ -48,9 +48,23 @@ def _get_company_info(employee):
     }
 
 def _get_ru_holidays(year):
-    """Производственный календарь РФ — нерабочие праздничные дни."""
+    """Производственный календарь РФ — нерабочие праздничные дни.
+    Берёт данные из модели ProductionCalendar, при отсутствии —
+    фоллбэк на статический список.
+    """
     from datetime import date
-    # Перенесённые выходные учитываются в базовом списке
+    try:
+        from apps.employees.models import ProductionCalendar
+        db_holidays = set(
+            ProductionCalendar.objects.filter(
+                date__year=year, day_type='holiday'
+            ).values_list('date', flat=True)
+        )
+        if db_holidays:
+            return db_holidays
+    except Exception:
+        pass
+    # Фоллбэк — статический список (без переносов)
     fixed = [
         (1, 1), (1, 2), (1, 3), (1, 4), (1, 5),  # Новый год
         (1, 7),                                      # Рождество
@@ -1223,14 +1237,22 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
     col_widths = [7*mm, 48*mm] + [5.5*mm]*days_in_month + [11*mm, 11*mm]
     rows = [header]
     holidays = _get_ru_holidays(y)
+    # Сокращённые предпраздничные дни (7 часов)
+    try:
+        from apps.employees.utils import get_holidays_and_short_days
+        _, short_days = get_holidays_and_short_days(y, m)
+    except Exception:
+        short_days = set()
     # Определяем типы дней для подсветки (colspan не нужен — используем стили)
-    day_types = []  # 'work', 'weekend', 'holiday'
+    day_types = []  # 'work', 'short', 'weekend', 'holiday'
     for d in range(1, days_in_month+1):
         date_d = dt_date(y, m, d)
         if date_d in holidays:
             day_types.append('holiday')
         elif date_d.weekday() >= 5:
             day_types.append('weekend')
+        elif date_d in short_days:
+            day_types.append('short')
         else:
             day_types.append('work')
 
@@ -1262,6 +1284,7 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
         work_hours = 0
         for d in range(1, days_in_month+1):
             rec = tr_map.get((emp.id, d))
+            dtype = day_types[d-1]
             if rec:
                 code = rec.code
                 if code in _WORK_CODES:
@@ -1273,11 +1296,14 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
                     # В, П, ОТ, ДО, ОД, УЧ, ОЖ, Б, НН — нерабочие коды
                     row.append(code + "\n")
             else:
-                dtype = day_types[d-1]
                 if dtype == 'work':
                     row.append("Я\n8")
                     work_days += 1
                     work_hours += 8
+                elif dtype == 'short':
+                    row.append("Я\n7")
+                    work_days += 1
+                    work_hours += 7
                 elif dtype == 'holiday':
                     row.append("П\n")
                 else:

@@ -108,11 +108,13 @@
 .ts-hdr-work { background: var(--bg-card); }
 .ts-hdr-weekend { background: #374151; }
 .ts-hdr-holiday { background: #7f1d1d; color: #fca5a5; }
+.ts-hdr-short { background: #92400e; color: #fde68a; }
 .ts-cell { cursor: pointer; min-width: 28px; height: 36px; vertical-align: middle; position: relative; transition: background 0.1s; }
 .ts-cell:hover { background: rgba(99,102,241,0.15) !important; }
 .ts-work { background: transparent; }
 .ts-weekend { background: rgba(55,65,81,0.5); }
 .ts-holiday { background: rgba(127,29,29,0.3); }
+.ts-short { background: rgba(146,64,14,0.15); }
 .ts-name { text-align: left; padding: 4px 8px; min-width: 160px; }
 .ts-code { display: block; font-weight: 700; font-size: 0.72rem; line-height: 1.2; }
 .ts-hrs  { display: block; font-size: 0.6rem; color: var(--text-muted); line-height: 1; }
@@ -256,13 +258,17 @@ function getDefaultCode(dayIdx) {
     if (t === 'weekend') return 'В';
     return 'Я';
 }
-function getDefaultHours(code) {
+function getDefaultHours(code, dayIdx) {
     // Отсутствие (выходные, праздники, прогул) = 0
     if (['В','П','НН'].includes(code)) return 0;
     // Отпуск, доп.отпуск, больничный = 0 рабочих часов
     if (['ОТ','ДО','Б'].includes(code)) return 0;
     if (code === 'Я½') return 4;
-    if (['Я','К','РВ','Я/С'].includes(code)) return 8;
+    // Предпраздничный сокращённый день — 7 часов
+    if (['Я','К','РВ','Я/С'].includes(code)) {
+        if (dayIdx !== undefined && DAY_TYPES[dayIdx] === 'short') return 7;
+        return 8;
+    }
     return 0;
 }
 
@@ -280,7 +286,7 @@ function initTable() {
             hours = rec.hours;
         } else {
             code  = getDefaultCode(dayIdx);
-            hours = getDefaultHours(code);
+            hours = getDefaultHours(code, dayIdx);
         }
         setCell(cell, code, hours);
     });
@@ -320,7 +326,8 @@ cellMenu.addEventListener('click', function(e) {
     var item = e.target.closest('.cell-menu-item');
     if (!item || !cellMenuTarget) return;
     var code = item.dataset.code;
-    var hours = getDefaultHours(code);
+    var dayIdx = parseInt(cellMenuTarget.dataset.day) - 1;
+    var hours = getDefaultHours(code, dayIdx);
     setCell(cellMenuTarget, code, hours);
     markChange(cellMenuTarget, code, hours);
     updateTotals();

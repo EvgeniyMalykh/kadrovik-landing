@@ -174,3 +174,22 @@ class TimeRecord(models.Model):
 
     def __str__(self):
         return f'{self.employee.full_name} {self.date} — {self.code}'
+
+
+class ProductionCalendar(models.Model):
+    """Производственный календарь РФ — праздники и сокращённые дни."""
+    DAY_TYPE_CHOICES = [
+        ('holiday', 'Праздничный/выходной'),
+        ('short', 'Предпраздничный сокращённый'),
+    ]
+    date = models.DateField('Дата', unique=True)
+    day_type = models.CharField('Тип дня', max_length=20, choices=DAY_TYPE_CHOICES)
+    description = models.CharField('Описание', max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['date']
+        verbose_name = 'Производственный календарь'
+        verbose_name_plural = 'Производственный календарь'
+
+    def __str__(self):
+        return f'{self.date} — {self.get_day_type_display()}'
