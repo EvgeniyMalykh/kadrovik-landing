@@ -361,7 +361,7 @@ def generate_t8_pdf(employee, order_number="У-001") -> bytes:
     story.append(Spacer(1, 6*mm))
     sig_data = [
         ["Руководитель:", co["director_position"] or "Директор", "", ""],
-        [co["director_name"] or "", "", "подпись", "расшифровка подписи"],
+        ["", "", "подпись", co["director_name"] or "расшифровка подписи"],
         ["", "", "", ""],
         ["С приказом работник ознакомлен:", "", "____________", "___.___.______"],
         ["", "", "подпись", "дата"],
@@ -448,7 +448,7 @@ def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_numb
     story.append(Spacer(1, 6*mm))
     sig_data = [
         ["Руководитель:", co["director_position"] or "Директор", "", ""],
-        [co["director_name"] or "", "", "подпись", "расшифровка подписи"],
+        ["", "", "подпись", co["director_name"] or "расшифровка подписи"],
         ["", "", "", ""],
         ["С приказом работник ознакомлен:", "", "____________", "___.___.______"],
         ["", "", "подпись", "дата"],
@@ -708,7 +708,7 @@ def generate_dismissal_order_pdf(employee, order_number="У-001", dismissal_date
     story.append(Spacer(1, 6*mm))
     sig_data = [
         ["Руководитель:", co["director_position"] or "Директор", "", ""],
-        [co["director_name"] or "", "", "подпись", "расшифровка подписи"],
+        ["", "", "подпись", co["director_name"] or "расшифровка подписи"],
         ["", "", "", ""],
         ["С приказом работник ознакомлен:", "", "____________", "___.___.______"],
         ["", "", "подпись", "дата"],
