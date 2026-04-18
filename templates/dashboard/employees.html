@@ -87,11 +87,11 @@
   <div style="flex:2;min-width:200px;">
     <input type="text" name="q" value="{{ q }}" class="form-control"
            placeholder="Поиск по ФИО, должности, отделу, таб. номеру..."
-           style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.05);color:#e2e8f0;font-size:0.9rem;">
+           style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:0.9rem;">
   </div>
   <div style="flex:1;min-width:150px;">
     <select name="department" class="form-select"
-            style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.05);color:#e2e8f0;font-size:0.9rem;">
+            style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:0.9rem;">
       <option value="">Все отделы</option>
       {% for dept in departments %}
         <option value="{{ dept.id }}" {% if department_filter == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
@@ -100,7 +100,7 @@
   </div>
   <div style="flex:1;min-width:140px;">
     <select name="contract" class="form-select"
-            style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.05);color:#e2e8f0;font-size:0.9rem;">
+            style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:0.9rem;">
       <option value="">Тип договора</option>
       <option value="permanent" {% if contract_filter == 'permanent' %}selected{% endif %}>Бессрочный</option>
       <option value="fixed" {% if contract_filter == 'fixed' %}selected{% endif %}>Срочный</option>
