@@ -43,7 +43,11 @@ def checkout(request, plan_key):
 
     try:
         payment, confirmation_url = create_payment(member.company, plan_key, return_url)
-    except Exception:
+    except Exception as e:
+        import traceback, logging
+        logger = logging.getLogger("billing")
+        logger.error(f"checkout error plan={plan_key}: {e}\n{traceback.format_exc()}")
+        messages.error(request, f"Ошибка оплаты: {e}")
         return redirect("dashboard:subscription")
 
     if confirmation_url:
