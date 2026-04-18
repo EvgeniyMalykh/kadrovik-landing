@@ -162,7 +162,7 @@ def generate_t1_pdf(employee, order_number='П-001') -> bytes:
         ['Принять на работу:', hire_date],
         ['Фамилия, имя, отчество:', full_name],
         ['Дата рождения:', employee.birth_date.strftime('%d.%m.%Y') if employee.birth_date else ''],
-        ['Табельный номер:', str(employee.id)],
+        ['Табельный номер:', employee.personnel_number or str(employee.id)],
         ['Структурное подразделение:', employee.department.name if hasattr(employee, 'department') and employee.department else ''],
         ['Профессия (должность):', employee.position or ''],
         ['Тарифная ставка (оклад):', '{} руб.'.format(employee.salary) if employee.salary else ''],
@@ -342,7 +342,7 @@ def generate_t8_pdf(employee, order_number="У-001") -> bytes:
         ["Прекратить действие трудового договора:", today],
         ["Уволить (дата):", today],
         ["Фамилия, имя, отчество:", full_name],
-        ["Табельный номер:", str(employee.id)],
+        ["Табельный номер:", employee.personnel_number or str(employee.id)],
         ["Профессия (должность):", employee.position or ""],
         ["Структурное подразделение:", employee.department.name if employee.department else ""],
         ["Основание увольнения (ст. ТК РФ):", "п. 3 ч. 1 ст. 77 ТК РФ (собственное желание)"],
@@ -429,7 +429,7 @@ def generate_t6_pdf(employee, vacation_start=None, vacation_end=None, order_numb
     hire = employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else ""
     rows = [
         ["Фамилия, имя, отчество:", full_name],
-        ["Табельный номер:", str(employee.id)],
+        ["Табельный номер:", employee.personnel_number or str(employee.id)],
         ["Профессия (должность):", employee.position or ""],
         ["Структурное подразделение:", employee.department.name if employee.department else ""],
         ["За период работы:", f"с {hire} по ___.___.______"],
@@ -510,7 +510,7 @@ def generate_t5_pdf(employee, new_position, new_salary=None, order_number="ПР-
     old_salary_str = (str(employee.salary) + " руб.") if employee.salary else "—"
     rows = [
         ["Фамилия, имя, отчество:", full_name],
-        ["Табельный номер:", str(employee.id)],
+        ["Табельный номер:", employee.personnel_number or str(employee.id)],
         ["Вид перевода:", "Постоянный"],
         ["Прежнее структурное подразделение:", employee.department.name if employee.department else "—"],
         ["Прежняя должность:", old_position],
@@ -629,7 +629,7 @@ def generate_transfer_order_pdf(employee, new_position, new_salary=None, order_n
     reason_text = reason or "Заявление работника / доп. соглашение к ТД"
     rows = [
         ["Фамилия, имя, отчество:", full_name],
-        ["Табельный номер:", str(employee.id)],
+        ["Табельный номер:", employee.personnel_number or str(employee.id)],
         ["Прежняя должность:", old_position],
         ["Прежний оклад:", old_salary_str],
         ["Новая должность:", new_position],
@@ -692,7 +692,7 @@ def generate_dismissal_order_pdf(employee, order_number="У-001", dismissal_date
     rows = [
         ["Уволить:", full_name],
         ["Должность:", employee.position or "—"],
-        ["Табельный номер:", str(employee.id)],
+        ["Табельный номер:", employee.personnel_number or str(employee.id)],
         ["Структурное подразделение:", employee.department.name if employee.department else "—"],
         ["Дата увольнения:", dismiss_date_str],
         ["Основание:", dismiss_reason],
