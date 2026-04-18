@@ -11,6 +11,8 @@ EXEMPT_PATHS = [
     '/dashboard/forgot-password/',
     '/dashboard/reset-password/',
     '/dashboard/subscription/',
+    '/dashboard/checkout/',
+    '/dashboard/payment/',
     '/dashboard/webhook/',
     '/vacations/request/',
     '/billing/',
