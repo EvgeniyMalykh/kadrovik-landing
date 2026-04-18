@@ -7,7 +7,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from apps.companies.models import CompanyMember
 from apps.billing.models import Payment, Subscription
+import logging
+logger = logging.getLogger(__name__)
 from apps.billing.services import create_payment, activate_subscription, PLANS
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings as django_settings
 
 # ===== ROLE-BASED ACCESS CONTROL =====
 ROLE_RANK = {
@@ -27,6 +32,7 @@ def _check_role(request, min_role):
 
 @login_required
 def checkout(request, plan_key):
+    import sys; print(f"[CHK] user={request.user} plan={plan_key}", file=sys.stderr, flush=True)
     """Инициирует оплату через ЮKassa с save_payment_method для рекуррента."""
     if plan_key not in PLANS:
         return redirect("dashboard:subscription")
@@ -35,7 +41,8 @@ def checkout(request, plan_key):
     if not member:
         return redirect("dashboard:subscription")
 
-    if not _check_role(request, 'owner'):
+    role_ok = _check_role(request, "owner"); import sys; print(f"[CHK] role_ok={role_ok} user={request.user.email}", file=sys.stderr, flush=True)
+    if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
 
@@ -70,7 +77,8 @@ def payment_success(request):
 @require_POST
 def cancel_autorenew(request):
     """Отключает автопродление и отвязывает карту (очищает payment_method_id)."""
-    if not _check_role(request, 'owner'):
+    role_ok = _check_role(request, "owner"); import sys; print(f"[CHK] role_ok={role_ok} user={request.user.email}", file=sys.stderr, flush=True)
+    if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
     member = CompanyMember.objects.filter(user=request.user).first()
@@ -88,7 +96,8 @@ def cancel_autorenew(request):
 @require_POST
 def detach_card(request):
     """Отвязывает карту — удаляет payment_method_id из системы (требование ЮКассы)."""
-    if not _check_role(request, 'owner'):
+    role_ok = _check_role(request, "owner"); import sys; print(f"[CHK] role_ok={role_ok} user={request.user.email}", file=sys.stderr, flush=True)
+    if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
     member = CompanyMember.objects.filter(user=request.user).first()
@@ -145,7 +154,45 @@ def yukassa_webhook(request):
         saved = payment_method.get("saved", False)
         method_id = payment_method.get("id", "") if saved else ""
 
-        activate_subscription(payment.company, plan_key, payment_method_id=method_id or None)
+        sub = activate_subscription(payment.company, plan_key, payment_method_id=method_id or None)
+
+        # Отправляем email об успешной оплате
+        try:
+            PLAN_NAMES = {
+                'start': 'Старт', 'business': 'Бизнес',
+                'pro': 'Корпоратив', 'trial': 'Пробный'
+            }
+            # Получаем email владельца компании
+            from apps.companies.models import CompanyMember
+            owner = CompanyMember.objects.filter(
+                company=payment.company, role='owner'
+            ).select_related('user').first()
+            if owner:
+                expires_str = sub.expires_at.strftime('%d.%m.%Y') if sub.expires_at else '—'
+                html = render_to_string('emails/subscription_activated.html', {
+                    'plan_name':     PLAN_NAMES.get(plan_key, plan_key),
+                    'company_name':  payment.company.name,
+                    'expires_at':    expires_str,
+                    'max_employees': sub.max_employees,
+                    'amount':        int(payment.amount),
+                })
+                plain = (
+                    f'Оплата прошла успешно!\n\n'
+                    f'Тариф {PLAN_NAMES.get(plan_key, plan_key)} активирован для {payment.company.name}.\n'
+                    f'Действует до: {expires_str}\n\n'
+                    f'Кадровый автопилот — app.kadrovik-auto.ru'
+                )
+                send_mail(
+                    subject='✅ Оплата прошла — тариф активирован',
+                    message=plain,
+                    from_email=django_settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[owner.user.email],
+                    html_message=html,
+                    fail_silently=True,
+                )
+                logger.info(f"[billing] Email об оплате отправлен на {owner.user.email}")
+        except Exception as e:
+            logger.warning(f"[billing] Не удалось отправить email об оплате: {e}")
 
     # ── payment.canceled ──────────────────────────────────────────────────────
     elif event == "payment.canceled":

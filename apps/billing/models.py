@@ -17,7 +17,7 @@ class Subscription(models.Model):
     company       = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='subscription')
     plan          = models.CharField('Тариф', max_length=20, choices=Plan.choices, default=Plan.TRIAL)
     status        = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.ACTIVE)
-    started_at    = models.DateTimeField(auto_now_add=True)
+    started_at    = models.DateTimeField('Дата начала', null=True, blank=True)
     expires_at         = models.DateTimeField('Истекает', null=True, blank=True)
     max_employees      = models.PositiveIntegerField('Макс. сотрудников', default=10)
     # Рекуррентные платежи

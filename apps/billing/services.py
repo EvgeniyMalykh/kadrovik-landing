@@ -285,6 +285,7 @@ def activate_subscription(company, plan_key, payment_method_id=None):
     sub, _ = Subscription.objects.get_or_create(company=company)
     sub.plan = plan_key
     sub.status = Subscription.Status.ACTIVE
+    sub.started_at = timezone.now()
     sub.max_employees = plan["max_employees"]
     sub.expires_at = timezone.now() + timedelta(days=30 * plan["months"])
     if payment_method_id:
