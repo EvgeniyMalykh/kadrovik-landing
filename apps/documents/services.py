@@ -1229,7 +1229,7 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
     month_name = month_names[m-1]
     company_name = employees[0].company.name if employees and hasattr(employees[0], "company") and employees[0].company else ""
     story = []
-    story.append(Paragraph(company_name or "Организация", center))
+    story.append(Paragraph(company_name or "Организация", title))
     story.append(Paragraph("Унифицированная форма N Т-13", title))
     story.append(Paragraph("ТАБЕЛЬ УЧЁТА РАБОЧЕГО ВРЕМЕНИ — " + month_name + " " + str(y) + " г.", title))
     story.append(Spacer(1, 3*mm))
