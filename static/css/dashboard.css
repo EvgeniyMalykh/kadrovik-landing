@@ -1508,3 +1508,33 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 }
 [data-theme='light'] .nav-support-btn { color: #be123c !important; }
 [data-theme='light'] .nav-support-btn:hover { background: rgba(225,29,72,0.08) !important; }
+
+/* ── Табель: светлая тема — чёткие границы ───────────────────────── */
+[data-theme="light"] .ts-table th,
+[data-theme="light"] .ts-table td {
+  border-color: #94a3b8;
+}
+[data-theme="light"] .ts-table thead th {
+  background: #e2e8f0;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+[data-theme="light"] .ts-table .ts-name {
+  background: #f8fafc;
+}
+[data-theme="light"] .ts-table .ts-work {
+  background: #ffffff;
+}
+[data-theme="light"] .ts-table .ts-weekend {
+  background: #f1f5f9;
+}
+[data-theme="light"] .ts-table .ts-holiday {
+  background: #fee2e2;
+}
+[data-theme="light"] .ts-table .ts-short {
+  background: #fefce8;
+}
+[data-theme="light"] .ts-cell:hover {
+  background: rgba(59,130,246,0.12) !important;
+}
+
