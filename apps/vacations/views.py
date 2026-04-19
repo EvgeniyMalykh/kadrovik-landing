@@ -197,6 +197,28 @@ VACATION_TYPE_LABELS = {
     'maternity':   'Декретный',
 }
 
+def vacation_additional_pdf(request, vacation_id):
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return redirect("dashboard:employees")
+    v = get_object_or_404(Vacation, id=vacation_id, employee__company=member.company)
+    from apps.documents.services import generate_additional_vacation_application
+    pdf = generate_additional_vacation_application(v)
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f"attachment; filename=\"additional_vacation_{v.employee.last_name}.pdf\""
+    return response
+
+
+# PUBLIC FORM
+VACATION_TYPE_LABELS = {
+    "annual":      "Ежегодный оплачиваемый",
+    "additional":  "Дополнительный оплачиваемый",
+    "unpaid":      "За свой счёт (без сохранения зарплаты)",
+    "educational": "Учебный",
+    "maternity":   "По беременности и родам",
+}
+
+
 def vacation_request_public(request, company_id):
     """Публичная форма заявления на отпуск для работника (без авторизации)."""
     company = get_object_or_404(Company, id=company_id)
