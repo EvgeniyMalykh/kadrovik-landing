@@ -26,9 +26,16 @@ def _send_telegram(text, chat_id=None):
     plain_text = re.sub(r'<[^>]+>', '', str(text)).strip()
 
     if instance_id and tg_token:
-        # Green API: chatId = "123456789@c.us"
+        # Green API Telegram: chatId должен быть числовым ID (username не поддерживается)
         target_str = str(target).strip().lstrip('@')
-        green_chat_id = target_str + '@c.us'
+        # Проверяем что это числовой ID (может быть отрицательным для групп)
+        clean = target_str.lstrip('-')
+        if not clean.isdigit():
+            raise ValueError(
+                f"Telegram: укажите числовой ID чата, а не username. "
+                f"Узнать ID можно через бот @userinfobot — напишите ему /start."
+            )
+        green_chat_id = target_str
         _green_api_send(instance_id, tg_token, green_chat_id, plain_text)
     else:
         # Fallback: прямой Telegram Bot API (для локальной разработки)

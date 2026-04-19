@@ -183,9 +183,10 @@ function sendTestNotification() {
 (function(){
     const hints = {
         email: {label: 'Email для уведомлений', placeholder: 'ivan@company.ru'},
-        telegram: {label: 'Telegram username или ID', placeholder: '@username или 123456789'},
+        telegram: {label: 'Telegram ID (числовой)', placeholder: 'Числовой ID, например 123456789'},
         whatsapp: {label: 'Номер WhatsApp', placeholder: '+7 900 000 00 00'},
         viber: {label: 'Номер Viber', placeholder: '+7 900 000 00 00'},
+        max: {label: 'Номер телефона Max', placeholder: '+7 900 000 00 00'},
     };
     const options = document.querySelectorAll('.messenger-option');
     const input = document.getElementById('notify_contact');
