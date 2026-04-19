@@ -178,10 +178,8 @@ def _send_notification_to_company(company, text, subject, html_body, plain_body)
         else:
             _send_email_to_company(company, subject, html_body, plain_body)
     elif messenger == 'viber':
-        if contact:
-            _send_viber(contact, text) if hasattr(__import__('apps.events.tasks', fromlist=['_send_viber']), '_send_viber') else _send_email_to_company(company, subject, html_body, plain_body)
-        else:
-            _send_email_to_company(company, subject, html_body, plain_body)
+        # Viber пока не реализован — fallback на email
+        _send_email_to_company(company, subject, html_body, plain_body)
     elif messenger == 'max':
         if contact:
             _send_max(contact, text)
