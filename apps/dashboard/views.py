@@ -45,6 +45,12 @@ def get_active_member(request):
     return member
 
 
+def get_active_member_role(request):
+    """Получить роль пользователя в активной компании (учитывает сессию)."""
+    member = get_active_member(request)
+    return member.role if member else None
+
+
 def require_role(min_role):
     """
     Декоратор: требует роль не ниже min_role.
@@ -59,7 +65,13 @@ def require_role(min_role):
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect(settings.LOGIN_URL + '?next=' + request.path)
-            role = get_member_role(request.user)
+            # Используем активную компанию из сессии если доступна
+            active_id = request.session.get("active_company_id")
+            if active_id:
+                _m = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
+                role = _m.role if _m else get_member_role(request.user)
+            else:
+                role = get_member_role(request.user)
             if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get(min_role, 99):
                 messages.error(request, 'У вас недостаточно прав для этого действия.')
                 return redirect('dashboard:home')
@@ -373,7 +385,7 @@ def employee_edit(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     if request.method == "POST":
-        role = get_member_role(request.user)
+        role = get_active_member_role(request)
         if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
             messages.error(request, 'Недостаточно прав для редактирования.')
             return redirect('dashboard:employees')
@@ -842,7 +854,7 @@ def company_profile(request):
     company = member.company
     saved = False
     if request.method == "POST":
-        role = get_member_role(request.user)
+        role = get_active_member_role(request)
         if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('admin', 0):
             messages.error(request, 'Недостаточно прав для изменения настроек компании.')
             return redirect('dashboard:company')
