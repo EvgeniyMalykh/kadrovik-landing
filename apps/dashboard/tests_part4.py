@@ -188,8 +188,8 @@ class VacationModelTests(TestCase):
             start_date=date(2026, 6, 1),
             end_date=date(2026, 6, 14),
         )
-        # 14 - 1 + 1 = 14 days
-        self.assertEqual(v.days_count, 14)
+        # 14 calendar days - 1 holiday (12 June, Russia Day) = 13 vacation days
+        self.assertEqual(v.days_count, 13)
 
     def test_days_count_single_day(self):
         """Single-day vacation → days_count = 1."""

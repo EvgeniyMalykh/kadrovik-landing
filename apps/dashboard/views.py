@@ -2,7 +2,7 @@ import re
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from apps.accounts.models import User
@@ -897,9 +897,17 @@ def test_company_notify(request):
     )
     plain_body = f'\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435.\n\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: {company.name}'
 
+    # Для WhatsApp проверяем, настроен ли Green API
+    if messenger == 'whatsapp':
+        if not settings.GREEN_API_INSTANCE_ID or not settings.GREEN_API_TOKEN:
+            return JsonResponse({
+                'ok': False,
+                'message': 'WhatsApp не настроен на сервере. Обратитесь в поддержку.',
+            })
+
     try:
         _send_notification_to_company(company, text, subject, html_body, plain_body)
-        return JsonResponse({'ok': True, 'message': f'\u041e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e \u0447\u0435\u0440\u0435\u0437 {label} \u043d\u0430 {contact}'})
+        return JsonResponse({'ok': True, 'message': f'Отправлено через {label} на {contact}'})
     except Exception as e:
         return JsonResponse({'ok': False, 'message': str(e)})
 

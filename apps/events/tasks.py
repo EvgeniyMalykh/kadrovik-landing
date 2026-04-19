@@ -48,6 +48,36 @@ def _resolve_telegram_chat_id(contact):
     return None
 
 
+
+def _send_whatsapp(phone: str, text: str):
+    """Отправляет сообщение в WhatsApp через Green API.
+    phone — номер в любом формате (79001234567, +7 900 123-45-67 и т.п.).
+    """
+    instance_id = getattr(settings, 'GREEN_API_INSTANCE_ID', '')
+    token = getattr(settings, 'GREEN_API_TOKEN', '')
+    if not instance_id or not token:
+        logger.warning('GREEN_API не настроен — пропускаем WhatsApp уведомление')
+        return
+
+    # Нормализуем номер: только цифры, убираем ведущий +
+    import re
+    digits = re.sub(r'\D', '', phone)
+    if digits.startswith('8') and len(digits) == 11:
+        digits = '7' + digits[1:]
+    chat_id = digits + '@c.us'
+
+    url = f'https://api.green-api.com/waInstance{instance_id}/sendMessage/{token}'
+    payload = {
+        'chatId': chat_id,
+        'message': text,
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        logger.error(f'Green API WhatsApp error: {e}')
+
+
 def _send_email_to_company(company, subject, html_body, plain_body):
     """Отправляет письмо. Если notify_messenger=email и notify_contact заполнен —
     шлём туда. Иначе fallback на company.email / owner.email."""
@@ -85,8 +115,14 @@ def _send_notification_to_company(company, text, subject, html_body, plain_body)
             _send_telegram(text)
     elif messenger == 'email':
         _send_email_to_company(company, subject, html_body, plain_body)
+    elif messenger == 'whatsapp':
+        if contact:
+            _send_whatsapp(contact, text)
+        else:
+            # Нет номера — fallback на email
+            _send_email_to_company(company, subject, html_body, plain_body)
     else:
-        # WhatsApp / Viber — пока fallback на email
+        # Viber и прочие — пока fallback на email
         _send_email_to_company(company, subject, html_body, plain_body)
 
 

@@ -114,6 +114,8 @@ CELERY_TIMEZONE = 'Europe/Moscow'
 # Telegram
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', default='')
+GREEN_API_INSTANCE_ID = config('GREEN_API_INSTANCE_ID', default='')
+GREEN_API_TOKEN = config('GREEN_API_TOKEN', default='')
 # ЮKassa
 YUKASSA_SHOP_ID = config("YUKASSA_SHOP_ID", default="")
 YUKASSA_SECRET_KEY = config("YUKASSA_SECRET_KEY", default="")
