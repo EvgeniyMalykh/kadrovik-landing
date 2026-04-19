@@ -911,6 +911,7 @@ def test_company_notify(request):
         return JsonResponse({'ok': False, 'message': str(e)})
 
 
+@login_required
 def timesheet_edit(request):
     """Редактирование табеля Т-13 по месяцу."""
     import calendar
