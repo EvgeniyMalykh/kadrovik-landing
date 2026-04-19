@@ -488,15 +488,15 @@ def generate_t7_pdf(company, year, entries):
 
     # Header
     header_data = [
-        ['',
-         '',
-         Paragraph('УТВЕРЖДАЮ', right)],
-        ['', '',
-         Paragraph(f'{company.director_position or "Директор"} ________________', right)],
-        ['', '',
-         Paragraph(f'"____" _____________ {year} г.', right)],
-        ['', '',
-         Paragraph(company.name or '', right)],
+        [,
+         ,
+         Paragraph(УТВЕРЖДАЮ, right)],
+        [, ,
+         Paragraph(company.name or , right)],
+        [, ,
+         Paragraph(f{company.director_position or Директор} ________________, right)],
+        [, ,
+         Paragraph(f____ _____________ {year} г., right)],
     ]
     header_table = Table(header_data, colWidths=[110 * mm, 57 * mm, 100 * mm])
     header_table.setStyle(TableStyle([
