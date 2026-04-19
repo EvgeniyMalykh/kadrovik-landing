@@ -46,7 +46,7 @@
 <!-- Кнопки создания -->
 <div class="card" style="margin-bottom:2rem;padding:1.25rem 1.5rem;">
   <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px;">Создать документ</div>
-  <div style="display:flex;flex-wrap:wrap;gap:10px;">
+  <div class="create-doc-grid">
     <a href="{% url 'dashboard:form_editor' 'vacation' %}" class="btn-primary" style="font-size:0.82rem;padding:8px 16px;text-decoration:none;border-radius:8px;display:inline-flex;align-items:center;gap:6px;">
       <span>&#127958;&#65039;</span> Отпуск (Т-6)
     </a>
@@ -82,7 +82,8 @@
   <h3 style="margin-bottom:1rem;color:var(--text-primary);font-size:1rem;">Журнал документов</h3>
 
   {% if documents %}
-  <div style="overflow-x:auto;">
+  <!-- DESKTOP -->
+  <div class="doc-desktop-table" style="overflow-x:auto;">
     <table class="employees-table">
       <thead>
         <tr>
@@ -148,6 +149,50 @@
       </tbody>
     </table>
   </div>
+
+  <!-- MOBILE: карточки -->
+  <div class="doc-mobile-cards">
+    {% for doc in documents %}
+    <div class="doc-mobile-card">
+      <div class="doc-mobile-card__type">{{ doc.get_doc_type_display }}</div>
+      <div class="doc-mobile-card__name">{{ doc.employee.full_name|default:"—" }}</div>
+      <div class="doc-mobile-card__meta">
+        <span>№ {{ doc.number|default:"—" }}</span>
+        <span>{{ doc.date|date:"d.m.Y" }}</span>
+      </div>
+      <div class="doc-mobile-card__actions">
+        {% if doc.doc_type == 'vacation' or doc.doc_type == 'gph_contract' or doc.doc_type == 'gph_act' or doc.doc_type == 'reference' or doc.doc_type == 'salary_change' or doc.doc_type == 'transfer' or doc.doc_type == 'dismissal' or doc.doc_type == 'bonus' or doc.doc_type == 'disciplinary' %}
+        <a href="{% url 'dashboard:form_editor' doc.doc_type %}?doc_id={{ doc.id }}" style="background:var(--bg-hover,rgba(99,102,241,0.1));color:var(--color-primary);text-decoration:none;border-radius:8px;">&#9998; Открыть</a>
+        {% endif %}
+        {% if doc.employee_id %}
+          {% if doc.doc_type == 'vacation' %}
+          <a href="{% url 'dashboard:download_t6' doc.employee_id %}?start={{ doc.extra_data.start_date|default:'' }}&end={{ doc.extra_data.end_date|default:'' }}&order={{ doc.number|default:'О-001' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'gph_contract' %}
+          <a href="{% url 'dashboard:download_gph_contract' doc.employee_id %}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'gph_act' %}
+          <a href="{% url 'dashboard:download_gph_act' doc.employee_id %}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'reference' %}
+          <a href="{% url 'dashboard:download_certificate' doc.employee_id %}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'salary_change' %}
+          <a href="{% url 'dashboard:download_salary_change' doc.employee_id %}?salary={{ doc.extra_data.new_salary|default:'' }}&order={{ doc.number|default:'З-001' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'transfer' %}
+          <a href="{% url 'dashboard:download_transfer_order' doc.employee_id %}?order={{ doc.number|default:'ПР-001' }}&new_position={{ doc.extra_data.new_position|default:'' }}&new_salary={{ doc.extra_data.new_salary|default:'' }}&transfer_date={{ doc.extra_data.transfer_date|default:'' }}&reason={{ doc.extra_data.reason|default:'' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'dismissal' %}
+          <a href="{% url 'dashboard:download_dismissal_order' doc.employee_id %}?order={{ doc.number|default:'У-001' }}&dismissal_date={{ doc.extra_data.dismissal_date|default:'' }}&dismissal_reason={{ doc.extra_data.dismissal_reason|default:'' }}&dismissal_basis_doc={{ doc.extra_data.dismissal_basis_doc|default:'' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'bonus' %}
+          <a href="{% url 'dashboard:download_bonus_order' doc.employee_id %}?order={{ doc.number|default:'П-001' }}&bonus_amount={{ doc.extra_data.bonus_amount|default:'' }}&reason={{ doc.extra_data.reason|default:'' }}&payment_date={{ doc.extra_data.payment_date|default:'' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'disciplinary' %}
+          <a href="{% url 'dashboard:download_disciplinary_order' doc.employee_id %}?order={{ doc.number|default:'ДВ-001' }}&penalty_type={{ doc.extra_data.penalty_type|default:'' }}&violation_date={{ doc.extra_data.violation_date|default:'' }}&violation_description={{ doc.extra_data.violation_description|default:'' }}&reason={{ doc.extra_data.reason|default:'' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% endif %}
+        {% endif %}
+        <button class="btn-delete-doc" onclick="deleteDocument({{ doc.id }}, this)" title="Удалить">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
   {% else %}
   <div style="text-align:center;padding:3rem 1rem;color:var(--text-muted);">
     <div style="font-size:2.5rem;margin-bottom:0.75rem;">&#128196;</div>

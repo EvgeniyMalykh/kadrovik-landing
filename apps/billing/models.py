@@ -36,7 +36,10 @@ class Subscription(models.Model):
         from django.utils import timezone
         if self.status != self.Status.ACTIVE:
             return False
-        if self.expires_at and self.expires_at < timezone.now():
+        if self.expires_at is None:
+            # trial без срока — считаем неактивной (safety net)
+            return False
+        if self.expires_at < timezone.now():
             return False
         return True
 

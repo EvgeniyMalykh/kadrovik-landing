@@ -165,8 +165,7 @@
             <div>{{ company.director_position|default:"Директору" }}</div>
             <div>{{ company.name }}</div>
             <div style="margin-top:8px;">{{ company.director_name|default:"" }}</div>
-            <div style="margin-top:16px;">от</div>
-            <div>{{ v.employee.position|default:"работника" }}</div>
+            <div style="margin-top:16px;">от {{ v.employee.position|default:"работника" }}</div>
             <div>{{ v.employee.last_name }} {{ v.employee.first_name }}{% if v.employee.middle_name %} {{ v.employee.middle_name }}{% endif %}</div>
         </div>
     </div>

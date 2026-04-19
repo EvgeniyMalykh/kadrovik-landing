@@ -56,9 +56,9 @@
     <div style="margin-bottom:1.25rem;">
       <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;">Вид отпуска</label>
       <select name="vacation_type" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;background:var(--bg-card);color:var(--text-primary);">
-        <option value="основной" {% if extra_data.vacation_type == 'основной' %}selected{% endif %}>Ежегодный основной оплачиваемый</option>
-        <option value="дополнительный" {% if extra_data.vacation_type == 'дополнительный' %}selected{% endif %}>Дополнительный</option>
-        <option value="без сохранения" {% if extra_data.vacation_type == 'без сохранения' %}selected{% endif %}>Без сохранения заработной платы</option>
+        <option value="annual" {% if extra_data.vacation_type == 'annual' or extra_data.vacation_type == 'основной' %}selected{% endif %}>Ежегодный основной оплачиваемый</option>
+        <option value="additional" {% if extra_data.vacation_type == 'additional' or extra_data.vacation_type == 'дополнительный' %}selected{% endif %}>Дополнительный</option>
+        <option value="unpaid" {% if extra_data.vacation_type == 'unpaid' or extra_data.vacation_type == 'без сохранения' %}selected{% endif %}>Без сохранения заработной платы</option>
       </select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:1.25rem;">
@@ -433,7 +433,8 @@
       var start = document.querySelector('[name="start_date"]').value || "";
       var end = document.querySelector('[name="end_date"]').value || "";
       var order = document.querySelector('[name="doc_number"]').value || "О-001";
-      url = "/dashboard/employees/" + empId + "/t6/?start=" + start + "&end=" + end + "&order=" + encodeURIComponent(order);
+      var vtype = document.querySelector('[name="vacation_type"]') ? document.querySelector('[name="vacation_type"]').value : "";
+      url = "/dashboard/employees/" + empId + "/t6/?start=" + start + "&end=" + end + "&order=" + encodeURIComponent(order) + "&vtype=" + encodeURIComponent(vtype);
     } else if (docType === "gph_contract") {
       url = "/dashboard/employees/" + empId + "/gph-contract/";
     } else if (docType === "gph_act") {
