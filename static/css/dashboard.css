@@ -1620,3 +1620,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 [data-theme="light"] .data-table small {
   color: #4b5563;
 }
+
+/* === Команда: бейджи ролей в светлой теме === */
+[data-theme="light"] {
+  --badge-owner-bg: #ede9fe;
+  --badge-owner-color: #5b21b6;
+  --badge-admin-bg: #dcfce7;
+  --badge-admin-color: #166534;
+  --badge-hr-bg: #dbeafe;
+  --badge-hr-color: #1d4ed8;
+}

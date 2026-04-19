@@ -41,10 +41,10 @@
         </div>
         <div style="min-width:160px;">
             <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:4px;">Роль</label>
-            <select name="role" style="width:100%;padding:10px 14px;background:#1e293b;border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:0.9rem;">
-                <option value="hr" style="background:#1e293b;color:#f1f5f9;">Кадровик</option>
-                <option value="admin" style="background:#1e293b;color:#f1f5f9;">Администратор</option>
-                <option value="accountant" style="background:#1e293b;color:#f1f5f9;">Бухгалтер</option>
+            <select name="role" style="width:100%;padding:10px 14px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:0.9rem;">
+                <option value="hr">Кадровик</option>
+                <option value="admin">Администратор</option>
+                <option value="accountant">Бухгалтер</option>
             </select>
         </div>
         <button type="submit" class="btn-primary" style="padding:10px 24px;white-space:nowrap;">Пригласить</button>
@@ -81,7 +81,7 @@
                     </div>
                 </td>
                 <td>
-                    <span class="status-badge" style="{% if m.role == 'owner' %}background:#312e81;color:#a5b4fc;{% elif m.role == 'admin' %}background:#14532d;color:#86efac;{% else %}background:#1e3a5f;color:#93c5fd;{% endif %}">
+                    <span class="status-badge" style="{% if m.role == 'owner' %}background:var(--badge-owner-bg,#312e81);color:var(--badge-owner-color,#a5b4fc);{% elif m.role == 'admin' %}background:var(--badge-admin-bg,#14532d);color:var(--badge-admin-color,#86efac);{% else %}background:var(--badge-hr-bg,#1e3a5f);color:var(--badge-hr-color,#93c5fd);{% endif %}">
                         {{ m.get_role_display }}
                     </span>
                 </td>
@@ -112,7 +112,7 @@
                 <div style="min-width:0;">
                     <div class="team-mobile-card__email">{{ m.user.email }}</div>
                     <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-                        <span class="status-badge" style="font-size:0.7rem;{% if m.role == 'owner' %}background:#312e81;color:#a5b4fc;{% elif m.role == 'admin' %}background:#14532d;color:#86efac;{% else %}background:#1e3a5f;color:#93c5fd;{% endif %}">
+                        <span class="status-badge" style="font-size:0.7rem;{% if m.role == 'owner' %}background:var(--badge-owner-bg,#312e81);color:var(--badge-owner-color,#a5b4fc);{% elif m.role == 'admin' %}background:var(--badge-admin-bg,#14532d);color:var(--badge-admin-color,#86efac);{% else %}background:var(--badge-hr-bg,#1e3a5f);color:var(--badge-hr-color,#93c5fd);{% endif %}">
                             {{ m.get_role_display }}
                         </span>
                         <span style="font-size:0.75rem;color:var(--text-muted);">{{ m.created_at|date:"d.m.Y" }}</span>
@@ -154,7 +154,7 @@
             <tr>
                 <td>{{ inv.email }}</td>
                 <td>
-                    <span class="status-badge" style="background:#1e3a5f;color:#93c5fd;">{{ inv.get_role_display }}</span>
+                    <span class="status-badge" style="background:var(--badge-hr-bg,#1e3a5f);color:var(--badge-hr-color,#93c5fd);">{{ inv.get_role_display }}</span>
                 </td>
                 <td style="color:var(--text-secondary);font-size:0.85rem;">{{ inv.created_at|date:"d.m.Y H:i" }}</td>
                 <td>
@@ -184,7 +184,7 @@
             <div style="flex:1;min-width:0;">
                 <div class="team-mobile-card__email">{{ inv.email }}</div>
                 <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
-                    <span class="status-badge" style="font-size:0.7rem;background:#1e3a5f;color:#93c5fd;">{{ inv.get_role_display }}</span>
+                    <span class="status-badge" style="font-size:0.7rem;background:var(--badge-hr-bg,#1e3a5f);color:var(--badge-hr-color,#93c5fd);">{{ inv.get_role_display }}</span>
                     {% if inv.is_expired %}
                     <span class="status-badge" style="font-size:0.7rem;background:#7f1d1d;color:#fca5a5;">Истекло</span>
                     {% else %}
