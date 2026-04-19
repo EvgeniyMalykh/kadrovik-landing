@@ -142,18 +142,33 @@ def _send_email_to_company(company, subject, html_body, plain_body):
         pass
 
 
+def _get_contact_for_messenger(company, messenger):
+    """Возвращает контакт для конкретного мессенджера из отдельных полей (с fallback на notify_contact)."""
+    field_map = {
+        'email':    'notify_email_contact',
+        'telegram': 'notify_telegram_contact',
+        'whatsapp': 'notify_whatsapp_contact',
+        'viber':    'notify_viber_contact',
+        'max':      'notify_max_contact',
+    }
+    field = field_map.get(messenger)
+    if field:
+        val = getattr(company, field, '') or ''
+        if val.strip():
+            return val.strip()
+    # Fallback: старое единое поле
+    return (company.notify_contact or '').strip()
+
+
 def _send_notification_to_company(company, text, subject, html_body, plain_body):
     """Универсальный роутер: шлёт уведомление через канал, выбранный в карточке компании."""
     messenger = company.notify_messenger or 'email'
-    contact = company.notify_contact or ''
+    contact = _get_contact_for_messenger(company, messenger)
 
     if messenger == 'telegram':
         if contact:
-            # Пробуем по username
-            chat_id = _resolve_telegram_chat_id(contact) if contact.startswith('@') else contact
-            _send_telegram(text, chat_id=chat_id)
+            _send_telegram(text, chat_id=contact)
         else:
-            # Fallback — служебный чат
             _send_telegram(text)
     elif messenger == 'email':
         _send_email_to_company(company, subject, html_body, plain_body)
@@ -161,7 +176,11 @@ def _send_notification_to_company(company, text, subject, html_body, plain_body)
         if contact:
             _send_whatsapp(contact, text)
         else:
-            # Нет номера — fallback на email
+            _send_email_to_company(company, subject, html_body, plain_body)
+    elif messenger == 'viber':
+        if contact:
+            _send_viber(contact, text) if hasattr(__import__('apps.events.tasks', fromlist=['_send_viber']), '_send_viber') else _send_email_to_company(company, subject, html_body, plain_body)
+        else:
             _send_email_to_company(company, subject, html_body, plain_body)
     elif messenger == 'max':
         if contact:

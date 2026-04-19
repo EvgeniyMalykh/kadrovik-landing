@@ -115,10 +115,27 @@
                 </label>
                 {% endfor %}
             </div>
-            <div class="form-group form-group--full" style="margin-top:1rem;" id="notify-contact-wrap">
-                <label id="notify-contact-label">Контакт для уведомлений</label>
-                <input type="text" name="notify_contact" id="notify_contact" value="{{ company.notify_contact }}" placeholder="Введите адрес">
-                <span style="font-size:0.78rem;color:var(--text-muted);" id="notify-contact-hint"></span>
+            <div style="margin-top:1rem;display:flex;flex-direction:column;gap:10px;">
+                <div class="form-group form-group--full" id="notify-contact-email">
+                    <label style="font-size:0.82rem;margin-bottom:4px;display:block;">Email для уведомлений</label>
+                    <input type="text" name="notify_email_contact" id="notify_email_contact" value="{{ company.notify_email_contact }}" placeholder="ivan@company.ru">
+                </div>
+                <div class="form-group form-group--full" id="notify-contact-telegram">
+                    <label style="font-size:0.82rem;margin-bottom:4px;display:block;">Telegram ID <span style="font-size:0.75rem;color:var(--text-muted);">(числовой — узнать через @userinfobot)</span></label>
+                    <input type="text" name="notify_telegram_contact" id="notify_telegram_contact" value="{{ company.notify_telegram_contact }}" placeholder="123456789">
+                </div>
+                <div class="form-group form-group--full" id="notify-contact-whatsapp">
+                    <label style="font-size:0.82rem;margin-bottom:4px;display:block;">WhatsApp номер</label>
+                    <input type="text" name="notify_whatsapp_contact" id="notify_whatsapp_contact" value="{{ company.notify_whatsapp_contact }}" placeholder="+7 900 000 00 00">
+                </div>
+                <div class="form-group form-group--full" id="notify-contact-viber">
+                    <label style="font-size:0.82rem;margin-bottom:4px;display:block;">Viber номер</label>
+                    <input type="text" name="notify_viber_contact" id="notify_viber_contact" value="{{ company.notify_viber_contact }}" placeholder="+7 900 000 00 00">
+                </div>
+                <div class="form-group form-group--full" id="notify-contact-max">
+                    <label style="font-size:0.82rem;margin-bottom:4px;display:block;">Max номер</label>
+                    <input type="text" name="notify_max_contact" id="notify_max_contact" value="{{ company.notify_max_contact }}" placeholder="+7 900 000 00 00">
+                </div>
             </div>
         </div>
 

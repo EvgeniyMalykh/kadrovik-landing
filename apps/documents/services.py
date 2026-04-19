@@ -1218,8 +1218,11 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
         leftMargin=10*mm, rightMargin=10*mm, topMargin=10*mm, bottomMargin=15*mm)
-    normal = ParagraphStyle("N", fontName=font_name, fontSize=7, leading=9)
-    title  = ParagraphStyle("T", fontName=font_name, fontSize=10, leading=12, alignment=TA_CENTER)
+    normal  = ParagraphStyle("N",  fontName=font_name, fontSize=7, leading=9)
+    title   = ParagraphStyle("T",  fontName=font_name, fontSize=10, leading=12,
+                              alignment=TA_CENTER, spaceAfter=1)
+    sub     = ParagraphStyle("S",  fontName=font_name, fontSize=8,  leading=10,
+                              alignment=TA_CENTER, spaceAfter=0)
     today = dt_date.today()
     y = year or today.year
     m = month or today.month
@@ -1229,8 +1232,21 @@ def generate_t13_pdf(employees, year=None, month=None) -> bytes:
     month_name = month_names[m-1]
     company_name = employees[0].company.name if employees and hasattr(employees[0], "company") and employees[0].company else ""
     story = []
-    story.append(Paragraph(company_name or "Организация", title))
-    story.append(Paragraph("Унифицированная форма N Т-13", title))
+    # Шапка: название компании — левее, форма и заголовок — по центру
+    # Используем двухколоночную таблицу: [компания слева | форма справа]
+    from reportlab.platypus import Table as _Tbl, TableStyle as _TS
+    hdr_left  = ParagraphStyle("HL", fontName=font_name, fontSize=9, leading=11, alignment=0)  # LEFT
+    hdr_right = ParagraphStyle("HR", fontName=font_name, fontSize=8, leading=10, alignment=2)  # RIGHT
+    hdr_tbl = _Tbl(
+        [[Paragraph(company_name or "Организация", hdr_left),
+          Paragraph("Унифицированная форма N Т-13", hdr_right)]],
+        colWidths=[None, 60*mm],
+    )
+    hdr_tbl.setStyle(_TS([
+        ("VALIGN", (0,0), (-1,-1), "BOTTOM"),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 2),
+    ]))
+    story.append(hdr_tbl)
     story.append(Paragraph("ТАБЕЛЬ УЧЁТА РАБОЧЕГО ВРЕМЕНИ — " + month_name + " " + str(y) + " г.", title))
     story.append(Spacer(1, 3*mm))
     header = ["N", "ФИО / должность"] + [str(d) for d in range(1, days_in_month+1)] + ["Дней", "Часов"]

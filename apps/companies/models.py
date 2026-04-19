@@ -30,6 +30,7 @@ class Company(models.Model):
         ('telegram', 'Telegram'),
         ('whatsapp', 'WhatsApp'),
         ('viber', 'Viber'),
+        ('max', 'Max'),
     ]
     notify_messenger = models.CharField(
         'Мессенджер для уведомлений',
@@ -44,6 +45,12 @@ class Company(models.Model):
         blank=True,
         help_text='Email, номер телефона или @username в Telegram'
     )
+    # Отдельные контакты для каждого мессенджера
+    notify_email_contact = models.CharField('Email для уведомлений', max_length=255, blank=True)
+    notify_telegram_contact = models.CharField('Telegram ID (числовой)', max_length=255, blank=True)
+    notify_whatsapp_contact = models.CharField('WhatsApp номер телефона', max_length=50, blank=True)
+    notify_viber_contact = models.CharField('Viber номер телефона', max_length=50, blank=True)
+    notify_max_contact = models.CharField('Max номер телефона', max_length=50, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

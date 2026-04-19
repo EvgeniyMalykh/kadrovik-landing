@@ -2,7 +2,7 @@ import re
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from apps.accounts.models import User
@@ -11,48 +11,6 @@ from apps.companies.models import Company, CompanyMember
 from apps.documents.services import generate_t1_pdf, generate_t2_pdf, generate_t8_pdf, generate_t6_pdf
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
-
-from functools import wraps
-from django.contrib import messages
-from django.conf import settings
-
-# ===== ROLE-BASED ACCESS CONTROL =====
-
-ROLE_RANK = {
-    'owner': 4,
-    'admin': 3,
-    'hr': 2,
-    'accountant': 1,
-}
-
-def get_member_role(user):
-    """Получить роль текущего пользователя в его компании."""
-    member = CompanyMember.objects.filter(user=user).first()
-    return member.role if member else None
-
-
-def require_role(min_role):
-    """
-    Декоратор: требует роль не ниже min_role.
-    Порядок: owner > admin > hr > accountant
-
-    Использование:
-        @require_role('admin')  # нужна роль admin или выше
-        def some_view(request): ...
-    """
-    def decorator(view_func):
-        @wraps(view_func)
-        def wrapper(request, *args, **kwargs):
-            if not request.user.is_authenticated:
-                return redirect(settings.LOGIN_URL + '?next=' + request.path)
-            role = get_member_role(request.user)
-            if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get(min_role, 99):
-                messages.error(request, 'У вас недостаточно прав для этого действия.')
-                return redirect('dashboard:home')
-            return view_func(request, *args, **kwargs)
-        return wrapper
-    return decorator
-
 
 
 @login_required
@@ -82,7 +40,6 @@ def subscription_required(view_func):
 
 @login_required
 def employees_list(request):
-    show_onboarding = request.session.pop('show_onboarding', False)
     member = CompanyMember.objects.filter(user=request.user).first()
     if member:
         company = member.company
@@ -174,7 +131,6 @@ def employees_list(request):
         "fired_count": fired_count,
         "departments": departments,
         "total_count": employees.count(),
-        "show_onboarding": show_onboarding,
         **sub_ctx,
     })
 
@@ -306,7 +262,6 @@ def _save_employee_from_post(post, employee):
 
 @login_required
 @subscription_required
-@require_role("hr")
 def employee_add(request):
     from apps.billing.services import get_subscription_context
     member = CompanyMember.objects.filter(user=request.user).first()
@@ -354,15 +309,9 @@ def employee_add(request):
 @login_required
 @subscription_required
 def employee_edit(request, employee_id):
-    if not request.headers.get("HX-Request"):
-        return redirect("dashboard:employees")
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     if request.method == "POST":
-        role = get_member_role(request.user)
-        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
-            messages.error(request, 'Недостаточно прав для редактирования.')
-            return redirect('dashboard:employees')
         _save_employee_from_post(request.POST, employee)
         employee.save()
         employees = Employee.objects.filter(company=member.company).select_related("department")
@@ -383,7 +332,6 @@ def employee_edit(request, employee_id):
 
 @login_required
 @require_POST
-@require_role("admin")
 def employee_delete(request, employee_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -437,7 +385,7 @@ def download_t6(request, employee_id):
     from datetime import date as dt
     v_start = dt.fromisoformat(request.GET.get("start", dt.today().isoformat()))
     v_end   = dt.fromisoformat(request.GET.get("end",   dt.today().isoformat()))
-    pdf = generate_t6_pdf(employee, v_start, v_end, request.GET.get("order", "О-001"), vacation_type=request.GET.get("vtype"))
+    pdf = generate_t6_pdf(employee, v_start, v_end, request.GET.get("order", "О-001"))
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"T6_{employee.last_name}.pdf\""
     return r
@@ -578,7 +526,6 @@ def verify_email_view(request, token):
     )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    request.session['show_onboarding'] = True
     return render(request, "dashboard/email_verified.html")
 
 
@@ -825,10 +772,6 @@ def company_profile(request):
     company = member.company
     saved = False
     if request.method == "POST":
-        role = get_member_role(request.user)
-        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('admin', 0):
-            messages.error(request, 'Недостаточно прав для изменения настроек компании.')
-            return redirect('dashboard:company')
         company.name             = request.POST.get("name", company.name)
         company.inn              = request.POST.get("inn", company.inn)
         company.ogrn             = request.POST.get("ogrn", company.ogrn)
@@ -842,87 +785,9 @@ def company_profile(request):
         company.director_position = request.POST.get("director_position", company.director_position)
         company.phone            = request.POST.get("phone", company.phone)
         company.email            = request.POST.get("email", company.email)
-        company.notify_messenger        = request.POST.get("notify_messenger", company.notify_messenger)
-        company.notify_contact          = request.POST.get("notify_contact", company.notify_contact)
-        company.notify_email_contact    = request.POST.get("notify_email_contact", company.notify_email_contact)
-        company.notify_telegram_contact = request.POST.get("notify_telegram_contact", company.notify_telegram_contact)
-        company.notify_whatsapp_contact = request.POST.get("notify_whatsapp_contact", company.notify_whatsapp_contact)
-        company.notify_viber_contact    = request.POST.get("notify_viber_contact", company.notify_viber_contact)
-        company.notify_max_contact      = request.POST.get("notify_max_contact", company.notify_max_contact)
         company.save()
         saved = True
-    return render(request, "dashboard/company.html", {
-        "company": company,
-        "saved": saved,
-        "messengers": company.MESSENGER_CHOICES,
-    })
-
-
-@login_required
-def test_company_notify(request):
-    """Отправляет тестовое уведомление через канал, выбранный в карточке компании."""
-    if request.method != 'POST':
-        return JsonResponse({'ok': False, 'message': 'Метод не поддерживается'}, status=405)
-
-    member = CompanyMember.objects.filter(user=request.user).first()
-    if not member:
-        return JsonResponse({'ok': False, 'message': 'Компания не найдена'})
-
-    company = member.company
-    messenger = company.notify_messenger or 'email'
-    from apps.events.tasks import _get_contact_for_messenger
-    contact = _get_contact_for_messenger(company, messenger)
-
-    if not contact:
-        return JsonResponse({'ok': False, 'message': 'Укажите контакт для выбранного мессенджера и сохраните'})
-
-    messenger_labels = {'email': 'Email', 'telegram': 'Telegram', 'whatsapp': 'WhatsApp', 'viber': 'Viber'}
-    label = messenger_labels.get(messenger, messenger)
-
-    from apps.events.tasks import _send_notification_to_company
-    from django.template.loader import render_to_string
-
-    title = 'Тестовое уведомление'
-    text = (
-        '\u2705 <b>Тестовое уведомление</b>\n'
-        '\u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d.\n'
-        f'\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: {company.name}\n'
-        f'\u041a\u0430\u043d\u0430\u043b: {label}\n'
-        f'\u041a\u043e\u043d\u0442\u0430\u043a\u0442: {contact}'
-    )
-    subject = '\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435 \u2014 \u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442'
-    html_body = (
-        '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"></head>'
-        '<body style="font-family:-apple-system,sans-serif;background:#f8fafc;padding:40px 20px;">'
-        '<div style="max-width:480px;margin:0 auto;background:#1e293b;border-radius:12px;padding:32px;color:#f1f5f9;text-align:center;">'
-        '<div style="font-size:2.5rem;margin-bottom:12px;">\u2705</div>'
-        '<h2 style="margin:0 0 12px;font-size:1.1rem;">\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435</h2>'
-        '<p style="color:#94a3b8;font-size:0.9rem;margin:0 0 8px;">\u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d.</p>'
-        f'<p style="color:#94a3b8;font-size:0.85rem;margin:0;">\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: <strong style="color:#f1f5f9;">{company.name}</strong></p>'
-        '</div></body></html>'
-    )
-    plain_body = f'\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435.\n\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: {company.name}'
-
-    # Проверяем наличие учётных данных Green API для WA и Max
-    if messenger == 'whatsapp':
-        if not getattr(settings, 'GREEN_API_WA_INSTANCE_ID', '') or not getattr(settings, 'GREEN_API_WA_TOKEN', ''):
-            return JsonResponse({
-                'ok': False,
-                'message': 'WhatsApp не настроен на сервере. Обратитесь в поддержку.',
-            })
-    if messenger == 'max':
-        if not getattr(settings, 'GREEN_API_MAX_INSTANCE_ID', '') or not getattr(settings, 'GREEN_API_MAX_TOKEN', ''):
-            return JsonResponse({
-                'ok': False,
-                'message': 'Max не настроен на сервере. Обратитесь в поддержку.',
-            })
-
-    try:
-        _send_notification_to_company(company, text, subject, html_body, plain_body)
-        return JsonResponse({'ok': True, 'message': f'Отправлено через {label} на {contact}'})
-    except Exception as e:
-        return JsonResponse({'ok': False, 'message': str(e)})
-
+    return render(request, "dashboard/company.html", {"company": company, "saved": saved})
 
 
 @login_required
@@ -957,13 +822,8 @@ def timesheet_edit(request):
     # Словарь: {(employee_id, day): record}
     rec_map = {(r.employee_id, r.date.day): r for r in records}
 
-    # Праздники, сокращённые и выходные
+    # Праздники и выходные
     holidays = _get_ru_holidays_dashboard(y)
-    try:
-        from apps.employees.utils import get_holidays_and_short_days
-        _, short_days_set = get_holidays_and_short_days(y, m)
-    except Exception:
-        short_days_set = set()
     day_types = []
     for d in days:
         dd = datetime.date(y, m, d)
@@ -971,15 +831,12 @@ def timesheet_edit(request):
             day_types.append('holiday')
         elif dd.weekday() >= 5:
             day_types.append('weekend')
-        elif dd in short_days_set:
-            day_types.append('short')
         else:
             day_types.append('work')
 
     days_with_types = list(zip(days, day_types))
     CODES = [
-        ('Я','Явка'), ('ОТ','Отпуск'), ('ОД','Доп.отпуск'),
-        ('УЧ','Учебный отпуск'), ('ОЖ','Отпуск по БиР'),
+        ('Я','Явка'), ('ОТ','Отпуск'), ('ДО','Доп.отпуск'),
         ('Б','Больничный'), ('К','Командировка'), ('НН','Неявка'),
         ('П','Праздник'), ('В','Выходной'), ('Я½','Неполный'),
         ('РВ','Работа в выходной'), ('Я/С','Сверхурочные'),
@@ -1021,7 +878,6 @@ def _get_ru_holidays_dashboard(year):
 
 @login_required
 @subscription_required
-@require_role("hr")
 def timesheet_save(request):
     """Сохраняет отметки табеля из POST (JSON body)."""
     import json
@@ -1050,11 +906,6 @@ def timesheet_save(request):
         try:
             d = dt_date.fromisoformat(rec["date"])
         except Exception:
-            continue
-        # Если clear=true — удалить запись (ячейка очищена)
-        if rec.get("clear") or rec.get("code") == "":
-            TimeRecord.objects.filter(employee_id=emp_id, date=d).delete()
-            saved += 1
             continue
         code = rec.get("code", "Я")[:3]
         hours = int(rec.get("hours", 8))
@@ -1207,7 +1058,6 @@ def forms_list(request):
 
 @require_POST
 @login_required
-@require_role("admin")
 def delete_document(request, doc_id):
     """Удаление документа из журнала"""
     from django.http import JsonResponse
@@ -1287,14 +1137,12 @@ def form_editor(request, doc_type):
         'employees': employees,
         'extra_data': document.extra_data if document else {},
         'next_number': next_number,
-        'company': company,
     })
 
 
 @login_required
 @subscription_required
 @require_POST
-@require_role("hr")
 def form_save(request, doc_type):
     """Сохранение документа"""
     import json as _json_save
@@ -1659,7 +1507,6 @@ def chat_poll(request):
 
 @require_POST
 @login_required
-@require_role("admin")
 def delete_document(request, doc_id):
     from django.http import JsonResponse
     from apps.documents.models import Document
@@ -1850,11 +1697,6 @@ def export_timesheet_excel(request):
         ws.column_dimensions[get_column_letter(ci)].width = w
 
     holidays = _get_ru_holidays_dashboard(y)
-    try:
-        from apps.employees.utils import get_holidays_and_short_days
-        _, short_days = get_holidays_and_short_days(y, m)
-    except Exception:
-        short_days = set()
     for di, d in enumerate(days, 5):
         dd = datetime.date(y, m, d)
         is_wknd = dd.weekday() >= 5 or dd in holidays
@@ -1890,7 +1732,6 @@ def export_timesheet_excel(request):
             rec = rec_map.get((emp.id, d))
             dd = datetime.date(y, m, d)
             is_wknd = dd.weekday() >= 5 or dd in holidays
-            is_short = dd in short_days
             code = rec.code if rec else ('В' if is_wknd else '')
             hours = rec.hours if rec else 0
             c = ws.cell(ri, di, code)
@@ -1902,7 +1743,7 @@ def export_timesheet_excel(request):
             elif code == 'Я':
                 c.fill = ya_fill
                 total_days += 1
-                total_hours += hours or (7 if is_short else 8)
+                total_hours += hours or 8
             elif code and code not in ('В', 'П', ''):
                 total_days += 1
                 total_hours += hours or 0
@@ -1955,7 +1796,6 @@ def team_list(request):
 
 
 @login_required
-@require_role("admin")
 def team_invite(request):
     """Отправить приглашение."""
     if request.method != 'POST':
@@ -2081,7 +1921,6 @@ def invite_accept(request, token):
 
 
 @login_required
-@require_role("admin")
 def team_member_remove(request, member_id):
     """Удалить участника команды."""
     member = CompanyMember.objects.filter(user=request.user).first()
@@ -2100,7 +1939,6 @@ def team_member_remove(request, member_id):
 
 
 @login_required
-@require_role("admin")
 def team_invite_cancel(request, invite_id):
     """Отменить приглашение."""
     member = CompanyMember.objects.filter(user=request.user).first()
@@ -2113,7 +1951,6 @@ def team_invite_cancel(request, invite_id):
 
 
 @login_required
-@require_role("admin")
 def api_settings(request):
     """Страница управления API-токеном."""
     from apps.billing.services import PLANS
@@ -2138,7 +1975,6 @@ def api_settings(request):
 
 
 @login_required
-@require_role("admin")
 def api_token_regenerate(request):
     """Пересоздать API-токен."""
     if request.method != 'POST':
