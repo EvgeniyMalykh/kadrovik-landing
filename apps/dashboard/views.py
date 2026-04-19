@@ -859,8 +859,9 @@ def company_profile(request):
 
 
 @login_required
+@login_required
 def test_company_notify(request):
-    """Отправляет тестовое уведомление через канал, выбранный в карточке компании."""
+    """Отправляет тестовое уведомление во все заполненные каналы."""
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'message': 'Метод не поддерживается'}, status=405)
 
@@ -869,64 +870,47 @@ def test_company_notify(request):
         return JsonResponse({'ok': False, 'message': 'Компания не найдена'})
 
     company = member.company
-    messenger = company.notify_messenger or 'email'
-    from apps.events.tasks import _get_contact_for_messenger
-    contact = _get_contact_for_messenger(company, messenger)
 
-    if not contact:
-        return JsonResponse({'ok': False, 'message': 'Укажите контакт для выбранного мессенджера и сохраните'})
+    # Собираем список заполненных каналов для ответа
+    channels = []
+    if (getattr(company, 'notify_email_contact', '') or '').strip():
+        channels.append('Email: ' + company.notify_email_contact.strip())
+    elif (company.email or '').strip():
+        channels.append('Email: ' + company.email.strip())
+    if (getattr(company, 'notify_telegram_contact', '') or '').strip():
+        channels.append('Telegram: ' + company.notify_telegram_contact.strip())
+    elif (company.notify_messenger or '') == 'telegram' and (company.notify_contact or '').strip():
+        channels.append('Telegram: ' + company.notify_contact.strip())
+    if (getattr(company, 'notify_whatsapp_contact', '') or '').strip():
+        channels.append('WhatsApp: ' + company.notify_whatsapp_contact.strip())
+    if (getattr(company, 'notify_max_contact', '') or '').strip():
+        channels.append('Max: ' + company.notify_max_contact.strip())
 
-    messenger_labels = {'email': 'Email', 'telegram': 'Telegram', 'whatsapp': 'WhatsApp', 'viber': 'Viber'}
-    label = messenger_labels.get(messenger, messenger)
+    if not channels:
+        return JsonResponse({'ok': False, 'message': 'Заполните хотя бы один контакт для уведомлений'})
 
     from apps.events.tasks import _send_notification_to_company
-    from django.template.loader import render_to_string
-
-    title = 'Тестовое уведомление'
-    text = (
-        '\u2705 <b>Тестовое уведомление</b>\n'
-        '\u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d.\n'
-        f'\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: {company.name}\n'
-        f'\u041a\u0430\u043d\u0430\u043b: {label}\n'
-        f'\u041a\u043e\u043d\u0442\u0430\u043a\u0442: {contact}'
-    )
-    subject = '\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435 \u2014 \u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442'
+    text = "\u2705 \u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435\n\u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d.\n\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: " + company.name
+    subject = 'Тестовое уведомление — Кадровый автопилот'
     html_body = (
         '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"></head>'
         '<body style="font-family:-apple-system,sans-serif;background:#f8fafc;padding:40px 20px;">'
         '<div style="max-width:480px;margin:0 auto;background:#1e293b;border-radius:12px;padding:32px;color:#f1f5f9;text-align:center;">'
-        '<div style="font-size:2.5rem;margin-bottom:12px;">\u2705</div>'
-        '<h2 style="margin:0 0 12px;font-size:1.1rem;">\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435</h2>'
-        '<p style="color:#94a3b8;font-size:0.9rem;margin:0 0 8px;">\u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d.</p>'
-        f'<p style="color:#94a3b8;font-size:0.85rem;margin:0;">\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: <strong style="color:#f1f5f9;">{company.name}</strong></p>'
+        '<div style="font-size:2.5rem;margin-bottom:12px;">✅</div>'
+        '<h2 style="margin:0 0 12px;font-size:1.1rem;">Тестовое уведомление</h2>'
+        '<p style="color:#94a3b8;font-size:0.9rem;margin:0 0 8px;">Кадровый автопилот успешно настроен.</p>'
+        f'<p style="color:#94a3b8;font-size:0.85rem;margin:0;">Компания: <strong style="color:#f1f5f9;">{company.name}</strong></p>'
         '</div></body></html>'
     )
-    plain_body = f'\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435.\n\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: {company.name}'
-
-    # Проверяем наличие учётных данных Green API для WA и Max
-    if messenger == 'whatsapp':
-        if not getattr(settings, 'GREEN_API_WA_INSTANCE_ID', '') or not getattr(settings, 'GREEN_API_WA_TOKEN', ''):
-            return JsonResponse({
-                'ok': False,
-                'message': 'WhatsApp не настроен на сервере. Обратитесь в поддержку.',
-            })
-    if messenger == 'max':
-        if not getattr(settings, 'GREEN_API_MAX_INSTANCE_ID', '') or not getattr(settings, 'GREEN_API_MAX_TOKEN', ''):
-            return JsonResponse({
-                'ok': False,
-                'message': 'Max не настроен на сервере. Обратитесь в поддержку.',
-            })
+    plain_body = "\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435.\n\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: " + company.name
 
     try:
         _send_notification_to_company(company, text, subject, html_body, plain_body)
-        return JsonResponse({'ok': True, 'message': f'Отправлено через {label} на {contact}'})
+        return JsonResponse({'ok': True, 'message': 'Отправлено: ' + ', '.join(channels)})
     except Exception as e:
         return JsonResponse({'ok': False, 'message': str(e)})
 
 
-
-@login_required
-@subscription_required
 def timesheet_edit(request):
     """Редактирование табеля Т-13 по месяцу."""
     import calendar

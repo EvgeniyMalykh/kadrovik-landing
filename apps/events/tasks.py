@@ -143,7 +143,7 @@ def _send_email_to_company(company, subject, html_body, plain_body):
 
 
 def _get_contact_for_messenger(company, messenger):
-    """Возвращает контакт для конкретного мессенджера из отдельных полей (с fallback на notify_contact)."""
+    """Возвращает контакт для конкретного мессенджера."""
     field_map = {
         'email':    'notify_email_contact',
         'telegram': 'notify_telegram_contact',
@@ -156,35 +156,69 @@ def _get_contact_for_messenger(company, messenger):
         val = getattr(company, field, '') or ''
         if val.strip():
             return val.strip()
-    # Fallback: старое единое поле
-    return (company.notify_contact or '').strip()
+    # Fallback: старое единое поле только для telegram/email
+    if messenger in ('telegram', 'email'):
+        return (company.notify_contact or '').strip()
+    return ''
 
 
 def _send_notification_to_company(company, text, subject, html_body, plain_body):
-    """Универсальный роутер: шлёт уведомление через канал, выбранный в карточке компании."""
-    messenger = company.notify_messenger or 'email'
-    contact = _get_contact_for_messenger(company, messenger)
+    """Рассылает уведомление во ВСЕ заполненные каналы одновременно."""
+    sent_any = False
 
-    if messenger == 'telegram':
-        if contact:
-            _send_telegram(text, chat_id=contact)
-        else:
-            _send_telegram(text)
-    elif messenger == 'email':
+    # Email
+    email_contact = (getattr(company, 'notify_email_contact', '') or '').strip()
+    if not email_contact:
+        email_contact = (company.notify_contact or '').strip() if (company.notify_messenger or 'email') == 'email' else ''
+    if not email_contact:
+        email_contact = (company.email or '').strip()
+    if email_contact:
+        try:
+            from django.core.mail import send_mail
+            send_mail(
+                subject=subject,
+                message=plain_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email_contact],
+                html_message=html_body,
+                fail_silently=True,
+            )
+            sent_any = True
+        except Exception as e:
+            logger.error(f'Email notify error: {e}')
+
+    # Telegram
+    tg_contact = (getattr(company, 'notify_telegram_contact', '') or '').strip()
+    if not tg_contact and (company.notify_messenger or '') == 'telegram':
+        tg_contact = (company.notify_contact or '').strip()
+    if tg_contact:
+        try:
+            _send_telegram(text, chat_id=tg_contact)
+            sent_any = True
+        except Exception as e:
+            logger.error(f'Telegram notify error: {e}')
+
+    # WhatsApp
+    wa_contact = (getattr(company, 'notify_whatsapp_contact', '') or '').strip()
+    if wa_contact:
+        try:
+            _send_whatsapp(wa_contact, text)
+            sent_any = True
+        except Exception as e:
+            logger.error(f'WhatsApp notify error: {e}')
+
+    # Max
+    max_contact = (getattr(company, 'notify_max_contact', '') or '').strip()
+    if max_contact:
+        try:
+            _send_max(max_contact, text)
+            sent_any = True
+        except Exception as e:
+            logger.error(f'Max notify error: {e}')
+
+    if not sent_any:
+        # Крайний fallback — email владельца
         _send_email_to_company(company, subject, html_body, plain_body)
-    elif messenger == 'whatsapp':
-        if contact:
-            _send_whatsapp(contact, text)
-        else:
-            _send_email_to_company(company, subject, html_body, plain_body)
-    elif messenger == 'viber':
-        # Viber пока не реализован — fallback на email
-        _send_email_to_company(company, subject, html_body, plain_body)
-    elif messenger == 'max':
-        if contact:
-            _send_max(contact, text)
-        else:
-            _send_email_to_company(company, subject, html_body, plain_body)
     else:
         # Viber и прочие — fallback на email
         _send_email_to_company(company, subject, html_body, plain_body)
