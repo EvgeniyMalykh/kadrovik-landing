@@ -472,7 +472,7 @@ def generate_t7_pdf(company, year, entries):
         buffer,
         pagesize=landscape(A4),
         leftMargin=15 * mm,
-        rightMargin=10 * mm,
+        rightMargin=15 * mm,
         topMargin=10 * mm,
         bottomMargin=15 * mm,
     )
@@ -496,7 +496,7 @@ def generate_t7_pdf(company, year, entries):
         ['', '',
          Paragraph(f'"____" _____________ {year} г.', right)],
     ]
-    header_table = Table(header_data, colWidths=[120 * mm, 60 * mm, 90 * mm])
+    header_table = Table(header_data, colWidths=[110 * mm, 57 * mm, 100 * mm])
     header_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
@@ -510,7 +510,9 @@ def generate_t7_pdf(company, year, entries):
     elements.append(Spacer(1, 5 * mm))
 
     # Table header
-    col_widths = [10 * mm, 40 * mm, 55 * mm, 35 * mm, 20 * mm, 45 * mm, 45 * mm, 20 * mm, 30 * mm]
+    # Полезная ширина: 297 - 15 - 15 = 267 мм
+    # 8+35+50+32+16+40+40+18+28 = 267 мм
+    col_widths = [8 * mm, 35 * mm, 50 * mm, 32 * mm, 16 * mm, 40 * mm, 40 * mm, 18 * mm, 28 * mm]
 
     table_data = [
         [Paragraph('№<br/>п/п', small_center),
