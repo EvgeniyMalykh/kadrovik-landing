@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Count
+from apps.dashboard.views import get_active_member
 from apps.companies.models import Company, CompanyMember
 from apps.employees.models import Employee
 from .models import Vacation, VacationSchedule, VacationScheduleEntry
@@ -59,7 +60,7 @@ def _parse_date(val):
 
 @login_required
 def vacation_list(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
@@ -81,7 +82,7 @@ def vacation_add(request):
     if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 99):
         from django.shortcuts import redirect as _redirect
         return _redirect('dashboard:home')
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({"error": "no company"}, status=400)
     company = member.company
@@ -167,7 +168,7 @@ def vacation_add(request):
 @login_required
 @require_POST
 def vacation_delete(request, vacation_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({"error": "no company"}, status=400)
     v = get_object_or_404(Vacation, id=vacation_id, employee__company=member.company)
@@ -182,7 +183,7 @@ def vacation_delete(request, vacation_id):
 @login_required
 def vacation_print(request, vacation_id):
     """Страница для печати заявления об отпуске."""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     v = get_object_or_404(Vacation, id=vacation_id, employee__company=member.company)
@@ -204,7 +205,7 @@ VACATION_TYPE_LABELS = {
 
 @login_required
 def vacation_additional_pdf(request, vacation_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     v = get_object_or_404(Vacation, id=vacation_id, employee__company=member.company)
@@ -326,7 +327,7 @@ def vacation_request_public(request, company_id):
 
 @login_required
 def vacation_schedule_history(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:employees')
     schedules = VacationSchedule.objects.filter(
@@ -342,7 +343,7 @@ def vacation_schedule_history(request):
 
 @login_required
 def vacation_schedule(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
@@ -375,7 +376,7 @@ def vacation_schedule(request):
 @login_required
 @require_POST
 def vacation_schedule_save(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({"error": "no company"}, status=400)
     company = member.company
@@ -419,7 +420,7 @@ def vacation_schedule_save(request):
 
 @login_required
 def vacation_schedule_pdf(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company

@@ -31,6 +31,20 @@ def get_member_role(user):
     return member.role if member else None
 
 
+def get_active_member(request):
+    """Возвращает активный CompanyMember с учётом active_company_id из сессии."""
+    active_id = request.session.get('active_company_id')
+    if active_id:
+        member = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
+        if member:
+            return member
+    # fallback — первое членство
+    member = get_active_member(request)
+    if member:
+        request.session['active_company_id'] = member.company_id
+    return member
+
+
 def require_role(min_role):
     """
     Декоратор: требует роль не ниже min_role.
@@ -83,7 +97,7 @@ def subscription_required(view_func):
 @login_required
 def employees_list(request):
     show_onboarding = request.session.pop('show_onboarding', False)
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if member:
         company = member.company
     else:
@@ -309,7 +323,7 @@ def _save_employee_from_post(post, employee):
 @require_role("hr")
 def employee_add(request):
     from apps.billing.services import get_subscription_context
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return HttpResponse("Нет компании", status=400)
     sub_ctx = get_subscription_context(member.company)
@@ -356,7 +370,7 @@ def employee_add(request):
 def employee_edit(request, employee_id):
     if not request.headers.get("HX-Request"):
         return redirect("dashboard:employees")
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     if request.method == "POST":
         role = get_member_role(request.user)
@@ -385,7 +399,7 @@ def employee_edit(request, employee_id):
 @require_POST
 @require_role("admin")
 def employee_delete(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     employee.delete()
     from datetime import date as _date
@@ -399,7 +413,7 @@ def employee_delete(request, employee_id):
 @login_required
 @subscription_required
 def download_t1(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     pdf = generate_t1_pdf(employee, request.GET.get("order", "П-001"))
     r = HttpResponse(pdf, content_type="application/pdf")
@@ -410,7 +424,7 @@ def download_t1(request, employee_id):
 @login_required
 @subscription_required
 def download_t2(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     pdf = generate_t2_pdf(employee)
     r = HttpResponse(pdf, content_type="application/pdf")
@@ -421,7 +435,7 @@ def download_t2(request, employee_id):
 @login_required
 @subscription_required
 def download_t8(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     pdf = generate_t8_pdf(employee, request.GET.get("order", "У-001"))
     r = HttpResponse(pdf, content_type="application/pdf")
@@ -432,7 +446,7 @@ def download_t8(request, employee_id):
 @login_required
 @subscription_required
 def download_t6(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from datetime import date as dt
     v_start = dt.fromisoformat(request.GET.get("start", dt.today().isoformat()))
@@ -445,7 +459,7 @@ def download_t6(request, employee_id):
 
 @login_required
 def subscription(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     sub = None
     payments = []
     employee_count = 0
@@ -469,6 +483,9 @@ def login_view(request):
         user = authenticate(request, username=email, password=password)
         if user:
             login(request, user)
+            _m = CompanyMember.objects.filter(user=user).first()
+            if _m:
+                request.session['active_company_id'] = _m.company_id
             if request.POST.get("remember_me"):
                 request.session.set_expiry(60 * 60 * 24 * 30)  # 30 дней
             else:
@@ -631,7 +648,7 @@ def logout_view(request):
 @login_required
 @subscription_required
 def download_t5(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_t5_pdf
     new_position = request.GET.get("position", employee.position or "Новая должность")
@@ -645,7 +662,7 @@ def download_t5(request, employee_id):
 @login_required
 @subscription_required
 def download_salary_change(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_salary_change_pdf
     new_salary = request.GET.get("salary", str(employee.salary or "0"))
@@ -668,7 +685,7 @@ def download_salary_change(request, employee_id):
 @login_required
 @subscription_required
 def download_transfer_order(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_transfer_order_pdf
     new_position = request.GET.get("new_position", "")
@@ -691,7 +708,7 @@ def download_transfer_order(request, employee_id):
 @login_required
 @subscription_required
 def download_dismissal_order(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_dismissal_order_pdf
     pdf = generate_dismissal_order_pdf(
@@ -709,7 +726,7 @@ def download_dismissal_order(request, employee_id):
 @login_required
 @subscription_required
 def download_bonus_order(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_bonus_order_pdf
     pdf = generate_bonus_order_pdf(
@@ -727,7 +744,7 @@ def download_bonus_order(request, employee_id):
 @login_required
 @subscription_required
 def download_disciplinary_order(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_disciplinary_order_pdf
     pdf = generate_disciplinary_order_pdf(
@@ -746,7 +763,7 @@ def download_disciplinary_order(request, employee_id):
 @login_required
 @subscription_required
 def download_work_certificate(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_work_certificate_pdf
     pdf = generate_work_certificate_pdf(employee)
@@ -758,7 +775,7 @@ def download_work_certificate(request, employee_id):
 @login_required
 @subscription_required
 def download_labor_contract(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_labor_contract_pdf
     pdf = generate_labor_contract_pdf(employee)
@@ -770,7 +787,7 @@ def download_labor_contract(request, employee_id):
 @login_required
 @subscription_required
 def download_gph_contract(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_gph_contract_pdf
     pdf = generate_gph_contract_pdf(employee)
@@ -782,7 +799,7 @@ def download_gph_contract(request, employee_id):
 @login_required
 @subscription_required
 def download_gph_act(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_gph_act_pdf
     pdf = generate_gph_act_pdf(employee)
@@ -794,7 +811,7 @@ def download_gph_act(request, employee_id):
 @login_required
 @subscription_required
 def download_t13(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return HttpResponse("Нет компании", status=400)
     from apps.documents.services import generate_t13_pdf
@@ -819,7 +836,7 @@ def download_t13(request):
 
 @login_required
 def company_profile(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
@@ -865,7 +882,7 @@ def test_company_notify(request):
     if request.method != 'POST':
         return JsonResponse({'ok': False, 'message': 'Метод не поддерживается'}, status=405)
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'ok': False, 'message': 'Компания не найдена'})
 
@@ -917,7 +934,7 @@ def timesheet_edit(request):
     import calendar
     from datetime import date as dt_date
     from apps.employees.models import TimeRecord
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     try:
@@ -1015,7 +1032,7 @@ def timesheet_save(request):
     if request.method != "POST":
         from django.http import JsonResponse
         return JsonResponse({"error": "POST required"}, status=405)
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         from django.http import JsonResponse
         return JsonResponse({"error": "no company"}, status=403)
@@ -1172,7 +1189,7 @@ def change_password_view(request):
 @subscription_required
 def forms_list(request):
     """Журнал всех документов компании с фильтром по типу"""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
@@ -1197,7 +1214,7 @@ def delete_document(request, doc_id):
     """Удаление документа из журнала"""
     from django.http import JsonResponse
     from apps.documents.models import Document
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'success': False, 'error': 'Компания не найдена'}, status=403)
     try:
@@ -1238,7 +1255,7 @@ def _next_doc_number(company, doc_type):
 @subscription_required
 def form_editor(request, doc_type):
     """Редактор формы (новый или существующий документ)"""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
@@ -1285,7 +1302,7 @@ def form_save(request, doc_type):
     import json as _json_save
     from apps.documents.models import Document
     from django.http import JsonResponse
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'error': 'no company'}, status=403)
     company = member.company
@@ -1402,7 +1419,7 @@ def form_save(request, doc_type):
 def employee_data_api(request, employee_id):
     """JSON данные сотрудника для автозаполнения"""
     from django.http import JsonResponse
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'error': 'no company'}, status=403)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -1648,7 +1665,7 @@ def chat_poll(request):
 def delete_document(request, doc_id):
     from django.http import JsonResponse
     from apps.documents.models import Document
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({"success": False, "error": "Нет доступа"}, status=403)
     try:
@@ -1664,7 +1681,7 @@ def delete_document(request, doc_id):
 def _require_plan(request, min_plan):
     """Проверяет тариф пользователя. Возвращает True если доступ разрешён."""
     PLAN_RANK = {'trial': 0, 'start': 1, 'business': 2, 'pro': 3}
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return False
     sub = getattr(member.company, 'subscription', None)
@@ -1685,7 +1702,7 @@ def export_employees_excel(request):
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     company = member.company
     employees = Employee.objects.filter(company=company).select_related('department').order_by('last_name')
 
@@ -1784,7 +1801,7 @@ def export_timesheet_excel(request):
     if not _require_plan(request, 'business'):
         return JsonResponse({'error': 'Функция доступна на тарифах Бизнес и Корпоратив'}, status=403)
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     company = member.company
 
     try:
@@ -1922,10 +1939,19 @@ from apps.companies.models import CompanyInvite
 from django.contrib import messages as django_messages
 
 
+
+@login_required
+def switch_company(request, company_id):
+    """Переключить активную компанию."""
+    member = CompanyMember.objects.filter(user=request.user, company_id=company_id).first()
+    if member:
+        request.session['active_company_id'] = company_id
+    return redirect(request.META.get('HTTP_REFERER', '/dashboard/employees/'))
+
 @login_required
 def team_list(request):
     """Страница управления командой."""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -1945,7 +1971,7 @@ def team_invite(request):
     """Отправить приглашение."""
     if request.method != 'POST':
         return redirect('dashboard:team_list')
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2055,6 +2081,7 @@ def invite_accept(request, token):
             user=request.user,
             defaults={'role': invite.role}
         )
+        request.session['active_company_id'] = invite.company_id
         invite.accepted = True
         invite.save()
         django_messages.success(request, f'Вы присоединились к компании {invite.company.name}!')
@@ -2069,7 +2096,7 @@ def invite_accept(request, token):
 @require_role("admin")
 def team_member_remove(request, member_id):
     """Удалить участника команды."""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     target = get_object_or_404(CompanyMember, id=member_id, company=member.company)
@@ -2088,7 +2115,7 @@ def team_member_remove(request, member_id):
 @require_role("admin")
 def team_invite_cancel(request, invite_id):
     """Отменить приглашение."""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     invite = get_object_or_404(CompanyInvite, id=invite_id, company=member.company, accepted=False)
@@ -2102,7 +2129,7 @@ def team_invite_cancel(request, invite_id):
 def api_settings(request):
     """Страница управления API-токеном."""
     from apps.billing.services import PLANS
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     sub = getattr(member.company, 'subscription', None)
@@ -2145,7 +2172,7 @@ def document_templates(request):
     from apps.billing.services import PLANS
     from apps.documents.models import DocumentTemplate, DOC_TYPES
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2174,7 +2201,7 @@ def document_template_upload(request, doc_type):
     from apps.billing.services import PLANS
     from apps.documents.models import DocumentTemplate
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2214,7 +2241,7 @@ def document_template_upload(request, doc_type):
 def document_template_delete(request, doc_type):
     """Удалить кастомный шаблон (вернуться к стандартному)."""
     from apps.documents.models import DocumentTemplate
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     template = get_object_or_404(DocumentTemplate, company=member.company, doc_type=doc_type)
@@ -2229,7 +2256,7 @@ def document_template_download(request, doc_type, employee_id):
     from apps.documents.models import DocumentTemplate
     from apps.documents.template_renderer import render_template_to_bytes, get_employee_context, get_company_context
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
 
@@ -2266,7 +2293,7 @@ def sfr_export(request):
     from apps.billing.services import PLANS
     from apps.employees.models import Employee
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2390,7 +2417,7 @@ def events_list(request):
     from django.utils import timezone
     from datetime import timedelta
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2514,7 +2541,7 @@ def events_count_api(request):
     from django.utils import timezone
     from datetime import timedelta
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'count': 0})
     company = member.company

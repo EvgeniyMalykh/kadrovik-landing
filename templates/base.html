@@ -226,6 +226,18 @@
                     </div>
                 </div>
             </div>
+            {% if user_memberships|length > 1 %}
+            <div class="company-switcher" style="margin-bottom:6px;">
+              {% for m in user_memberships %}
+              <a href="{% url 'dashboard:switch_company' m.company.id %}"
+                 style="display:block;padding:6px 10px;border-radius:6px;font-size:0.78rem;text-decoration:none;transition:background 0.15s;{% if m.company.id == active_company_id %}background:var(--accent);color:#fff;font-weight:600;{% else %}color:var(--text-secondary);{% endif %}"
+                 onmouseover="if(this.style.background!='var(--accent)')this.style.background='var(--bg-primary)'"
+                 onmouseout="if(this.style.background!='var(--accent)')this.style.background=''">
+                {% if m.company.id == active_company_id %}✓ {% endif %}{{ m.company.name|truncatechars:22 }}
+              </a>
+              {% endfor %}
+            </div>
+            {% endif %}
             <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()">
                 <span class="theme-toggle__icon" id="theme-icon">🌙</span>
                 <span id="theme-label">Светлая тема</span>
