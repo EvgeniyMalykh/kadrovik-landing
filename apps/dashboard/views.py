@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from apps.accounts.models import User
 from apps.employees.models import Employee, Department
-from apps.companies.models import Company, CompanyMember
+from apps.companies.models import Company, CompanyMember, CompanyInvite
 from apps.documents.services import generate_t1_pdf, generate_t2_pdf, generate_t8_pdf, generate_t6_pdf
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
@@ -489,12 +489,23 @@ def subscription(request):
 def login_view(request):
     if request.user.is_authenticated:
         return redirect("dashboard:employees")
+    next_url = request.GET.get("next") or request.POST.get("next", "")
     if request.method == "POST":
         email    = request.POST.get("email")
         password = request.POST.get("password")
         user = authenticate(request, username=email, password=password)
         if user:
             login(request, user)
+            # Автоматически принять ожидающие приглашения
+            pending = CompanyInvite.objects.filter(email=user.email, accepted=False)
+            for inv in pending:
+                if not inv.is_expired():
+                    CompanyMember.objects.get_or_create(
+                        company=inv.company, user=user,
+                        defaults={'role': inv.role},
+                    )
+                    inv.accepted = True
+                    inv.save()
             _m = CompanyMember.objects.filter(user=user).first()
             if _m:
                 request.session['active_company_id'] = _m.company_id
@@ -502,9 +513,11 @@ def login_view(request):
                 request.session.set_expiry(60 * 60 * 24 * 30)  # 30 дней
             else:
                 request.session.set_expiry(0)  # до закрытия браузера
+            if next_url and next_url.startswith("/"):
+                return redirect(next_url)
             return redirect("dashboard:employees")
-        return render(request, "dashboard/login.html", {"error": "Неверный email или пароль"})
-    return render(request, "dashboard/login.html")
+        return render(request, "dashboard/login.html", {"error": "Неверный email или пароль", "next": next_url})
+    return render(request, "dashboard/login.html", {"next": next_url})
 
 
 def register_view(request):
@@ -1947,7 +1960,6 @@ def export_timesheet_excel(request):
 
 # ===== TEAM MANAGEMENT =====
 
-from apps.companies.models import CompanyInvite
 from django.contrib import messages as django_messages
 
 
@@ -2077,7 +2089,7 @@ def invite_accept(request, token):
                 if len(password) < 6:
                     return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пароль должен быть не менее 6 символов'})
                 if UserModel.objects.filter(email=email).exists():
-                    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пользователь с таким email уже существует. Войдите в аккаунт.'})
+                    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пользователь с таким email уже существует. Войдите в аккаунт.', 'show_login': True})
                 user = UserModel.objects.create_user(email=email, password=password, username=email)
             else:
                 user = authenticate(request, email=email, password=password)
@@ -2101,6 +2113,10 @@ def invite_accept(request, token):
 
     # GET — показать форму
     already_member = request.user.is_authenticated and CompanyMember.objects.filter(company=invite.company, user=request.user).exists()
+    # Если пользователь уже участник — автоматически принять приглашение
+    if already_member:
+        invite.accepted = True
+        invite.save()
     return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'already_member': already_member})
 
 

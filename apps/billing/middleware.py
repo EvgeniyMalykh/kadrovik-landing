@@ -14,6 +14,7 @@ EXEMPT_PATHS = [
     '/dashboard/checkout/',
     '/dashboard/payment/',
     '/dashboard/webhook/',
+    '/dashboard/invite/',
     '/vacations/request/',
     '/billing/',
     '/dashboard/employees/',
