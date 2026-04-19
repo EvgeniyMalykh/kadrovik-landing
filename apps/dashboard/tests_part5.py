@@ -166,10 +166,15 @@ class TestNotifyEndpointTests(TestCase):
         self.assertFalse(data['ok'])
         self.assertIn('контакт', data['message'].lower())
 
+    @override_settings(
+        GREEN_API_TG_INSTANCE_ID='test-tg-instance',
+        GREEN_API_TG_TOKEN='test-tg-token',
+    )
     def test_telegram_notify_returns_ok(self):
         """POST with telegram + numeric chat_id → ok=True, Telegram sendMessage called."""
         self.company.notify_messenger = 'telegram'
         self.company.notify_contact = '1113292310'
+        self.company.notify_telegram_contact = '1113292310'
         self.company.save()
 
         with patch('apps.events.tasks.requests.post') as mock_post:
@@ -184,15 +189,21 @@ class TestNotifyEndpointTests(TestCase):
         data = resp.json()
         self.assertTrue(data['ok'], msg=data.get('message'))
         self.assertIn('telegram', data['message'].lower())
-        mock_post.assert_called_once()
-        call_kwargs = mock_post.call_args
-        sent_json = call_kwargs[1]['json'] if call_kwargs[1] else call_kwargs[0][1]
-        self.assertEqual(sent_json['chat_id'], '1113292310')
+        mock_post.assert_called()
+        # Green API uses 'chatId' and 'message' keys
+        found_tg = False
+        for c in mock_post.call_args_list:
+            sent_json = c[1].get('json', {}) if c[1] else {}
+            if 'chatId' in sent_json and sent_json['chatId'] == '1113292310':
+                found_tg = True
+                break
+        self.assertTrue(found_tg, 'Telegram Green API call with chatId not found')
 
     def test_email_notify_returns_ok(self):
         """POST with email messenger → ok=True, send_mail called."""
         self.company.notify_messenger = 'email'
         self.company.notify_contact = 'hr@example.com'
+        self.company.notify_email_contact = 'hr@example.com'
         self.company.save()
 
         with patch('apps.events.tasks.send_mail') as mock_mail:
@@ -206,9 +217,13 @@ class TestNotifyEndpointTests(TestCase):
         data = resp.json()
         self.assertTrue(data['ok'], msg=data.get('message'))
         self.assertIn('email', data['message'].lower())
-        mock_mail.assert_called_once()
-        call_args = mock_mail.call_args
-        self.assertIn('hr@example.com', call_args[1].get('recipient_list', []))
+        mock_mail.assert_called()
+        # Check that hr@example.com was in at least one send_mail call
+        found = any(
+            'hr@example.com' in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found, 'hr@example.com not found in any send_mail call')
 
     def test_unauthenticated_redirects(self):
         """Unauthenticated POST → redirect to login."""
@@ -250,159 +265,222 @@ class NotificationRouterTests(TestCase):
 
     # -- telegram with numeric chat_id --
 
+    @override_settings(
+        GREEN_API_TG_INSTANCE_ID='test-tg-instance',
+        GREEN_API_TG_TOKEN='test-tg-token',
+    )
     def test_routes_to_telegram_with_numeric_chat_id(self):
         self.company.notify_messenger = 'telegram'
         self.company.notify_contact = '1113292310'
+        self.company.notify_telegram_contact = '1113292310'
         self.company.save()
 
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
+            mock_post.return_value.status_code = 200
             self._call_router(self.company)
 
-        mock_post.assert_called_once()
-        sent = mock_post.call_args[1]['json']
-        self.assertEqual(sent['chat_id'], '1113292310')
-        self.assertEqual(sent['text'], 'Test text')
+        mock_post.assert_called()
+        # Green API uses 'chatId' and 'message' keys
+        found_tg = False
+        for c in mock_post.call_args_list:
+            sent = c[1].get('json', {}) if c[1] else {}
+            if 'chatId' in sent and sent['chatId'] == '1113292310':
+                found_tg = True
+                break
+        self.assertTrue(found_tg, 'Telegram Green API call with chatId=1113292310 not found')
 
-    # -- telegram with @username — resolves via getChat --
+    # -- telegram with @username — not supported by Green API --
 
+    @override_settings(
+        GREEN_API_TG_INSTANCE_ID='test-tg-instance',
+        GREEN_API_TG_TOKEN='test-tg-token',
+    )
     def test_routes_to_telegram_with_username(self):
+        """Telegram via Green API does not support usernames — only numeric IDs.
+        Username in notify_contact is not treated as a valid TG contact by the
+        broadcast router (non-numeric strings are skipped)."""
         self.company.notify_messenger = 'telegram'
         self.company.notify_contact = '@someuser'
+        self.company.notify_telegram_contact = ''
         self.company.save()
 
-        mock_get = MagicMock()
-        mock_get.return_value.json.return_value = {'ok': True, 'result': {'id': 42424242}}
-        mock_post = MagicMock()
-
-        with patch('apps.events.tasks.requests.get', mock_get), \
-             patch('apps.events.tasks.requests.post', mock_post):
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
+            mock_post.return_value.status_code = 200
             self._call_router(self.company)
 
-        # getChat должен быть вызван с @someuser
-        mock_get.assert_called_once()
-        self.assertIn('@someuser', str(mock_get.call_args))
+        # The broadcast router checks notify_telegram_contact (empty) and
+        # fallback to notify_contact: '@someuser' is not numeric → TG skipped.
+        # No Telegram Green API call should be made for username-based contact.
+        for c in mock_post.call_args_list:
+            url = c[0][0] if c[0] else ''
+            self.assertNotIn('green-api.com', url,
+                             'Green API should not be called for username-based Telegram contact')
 
-        # sendMessage должен быть вызван с resolved chat_id
-        mock_post.assert_called_once()
-        sent = mock_post.call_args[1]['json']
-        self.assertEqual(sent['chat_id'], 42424242)
+    # -- telegram with @username — broadcast router skips non-numeric contacts --
 
-    # -- telegram with @username, getChat fails — fallback to service chat --
-
-    def test_telegram_username_getchat_fail_falls_back_to_service_chat(self):
+    @override_settings(
+        GREEN_API_TG_INSTANCE_ID='test-tg-instance',
+        GREEN_API_TG_TOKEN='test-tg-token',
+    )
+    def test_telegram_username_getchat_fail_falls_back_to_email(self):
+        """When telegram contact is a username (not numeric), broadcast router
+        skips the Telegram channel. Falls back to email (owner email)."""
         self.company.notify_messenger = 'telegram'
         self.company.notify_contact = '@unknownuser'
+        self.company.notify_telegram_contact = ''
+        self.company.email = ''
         self.company.save()
 
-        mock_get = MagicMock()
-        mock_get.return_value.json.return_value = {'ok': False, 'description': 'Not Found'}
-        mock_post = MagicMock()
-
-        with patch('apps.events.tasks.requests.get', mock_get), \
-             patch('apps.events.tasks.requests.post', mock_post):
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail') as mock_mail:
+            mock_post.return_value.status_code = 200
             self._call_router(self.company)
 
-        # sendMessage должен быть вызван с service chat_id из settings
-        mock_post.assert_called_once()
-        sent = mock_post.call_args[1]['json']
-        self.assertEqual(str(sent['chat_id']), '999')
+        # Fallback to owner email since no valid channels found
+        mock_mail.assert_called()
+        # Verify the owner's email is in the recipient list
+        found_owner = any(
+            self.user.email in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found_owner, 'Owner email should receive fallback notification')
 
-    # -- telegram with no contact — fallback to service chat --
+    # -- telegram with no contact — broadcast router skips TG, falls back to email --
 
-    def test_telegram_no_contact_uses_service_chat(self):
+    def test_telegram_no_contact_falls_back_to_email(self):
+        """When telegram contact is empty, broadcast router skips TG channel
+        and falls back to email (owner email)."""
         self.company.notify_messenger = 'telegram'
         self.company.notify_contact = ''
+        self.company.notify_telegram_contact = ''
+        self.company.email = ''
         self.company.save()
 
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail') as mock_mail:
             self._call_router(self.company)
 
-        mock_post.assert_called_once()
-        sent = mock_post.call_args[1]['json']
-        self.assertEqual(str(sent['chat_id']), '999')
+        # Owner email should receive the fallback notification
+        mock_mail.assert_called()
+        found_owner = any(
+            self.user.email in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found_owner, 'Owner email should receive fallback notification')
 
     # -- email messenger --
 
     def test_routes_to_email_with_notify_contact(self):
         self.company.notify_messenger = 'email'
         self.company.notify_contact = 'custom@company.ru'
+        self.company.notify_email_contact = 'custom@company.ru'
         self.company.save()
 
         with patch('apps.events.tasks.send_mail') as mock_mail:
             self._call_router(self.company)
 
-        mock_mail.assert_called_once()
-        self.assertIn('custom@company.ru', mock_mail.call_args[1]['recipient_list'])
+        mock_mail.assert_called()
+        found = any(
+            'custom@company.ru' in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found, 'custom@company.ru should be in recipient_list')
 
     def test_routes_to_email_fallback_to_company_email(self):
         """email messenger + empty notify_contact → falls back to company.email."""
         self.company.notify_messenger = 'email'
         self.company.notify_contact = ''
+        self.company.notify_email_contact = ''
         self.company.email = 'owner@company.ru'
         self.company.save()
 
         with patch('apps.events.tasks.send_mail') as mock_mail:
             self._call_router(self.company)
 
-        mock_mail.assert_called_once()
-        self.assertIn('owner@company.ru', mock_mail.call_args[1]['recipient_list'])
+        mock_mail.assert_called()
+        found = any(
+            'owner@company.ru' in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found, 'owner@company.ru should be in recipient_list')
 
     def test_routes_to_email_fallback_to_owner_email(self):
         """email messenger + empty notify_contact + empty company.email → owner.email."""
         self.company.notify_messenger = 'email'
         self.company.notify_contact = ''
+        self.company.notify_email_contact = ''
         self.company.email = ''
         self.company.save()
 
         with patch('apps.events.tasks.send_mail') as mock_mail:
             self._call_router(self.company)
 
-        mock_mail.assert_called_once()
-        self.assertIn(self.user.email, mock_mail.call_args[1]['recipient_list'])
+        mock_mail.assert_called()
+        found = any(
+            self.user.email in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found, 'Owner email should be in recipient_list')
 
     # -- whatsapp / viber — fallback to email --
 
-    @override_settings(GREEN_API_INSTANCE_ID='1234567890', GREEN_API_TOKEN='testtoken')
+    @override_settings(
+        GREEN_API_WA_INSTANCE_ID='1234567890',
+        GREEN_API_WA_TOKEN='testtoken',
+    )
     def test_whatsapp_with_contact_calls_green_api(self):
-        """WhatsApp + номер → Green API sendMessage, email не шлётся."""
+        """WhatsApp + номер → Green API sendMessage вызван."""
         self.company.notify_messenger = 'whatsapp'
         self.company.notify_contact = '+79001234567'
+        self.company.notify_whatsapp_contact = '+79001234567'
+        # Clear email contacts so only WhatsApp channel is used
+        self.company.notify_email_contact = ''
+        self.company.email = ''
         self.company.save()
 
-        with patch('apps.events.tasks.requests.post') as mock_post,              patch('apps.events.tasks.send_mail') as mock_mail:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail') as mock_mail:
             mock_post.return_value.status_code = 200
             self._call_router(self.company)
 
-        mock_mail.assert_not_called()
-        mock_post.assert_called_once()
-        call_url = mock_post.call_args[0][0]
-        self.assertIn('green-api.com', call_url)
-        sent_json = mock_post.call_args[1]['json']
-        # Номер нормализован: +79001234567 → 79001234567@c.us
-        self.assertEqual(sent_json['chatId'], '79001234567@c.us')
+        mock_post.assert_called()
+        # Find the WhatsApp Green API call
+        found_wa = False
+        for c in mock_post.call_args_list:
+            call_url = c[0][0] if c[0] else ''
+            if 'green-api.com' in call_url:
+                sent_json = c[1].get('json', {}) if c[1] else {}
+                if sent_json.get('chatId') == '79001234567@c.us':
+                    found_wa = True
+                    break
+        self.assertTrue(found_wa, 'WhatsApp Green API call with chatId=79001234567@c.us not found')
 
     def test_whatsapp_no_contact_falls_back_to_email(self):
         """WhatsApp без номера → fallback на email."""
         self.company.notify_messenger = 'whatsapp'
         self.company.notify_contact = ''
+        self.company.notify_whatsapp_contact = ''
         self.company.email = 'owner@company.ru'
         self.company.save()
 
         with patch('apps.events.tasks.send_mail') as mock_mail:
             self._call_router(self.company)
 
-        mock_mail.assert_called_once()
+        mock_mail.assert_called()
 
     def test_viber_falls_back_to_email(self):
         self.company.notify_messenger = 'viber'
         self.company.notify_contact = '+79001234567'
+        self.company.notify_viber_contact = '+79001234567'
         self.company.email = 'owner@company.ru'
         self.company.save()
 
         with patch('apps.events.tasks.send_mail') as mock_mail:
             self._call_router(self.company)
 
-        mock_mail.assert_called_once()
+        mock_mail.assert_called()
 
     # -- null/empty messenger defaults to email --
 
@@ -415,7 +493,7 @@ class NotificationRouterTests(TestCase):
         with patch('apps.events.tasks.send_mail') as mock_mail:
             self._call_router(self.company)
 
-        mock_mail.assert_called_once()
+        mock_mail.assert_called()
 
 
 # ===========================================================================
@@ -542,6 +620,8 @@ class CountVacationDaysTests(TestCase):
 @override_settings(
     TELEGRAM_BOT_TOKEN='fake-token',
     TELEGRAM_CHAT_ID='999',
+    GREEN_API_TG_INSTANCE_ID='',
+    GREEN_API_TG_TOKEN='',
 )
 class CheckBirthdaysTaskTests(TestCase):
 
@@ -557,7 +637,8 @@ class CheckBirthdaysTaskTests(TestCase):
         _employee(self.company, birth_date=today.replace(year=today.year - 30))
 
         from apps.events.tasks import check_birthdays
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             result = check_birthdays()
 
         mock_post.assert_called_once()
@@ -570,7 +651,8 @@ class CheckBirthdaysTaskTests(TestCase):
         _employee(self.company, birth_date=bday.replace(year=bday.year - 25))
 
         from apps.events.tasks import check_birthdays
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_birthdays()
 
         mock_post.assert_called_once()
@@ -587,7 +669,8 @@ class CheckBirthdaysTaskTests(TestCase):
             )
 
         from apps.events.tasks import check_birthdays
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_birthdays()
 
         mock_post.assert_not_called()
@@ -602,7 +685,8 @@ class CheckBirthdaysTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_birthdays
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_birthdays()
 
         mock_post.assert_not_called()
@@ -615,6 +699,8 @@ class CheckBirthdaysTaskTests(TestCase):
 @override_settings(
     TELEGRAM_BOT_TOKEN='fake-token',
     TELEGRAM_CHAT_ID='999',
+    GREEN_API_TG_INSTANCE_ID='',
+    GREEN_API_TG_TOKEN='',
 )
 class CheckVacationEventsTaskTests(TestCase):
 
@@ -636,7 +722,8 @@ class CheckVacationEventsTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_vacation_events
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_vacation_events()
 
         mock_post.assert_called_once()
@@ -654,7 +741,8 @@ class CheckVacationEventsTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_vacation_events
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_vacation_events()
 
         mock_post.assert_called_once()
@@ -672,7 +760,8 @@ class CheckVacationEventsTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_vacation_events
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_vacation_events()
 
         mock_post.assert_not_called()
@@ -685,6 +774,8 @@ class CheckVacationEventsTaskTests(TestCase):
 @override_settings(
     TELEGRAM_BOT_TOKEN='fake-token',
     TELEGRAM_CHAT_ID='999',
+    GREEN_API_TG_INSTANCE_ID='',
+    GREEN_API_TG_TOKEN='',
 )
 class CheckVacationEndingsTaskTests(TestCase):
 
@@ -707,7 +798,8 @@ class CheckVacationEndingsTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_vacation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_vacation_endings()
 
         mock_post.assert_called_once()
@@ -726,7 +818,8 @@ class CheckVacationEndingsTaskTests(TestCase):
             )
 
         from apps.events.tasks import check_vacation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_vacation_endings()
 
         mock_post.assert_not_called()
@@ -739,6 +832,8 @@ class CheckVacationEndingsTaskTests(TestCase):
 @override_settings(
     TELEGRAM_BOT_TOKEN='fake-token',
     TELEGRAM_CHAT_ID='999',
+    GREEN_API_TG_INSTANCE_ID='',
+    GREEN_API_TG_TOKEN='',
 )
 class CheckContractEndingsTaskTests(TestCase):
 
@@ -759,21 +854,24 @@ class CheckContractEndingsTaskTests(TestCase):
     def test_sends_14_days_before(self):
         self._emp_with_contract(14)
         from apps.events.tasks import check_contract_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_contract_endings()
         mock_post.assert_called_once()
 
     def test_sends_7_days_before(self):
         self._emp_with_contract(7)
         from apps.events.tasks import check_contract_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_contract_endings()
         mock_post.assert_called_once()
 
     def test_sends_3_days_before(self):
         self._emp_with_contract(3)
         from apps.events.tasks import check_contract_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_contract_endings()
         mock_post.assert_called_once()
 
@@ -786,7 +884,8 @@ class CheckContractEndingsTaskTests(TestCase):
             contract_end_date=today + timedelta(days=7),
         )
         from apps.events.tasks import check_contract_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_contract_endings()
         mock_post.assert_not_called()
 
@@ -800,7 +899,8 @@ class CheckContractEndingsTaskTests(TestCase):
             status='dismissed',
         )
         from apps.events.tasks import check_contract_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_contract_endings()
         mock_post.assert_not_called()
 
@@ -812,6 +912,8 @@ class CheckContractEndingsTaskTests(TestCase):
 @override_settings(
     TELEGRAM_BOT_TOKEN='fake-token',
     TELEGRAM_CHAT_ID='999',
+    GREEN_API_TG_INSTANCE_ID='',
+    GREEN_API_TG_TOKEN='',
 )
 class CheckProbationEndingsTaskTests(TestCase):
 
@@ -831,21 +933,24 @@ class CheckProbationEndingsTaskTests(TestCase):
     def test_sends_7_days_before(self):
         self._emp_with_probation(7)
         from apps.events.tasks import check_probation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_probation_endings()
         mock_post.assert_called_once()
 
     def test_sends_3_days_before(self):
         self._emp_with_probation(3)
         from apps.events.tasks import check_probation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_probation_endings()
         mock_post.assert_called_once()
 
     def test_sends_1_day_before(self):
         self._emp_with_probation(1)
         from apps.events.tasks import check_probation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_probation_endings()
         mock_post.assert_called_once()
 
@@ -855,7 +960,8 @@ class CheckProbationEndingsTaskTests(TestCase):
             self._emp_with_probation(days)
 
         from apps.events.tasks import check_probation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_probation_endings()
         mock_post.assert_not_called()
 
@@ -868,6 +974,8 @@ class CheckProbationEndingsTaskTests(TestCase):
     TELEGRAM_BOT_TOKEN='fake-token',
     TELEGRAM_CHAT_ID='999',
     DEFAULT_FROM_EMAIL='noreply@kadrovik-auto.ru',
+    GREEN_API_TG_INSTANCE_ID='',
+    GREEN_API_TG_TOKEN='',
 )
 class CheckSubscriptionExpirationsTaskTests(TestCase):
 
@@ -920,6 +1028,350 @@ class CheckSubscriptionExpirationsTaskTests(TestCase):
             expires_at=timezone.now() - timedelta(days=1),
         )
         from apps.events.tasks import check_subscription_expirations
-        with patch('apps.events.tasks.requests.post') as mock_post:
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail'):
             check_subscription_expirations()
         mock_post.assert_not_called()
+
+
+# ===========================================================================
+# 5.12  NEW: _sync_vacation_to_timesheet
+# ===========================================================================
+
+class SyncVacationToTimesheetTests(TestCase):
+
+    def setUp(self):
+        self.user = _user(email='sync_ts@example.com')
+        self.company = _company(self.user, inn='5560000001')
+        _member(self.company, self.user)
+        _subscription(self.company)
+        self.emp = _employee(self.company)
+
+    def _create_vacation(self, vtype, start, end):
+        return Vacation.objects.create(
+            employee=self.emp,
+            vacation_type=vtype,
+            start_date=start,
+            end_date=end,
+        )
+
+    def test_annual_vacation_creates_ot_records(self):
+        """annual vacation → TimeRecord code 'ОТ' for each day."""
+        from apps.vacations.views import _sync_vacation_to_timesheet
+        from apps.employees.models import TimeRecord
+        start = date(2026, 7, 1)
+        end = date(2026, 7, 3)
+        v = self._create_vacation('annual', start, end)
+        _sync_vacation_to_timesheet(v)
+        records = TimeRecord.objects.filter(employee=self.emp, date__range=(start, end))
+        self.assertEqual(records.count(), 3)
+        for r in records:
+            self.assertEqual(r.code, 'ОТ')
+            self.assertEqual(r.hours, 0)
+
+    def test_additional_vacation_creates_od_records(self):
+        """additional vacation → TimeRecord code 'ОД'."""
+        from apps.vacations.views import _sync_vacation_to_timesheet
+        from apps.employees.models import TimeRecord
+        start = date(2026, 8, 1)
+        end = date(2026, 8, 2)
+        v = self._create_vacation('additional', start, end)
+        _sync_vacation_to_timesheet(v)
+        records = TimeRecord.objects.filter(employee=self.emp, date__range=(start, end))
+        self.assertEqual(records.count(), 2)
+        for r in records:
+            self.assertEqual(r.code, 'ОД')
+
+    def test_educational_vacation_creates_uch_records(self):
+        """educational vacation → TimeRecord code 'УЧ'."""
+        from apps.vacations.views import _sync_vacation_to_timesheet
+        from apps.employees.models import TimeRecord
+        start = date(2026, 9, 1)
+        end = date(2026, 9, 1)
+        v = self._create_vacation('educational', start, end)
+        _sync_vacation_to_timesheet(v)
+        records = TimeRecord.objects.filter(employee=self.emp, date=start)
+        self.assertEqual(records.count(), 1)
+        self.assertEqual(records.first().code, 'УЧ')
+
+    def test_maternity_vacation_creates_ozh_records(self):
+        """maternity vacation → TimeRecord code 'ОЖ'."""
+        from apps.vacations.views import _sync_vacation_to_timesheet
+        from apps.employees.models import TimeRecord
+        start = date(2026, 10, 1)
+        end = date(2026, 10, 2)
+        v = self._create_vacation('maternity', start, end)
+        _sync_vacation_to_timesheet(v)
+        records = TimeRecord.objects.filter(employee=self.emp, date__range=(start, end))
+        self.assertEqual(records.count(), 2)
+        for r in records:
+            self.assertEqual(r.code, 'ОЖ')
+
+    def test_unpaid_vacation_creates_ot_records(self):
+        """unpaid vacation → TimeRecord code 'ОТ' (default mapping)."""
+        from apps.vacations.views import _sync_vacation_to_timesheet
+        from apps.employees.models import TimeRecord
+        start = date(2026, 11, 1)
+        end = date(2026, 11, 1)
+        v = self._create_vacation('unpaid', start, end)
+        _sync_vacation_to_timesheet(v)
+        records = TimeRecord.objects.filter(employee=self.emp, date=start)
+        self.assertEqual(records.count(), 1)
+        self.assertEqual(records.first().code, 'ОТ')
+
+    def test_correct_number_of_days_written(self):
+        """5-day vacation creates exactly 5 TimeRecord entries."""
+        from apps.vacations.views import _sync_vacation_to_timesheet
+        from apps.employees.models import TimeRecord
+        start = date(2026, 12, 1)
+        end = date(2026, 12, 5)
+        v = self._create_vacation('annual', start, end)
+        _sync_vacation_to_timesheet(v)
+        records = TimeRecord.objects.filter(employee=self.emp, date__range=(start, end))
+        self.assertEqual(records.count(), 5)
+
+
+# ===========================================================================
+# 5.13  NEW: Per-messenger contact fields on Company
+# ===========================================================================
+
+class CompanyMessengerContactsTests(TestCase):
+
+    def setUp(self):
+        self.user = _user(email='mc@example.com')
+        self.company = _company(self.user, inn='5560000002')
+        _member(self.company, self.user)
+        _subscription(self.company)
+
+    def test_notify_email_contact_saves_and_reads(self):
+        self.company.notify_email_contact = 'hr@test.ru'
+        self.company.save()
+        c = Company.objects.get(pk=self.company.pk)
+        self.assertEqual(c.notify_email_contact, 'hr@test.ru')
+
+    def test_notify_telegram_contact_saves_and_reads(self):
+        self.company.notify_telegram_contact = '1113292310'
+        self.company.save()
+        c = Company.objects.get(pk=self.company.pk)
+        self.assertEqual(c.notify_telegram_contact, '1113292310')
+
+    def test_notify_whatsapp_contact_saves_and_reads(self):
+        self.company.notify_whatsapp_contact = '+79001234567'
+        self.company.save()
+        c = Company.objects.get(pk=self.company.pk)
+        self.assertEqual(c.notify_whatsapp_contact, '+79001234567')
+
+    def test_notify_max_contact_saves_and_reads(self):
+        self.company.notify_max_contact = '+79009876543'
+        self.company.save()
+        c = Company.objects.get(pk=self.company.pk)
+        self.assertEqual(c.notify_max_contact, '+79009876543')
+
+    def test_all_contacts_blank_by_default(self):
+        c = Company.objects.get(pk=self.company.pk)
+        self.assertEqual(c.notify_email_contact, '')
+        self.assertEqual(c.notify_telegram_contact, '')
+        self.assertEqual(c.notify_whatsapp_contact, '')
+        self.assertEqual(c.notify_max_contact, '')
+
+    def test_multiple_contacts_save_independently(self):
+        """Setting multiple messenger contacts simultaneously works."""
+        self.company.notify_email_contact = 'test@mail.ru'
+        self.company.notify_telegram_contact = '999999'
+        self.company.notify_whatsapp_contact = '+79001111111'
+        self.company.notify_max_contact = '+79002222222'
+        self.company.save()
+        c = Company.objects.get(pk=self.company.pk)
+        self.assertEqual(c.notify_email_contact, 'test@mail.ru')
+        self.assertEqual(c.notify_telegram_contact, '999999')
+        self.assertEqual(c.notify_whatsapp_contact, '+79001111111')
+        self.assertEqual(c.notify_max_contact, '+79002222222')
+
+
+# ===========================================================================
+# 5.14  NEW: Broadcast _send_notification_to_company
+# ===========================================================================
+
+@override_settings(
+    TELEGRAM_BOT_TOKEN='fake-token',
+    TELEGRAM_CHAT_ID='999',
+    GREEN_API_TG_INSTANCE_ID='test-tg-instance',
+    GREEN_API_TG_TOKEN='test-tg-token',
+    GREEN_API_WA_INSTANCE_ID='test-wa-instance',
+    GREEN_API_WA_TOKEN='test-wa-token',
+    GREEN_API_MAX_INSTANCE_ID='test-max-instance',
+    GREEN_API_MAX_TOKEN='test-max-token',
+    DEFAULT_FROM_EMAIL='noreply@kadrovik-auto.ru',
+)
+class BroadcastNotificationTests(TestCase):
+
+    def setUp(self):
+        self.user = _user(email='broadcast@example.com')
+        self.company = _company(self.user, inn='5560000003')
+        _member(self.company, self.user)
+        _subscription(self.company)
+
+    def _call(self, company):
+        from apps.events.tasks import _send_notification_to_company
+        _send_notification_to_company(
+            company,
+            text='Broadcast test',
+            subject='Broadcast subject',
+            html_body='<p>html</p>',
+            plain_body='plain broadcast',
+        )
+
+    def test_sends_to_all_filled_channels(self):
+        """When email + telegram + whatsapp are filled, all three are called."""
+        self.company.notify_email_contact = 'hr@example.com'
+        self.company.notify_telegram_contact = '12345678'
+        self.company.notify_whatsapp_contact = '+79001234567'
+        self.company.save()
+
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('django.core.mail.send_mail') as mock_mail:
+            mock_post.return_value.status_code = 200
+            self._call(self.company)
+
+        # Email should be sent
+        mock_mail.assert_called()
+        found_email = any(
+            'hr@example.com' in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found_email, 'Email to hr@example.com expected')
+
+        # Telegram Green API should be called
+        found_tg = False
+        found_wa = False
+        for c in mock_post.call_args_list:
+            sent = c[1].get('json', {}) if c[1] else {}
+            if sent.get('chatId') == '12345678':
+                found_tg = True
+            if sent.get('chatId') == '79001234567@c.us':
+                found_wa = True
+        self.assertTrue(found_tg, 'Telegram Green API call expected')
+        self.assertTrue(found_wa, 'WhatsApp Green API call expected')
+
+    def test_only_email_when_only_email_filled(self):
+        """When only email is filled, only email is sent."""
+        self.company.notify_email_contact = 'solo@example.com'
+        self.company.notify_telegram_contact = ''
+        self.company.notify_whatsapp_contact = ''
+        self.company.notify_max_contact = ''
+        self.company.save()
+
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('django.core.mail.send_mail') as mock_mail:
+            self._call(self.company)
+
+        mock_mail.assert_called()
+        found = any(
+            'solo@example.com' in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found, 'Email to solo@example.com expected')
+
+    def test_only_telegram_when_only_telegram_filled(self):
+        """When only telegram is filled, telegram is sent."""
+        self.company.notify_email_contact = ''
+        self.company.notify_telegram_contact = '87654321'
+        self.company.notify_whatsapp_contact = ''
+        self.company.notify_max_contact = ''
+        self.company.email = ''
+        # Clear old fields that could trigger email fallback
+        self.company.notify_messenger = 'telegram'
+        self.company.notify_contact = ''
+        self.company.save()
+
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('django.core.mail.send_mail') as mock_mail:
+            mock_post.return_value.status_code = 200
+            self._call(self.company)
+
+        found_tg = False
+        for c in mock_post.call_args_list:
+            sent = c[1].get('json', {}) if c[1] else {}
+            if sent.get('chatId') == '87654321':
+                found_tg = True
+                break
+        self.assertTrue(found_tg, 'Telegram Green API call expected')
+
+    def test_fallback_to_owner_email_when_nothing_filled(self):
+        """When no channels filled, falls back to owner email."""
+        self.company.notify_email_contact = ''
+        self.company.notify_telegram_contact = ''
+        self.company.notify_whatsapp_contact = ''
+        self.company.notify_max_contact = ''
+        self.company.email = ''
+        self.company.notify_messenger = ''
+        self.company.notify_contact = ''
+        self.company.save()
+
+        with patch('apps.events.tasks.requests.post') as mock_post, \
+             patch('apps.events.tasks.send_mail') as mock_mail:
+            self._call(self.company)
+
+        mock_mail.assert_called()
+        found_owner = any(
+            self.user.email in c[1].get('recipient_list', [])
+            for c in mock_mail.call_args_list
+        )
+        self.assertTrue(found_owner, 'Owner email fallback expected')
+
+
+# ===========================================================================
+# 5.15  NEW: vacation_additional_pdf endpoint
+# ===========================================================================
+
+class VacationAdditionalPdfTests(TestCase):
+
+    def setUp(self):
+        self.user = _user(email='vapdf@example.com')
+        self.company = _company(self.user, inn='5560000004')
+        _member(self.company, self.user)
+        _subscription(self.company)
+        self.emp = _employee(self.company)
+        today = date.today()
+        self.vacation = Vacation.objects.create(
+            employee=self.emp,
+            vacation_type='additional',
+            start_date=today,
+            end_date=today + timedelta(days=5),
+        )
+        self.client.force_login(self.user)
+
+    def test_returns_pdf_content_type(self):
+        """vacation_additional_pdf returns application/pdf."""
+        with patch('apps.documents.services.generate_additional_vacation_application',
+                   return_value=b'%PDF-fake') as mock_gen:
+            resp = self.client.get(f'/vacations/{self.vacation.id}/additional-pdf/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'application/pdf')
+        self.assertIn(b'%PDF', resp.content)
+
+    def test_unauthenticated_redirects(self):
+        """Unauthenticated access to additional-pdf redirects to login."""
+        self.client.logout()
+        resp = self.client.get(f'/vacations/{self.vacation.id}/additional-pdf/')
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('/login/', resp.url)
+
+    def test_pdf_filename_contains_employee_lastname(self):
+        """Content-Disposition filename contains the employee's last name."""
+        with patch('apps.documents.services.generate_additional_vacation_application',
+                   return_value=b'%PDF-fake'):
+            resp = self.client.get(f'/vacations/{self.vacation.id}/additional-pdf/')
+        # Content-Disposition may be RFC 2047 encoded for non-ASCII chars
+        import base64
+        cd = resp['Content-Disposition']
+        # Decode if base64-encoded
+        if '?b?' in cd.lower():
+            # Extract base64 part: =?utf-8?b?...?=
+            import re
+            b64_match = re.search(r'\?[bB]\?([A-Za-z0-9+/=]+)\?=', cd)
+            if b64_match:
+                decoded = base64.b64decode(b64_match.group(1)).decode('utf-8')
+                self.assertIn(self.emp.last_name, decoded)
+                return
+        self.assertIn(self.emp.last_name, cd)

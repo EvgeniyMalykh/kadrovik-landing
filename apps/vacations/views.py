@@ -76,6 +76,11 @@ def vacation_list(request):
 
 @login_required
 def vacation_add(request):
+    from apps.dashboard.views import ROLE_RANK, get_member_role
+    role = get_member_role(request.user)
+    if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 99):
+        from django.shortcuts import redirect as _redirect
+        return _redirect('dashboard:home')
     member = CompanyMember.objects.filter(user=request.user).first()
     if not member:
         return JsonResponse({"error": "no company"}, status=400)
@@ -197,6 +202,7 @@ VACATION_TYPE_LABELS = {
     'maternity':   'Декретный',
 }
 
+@login_required
 def vacation_additional_pdf(request, vacation_id):
     member = CompanyMember.objects.filter(user=request.user).first()
     if not member:
