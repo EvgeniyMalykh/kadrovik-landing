@@ -46,6 +46,7 @@ urlpatterns = [
     path("forms/<str:doc_type>/", views.form_editor, name="form_editor"),
     # Подписка и auth
     path("company/", views.company_profile, name="company"),
+    path("company/test-notify/", views.test_company_notify, name="company_test_notify"),
     path("subscription/", views.subscription, name="subscription"),
     path("login/", views.login_view, name="login"),
     path("register/", views.register_view, name="register"),

@@ -10,28 +10,51 @@ from datetime import timedelta
 logger = logging.getLogger(__name__)
 
 
-def _send_telegram(text):
-    token   = settings.TELEGRAM_BOT_TOKEN
-    chat_id = settings.TELEGRAM_CHAT_ID
-    if not token or not chat_id:
+def _send_telegram(text, chat_id=None):
+    """Отправляет сообщение в Telegram. chat_id — конкретный пользователь или из settings."""
+    token = settings.TELEGRAM_BOT_TOKEN
+    if not token:
+        return
+    target = chat_id or getattr(settings, 'TELEGRAM_CHAT_ID', None)
+    if not target:
         return
     try:
         requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+            json={"chat_id": target, "text": text, "parse_mode": "HTML"},
             timeout=10,
         )
     except Exception:
         pass
 
 
+def _resolve_telegram_chat_id(contact):
+    """Получает Telegram chat_id по username через getChat API."""
+    token = settings.TELEGRAM_BOT_TOKEN
+    if not token or not contact:
+        return None
+    username = contact.strip().lstrip('@')
+    try:
+        r = requests.get(
+            f"https://api.telegram.org/bot{token}/getChat",
+            params={"chat_id": f"@{username}"},
+            timeout=10,
+        )
+        data = r.json()
+        if data.get('ok'):
+            return data['result']['id']
+    except Exception:
+        pass
+    return None
+
+
 def _send_email_to_company(company, subject, html_body, plain_body):
-    """Отправляет письмо на email руководителя из карточки компании.
-    Если company.email не заполнен — fallback на email владельца аккаунта."""
-    recipient = company.email
-    if not recipient:
-        # Fallback: email владельца аккаунта
-        recipient = getattr(company.owner, 'email', None)
+    """Отправляет письмо. Если notify_messenger=email и notify_contact заполнен —
+    шлём туда. Иначе fallback на company.email / owner.email."""
+    if company.notify_messenger == 'email' and company.notify_contact:
+        recipient = company.notify_contact
+    else:
+        recipient = company.email or getattr(company.owner, 'email', None)
     if not recipient:
         return
     try:
@@ -47,6 +70,26 @@ def _send_email_to_company(company, subject, html_body, plain_body):
         pass
 
 
+def _send_notification_to_company(company, text, subject, html_body, plain_body):
+    """Универсальный роутер: шлёт уведомление через канал, выбранный в карточке компании."""
+    messenger = company.notify_messenger or 'email'
+    contact = company.notify_contact or ''
+
+    if messenger == 'telegram':
+        if contact:
+            # Пробуем по username
+            chat_id = _resolve_telegram_chat_id(contact) if contact.startswith('@') else contact
+            _send_telegram(text, chat_id=chat_id)
+        else:
+            # Fallback — служебный чат
+            _send_telegram(text)
+    elif messenger == 'email':
+        _send_email_to_company(company, subject, html_body, plain_body)
+    else:
+        # WhatsApp / Viber — пока fallback на email
+        _send_email_to_company(company, subject, html_body, plain_body)
+
+
 def _has_email_notify(company):
     """Проверяет, доступна ли фича email_notify для плана компании."""
     from apps.billing.services import get_plan_features
@@ -57,7 +100,7 @@ def _has_email_notify(company):
 
 
 def _send_hr_email(company, icon, title, employee_name, position, event_date, description):
-    """Отправляет HR-уведомление по email, используя шаблон hr_event.html."""
+    """Отправляет HR-уведомление через канал, выбранный в карточке компании."""
     subject = title
     context = {
         'icon': icon,
@@ -69,16 +112,24 @@ def _send_hr_email(company, icon, title, employee_name, position, event_date, de
         'description': description,
     }
     html_body = render_to_string('emails/hr_event.html', context)
+    nl = '\n'
     plain_body = (
-        f"{title}\n\n"
-        f"Сотрудник: {employee_name}\n"
-        f"Должность: {position}\n"
-        f"Компания: {company.name}\n"
-        f"Дата: {event_date}\n\n"
-        f"{description}"
+        title + nl + nl
+        + 'Сотрудник: ' + employee_name + nl
+        + 'Должность: ' + position + nl
+        + 'Компания: ' + company.name + nl
+        + 'Дата: ' + event_date + nl + nl
+        + description
     )
-    _send_email_to_company(company, subject, html_body, plain_body)
-
+    text = (
+        icon + ' <b>' + title + '</b>' + nl
+        + 'Сотрудник: ' + employee_name + nl
+        + 'Должность: ' + position + nl
+        + 'Компания: ' + company.name + nl
+        + 'Дата: ' + event_date + nl + nl
+        + description
+    )
+    _send_notification_to_company(company, text, subject, html_body, plain_body)
 
 @shared_task(name="events.check_probation_endings")
 def check_probation_endings():

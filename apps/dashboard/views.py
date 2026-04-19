@@ -854,6 +854,58 @@ def company_profile(request):
 
 
 @login_required
+def test_company_notify(request):
+    """Отправляет тестовое уведомление через канал, выбранный в карточке компании."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'Метод не поддерживается'}, status=405)
+
+    member = CompanyMember.objects.filter(user=request.user).first()
+    if not member:
+        return JsonResponse({'ok': False, 'message': 'Компания не найдена'})
+
+    company = member.company
+    messenger = company.notify_messenger or 'email'
+    contact = company.notify_contact
+
+    if not contact:
+        return JsonResponse({'ok': False, 'message': 'Укажите контакт для уведомлений и сохраните'})
+
+    messenger_labels = {'email': 'Email', 'telegram': 'Telegram', 'whatsapp': 'WhatsApp', 'viber': 'Viber'}
+    label = messenger_labels.get(messenger, messenger)
+
+    from apps.events.tasks import _send_notification_to_company
+    from django.template.loader import render_to_string
+
+    title = 'Тестовое уведомление'
+    text = (
+        '\u2705 <b>Тестовое уведомление</b>\n'
+        '\u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d.\n'
+        f'\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: {company.name}\n'
+        f'\u041a\u0430\u043d\u0430\u043b: {label}\n'
+        f'\u041a\u043e\u043d\u0442\u0430\u043a\u0442: {contact}'
+    )
+    subject = '\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435 \u2014 \u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442'
+    html_body = (
+        '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"></head>'
+        '<body style="font-family:-apple-system,sans-serif;background:#f8fafc;padding:40px 20px;">'
+        '<div style="max-width:480px;margin:0 auto;background:#1e293b;border-radius:12px;padding:32px;color:#f1f5f9;text-align:center;">'
+        '<div style="font-size:2.5rem;margin-bottom:12px;">\u2705</div>'
+        '<h2 style="margin:0 0 12px;font-size:1.1rem;">\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435</h2>'
+        '<p style="color:#94a3b8;font-size:0.9rem;margin:0 0 8px;">\u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d.</p>'
+        f'<p style="color:#94a3b8;font-size:0.85rem;margin:0;">\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: <strong style="color:#f1f5f9;">{company.name}</strong></p>'
+        '</div></body></html>'
+    )
+    plain_body = f'\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435.\n\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: {company.name}'
+
+    try:
+        _send_notification_to_company(company, text, subject, html_body, plain_body)
+        return JsonResponse({'ok': True, 'message': f'\u041e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043e \u0447\u0435\u0440\u0435\u0437 {label} \u043d\u0430 {contact}'})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+
+
+@login_required
 @subscription_required
 def timesheet_edit(request):
     """Редактирование табеля Т-13 по месяцу."""

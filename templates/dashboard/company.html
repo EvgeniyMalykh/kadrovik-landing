@@ -122,10 +122,49 @@
             </div>
         </div>
 
-        <div class="modal-actions" style="margin-top:1.5rem;">
+        <div class="modal-actions" style="margin-top:1.5rem;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
             <button type="submit" class="btn-primary">Сохранить реквизиты</button>
+            <button type="button" class="btn-secondary" id="testNotifyBtn" onclick="sendTestNotification()">
+                Отправить тестовое уведомление
+            </button>
+            <span id="testNotifyStatus" style="font-size:0.85rem;color:var(--text-muted);"></span>
         </div>
     </form>
+
+<script>
+function sendTestNotification() {
+    const btn = document.getElementById('testNotifyBtn');
+    const status = document.getElementById('testNotifyStatus');
+    btn.disabled = true;
+    btn.textContent = 'Отправляем...';
+    status.textContent = '';
+    fetch('/dashboard/company/test-notify/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            status.style.color = '#22c55e';
+            status.textContent = '✓ ' + data.message;
+        } else {
+            status.style.color = '#ef4444';
+            status.textContent = '✗ ' + data.message;
+        }
+    })
+    .catch(() => {
+        status.style.color = '#ef4444';
+        status.textContent = 'Ошибка отправки';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Отправить тестовое уведомление';
+    });
+}
+</script>
 
 <style>
 .messenger-selector { display:flex; flex-wrap:wrap; gap:10px; }
