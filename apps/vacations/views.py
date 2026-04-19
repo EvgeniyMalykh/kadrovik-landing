@@ -5,7 +5,7 @@ from django.http import JsonResponse, HttpResponse
 from django.db.models import Count
 from apps.dashboard.views import get_active_member
 from apps.companies.models import Company, CompanyMember
-from apps.employees.models import Employee
+from apps.employees.models import ProductionCalendar, Employee
 from .models import Vacation, VacationSchedule, VacationScheduleEntry
 import re
 import json
@@ -364,12 +364,21 @@ def vacation_schedule(request):
         )
         entries.append(entry)
 
+    # Праздники для JS (вычитаются из отпуска по ТК РФ)
+    import json as _json
+    holidays_qs = ProductionCalendar.objects.filter(
+        date__year__in=[year - 1, year, year + 1],
+        day_type='holiday'
+    ).values_list('date', flat=True)
+    holidays_js = _json.dumps([str(d) for d in holidays_qs])
+
     return render(request, "dashboard/vacation_schedule.html", {
         "entries": entries,
         "year": year,
         "years": years,
         "company": company,
         "schedule": schedule,
+        "holidays_js": holidays_js,
     })
 
 
