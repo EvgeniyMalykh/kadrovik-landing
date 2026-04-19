@@ -41,7 +41,13 @@ def _make_member(company, user, role='owner'):
 
 
 def _make_subscription(company, plan='trial'):
-    return Subscription.objects.create(company=company, plan=plan)
+    from django.utils import timezone
+    from datetime import timedelta
+    return Subscription.objects.create(
+        company=company, plan=plan,
+        status=Subscription.Status.ACTIVE,
+        expires_at=timezone.now() + timedelta(days=30),
+    )
 
 
 def _make_employee(company, **kw):
@@ -67,7 +73,7 @@ class EventsPageTests(TestCase):
         self.company = _make_company(self.user)
         _make_member(self.company, self.user, role='owner')
         _make_subscription(self.company, plan='trial')
-        self.client.login(email='test3@example.com', password='testpass123')
+        self.client.force_login(self.user)
 
     def test_events_page_authenticated(self):
         """Authorized user can access events page (200)."""
@@ -157,7 +163,7 @@ class EmployeeSearchFilterTests(TestCase):
         self.company = _make_company(self.user, name='Filter LLC', inn='5554567890')
         _make_member(self.company, self.user, role='owner')
         _make_subscription(self.company, plan='trial')
-        self.client.login(email='filter3@example.com', password='testpass123')
+        self.client.force_login(self.user)
 
         self.dept = Department.objects.create(company=self.company, name='IT')
         self.dept2 = Department.objects.create(company=self.company, name='HR')
@@ -269,7 +275,14 @@ class RolePermissionsTests(TestCase):
 
     def _login(self, email):
         self.client.logout()
-        self.client.login(email=email, password='testpass123')
+        user_map = {
+            'owner3@example.com': self.owner_user,
+            'admin3@example.com': self.admin_user,
+            'hr3@example.com': self.hr_user,
+            'acc3@example.com': self.accountant_user,
+        }
+        user = user_map[email]
+        self.client.force_login(user)
 
     # --- Accountant CANNOT ---
 

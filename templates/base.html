@@ -7,7 +7,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Кадровый автопилот{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=11">
+    <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('kadrovik-theme')||'dark');</script>
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=16">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         // CSRF для HTMX POST запросов
@@ -221,6 +222,14 @@
                     </div>
                 </div>
             </div>
+            <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()">
+                <span class="theme-toggle__icon" id="theme-icon">🌙</span>
+                <span id="theme-label">Светлая тема</span>
+            </button>
+            <button class="help-btn" onclick="openHelpModal()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Помощь
+            </button>
             <a href="{% url 'dashboard:change_password' %}" class="nav-item" style="font-size:0.82rem;" onclick="closeSidebar()">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 Сменить пароль
@@ -248,6 +257,34 @@
     </div>
     <script>
         // ─── Sidebar toggle ───────────────────────────────────────────────────
+        // ── THEME ─────────────────────────────────────────────────
+        function toggleTheme() {
+            var current = document.documentElement.getAttribute('data-theme') || 'dark';
+            var next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('kadrovik-theme', next);
+            updateThemeBtn(next);
+        }
+
+        function updateThemeBtn(theme) {
+            var icon = document.getElementById('theme-icon');
+            var label = document.getElementById('theme-label');
+            if (!icon || !label) return;
+            if (theme === 'dark') {
+                icon.textContent = '🌙';
+                label.textContent = 'Светлая тема';
+            } else {
+                icon.textContent = '☀️';
+                label.textContent = 'Тёмная тема';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var saved = localStorage.getItem('kadrovik-theme') || 'dark';
+            updateThemeBtn(saved);
+        });
+        // ─────────────────────────────────────────────────────────────
+
         function toggleSidebar() {
             var sb = document.getElementById("sidebar");
             var ov = document.getElementById("sidebar-overlay");
@@ -472,6 +509,186 @@
       }
     }).catch(function(){});
 })();
+</script>
+
+<!-- Help Modal -->
+<div id="help-modal-overlay" class="help-modal-overlay" onclick="closeHelpModal()">
+  <div class="help-modal" onclick="event.stopPropagation()">
+    <div class="help-modal__header">
+      <h2 class="help-modal__title">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Инструкция по работе с сервисом
+      </h2>
+      <button class="help-modal__close" onclick="closeHelpModal()">×</button>
+    </div>
+    <div class="help-modal__tabs">
+      <button class="help-tab active" onclick="showHelpTab(this, 'start')">С чего начать</button>
+      <button class="help-tab" onclick="showHelpTab(this, 'vacations')">Отпуска</button>
+      <button class="help-tab" onclick="showHelpTab(this, 'forms')">Формы</button>
+      <button class="help-tab" onclick="showHelpTab(this, 'billing')">Тарифы</button>
+    </div>
+    <div class="help-modal__body">
+
+      <!-- Вкладка 1: С чего начать -->
+      <div id="help-start" class="help-panel active">
+        <div class="help-step">
+          <div class="help-step__num">1</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Настройте компанию</div>
+            <div class="help-step__text">Перейдите в раздел «Компания» и заполните название, ОГРН и подпись руководителя — эти данные появятся в документах.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">2</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Добавьте сотрудников</div>
+            <div class="help-step__text">Раздел «Сотрудники» — кнопка «Добавить». Укажите Ф.И.О., должность, табельный номер и дату приёма. Можно указать баланс отпуска на текущий год.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">3</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Пригласите коллеги</div>
+            <div class="help-step__text">Раздел «Команда» — введите email сотрудника и выберите роль: Кадровик, Бухгалтер или Администратор. Сотрудник получит письмо с приглашением.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">4</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Производственный календарь</div>
+            <div class="help-step__text">В «Компания» укажите режим работы (5- или 6-дневная неделя). Сервис автоматически учтёт праздники, выходные и сокращённые дни из производственного календаря РФ.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка 2: Отпуск -->
+      <div id="help-vacations" class="help-panel">
+        <div class="help-step">
+          <div class="help-step__num">1</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Создайте заявку</div>
+            <div class="help-step__text">Раздел «Отпуск» — выберите сотрудника, укажите вид отпуска (ежегодный, дополнительный, за свой счёт) и даты. Система автоматически рассчитает календарные дни.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">2</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Согласование</div>
+            <div class="help-step__text">Заявка попадает на согласование к владельцу или руководителю. После согласования статус меняется на «Одобрено».</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">3</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Печать приказа</div>
+            <div class="help-step__text">Нажмите «Приказ» на одобренной заявке — сервис сформирует приказ Т-6 с заполненными данными. Готовый PDF можно распечатать или сохранить.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">4</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Баланс отпуска</div>
+            <div class="help-step__text">Сервис автоматически списывает использованные дни из баланса после одобрения. Остаток баланса виден в карточке сотрудника.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка 3: Формы -->
+      <div id="help-forms" class="help-panel">
+        <div class="help-step">
+          <div class="help-step__num">1</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Конструктор форм</div>
+            <div class="help-step__text">Раздел «Формы» — создайте шаблон приказа под вашу организацию: заголовок, номер приказа, реквизиты подписей. Предварительный просмотр в реальном времени.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">2</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Журнал документов</div>
+            <div class="help-step__text">Вкладка «Журнал» — здесь хранятся все выданные приказы с датой, сотрудником и статусом. Можно фильтровать по сотруднику или периоду.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">3</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Печать приказа</div>
+            <div class="help-step__text">Из журнала нажмите «Приказ» — откроется окно с заполненным шаблоном. Кнопка «Печать» — подготовка PDF для подписи.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">4</div>
+          <div class="help-step__content">
+            <div class="help-step__title">АПИ-интеграция</div>
+            <div class="help-step__text">Через раздел «АПИ» можно получить токен и подключить внешнюю систему (например, 1С) для автоматической передачи документов.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка 4: Тарифы -->
+      <div id="help-billing" class="help-panel">
+        <div class="help-step">
+          <div class="help-step__num">1</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Пробный период</div>
+            <div class="help-step__text">После регистрации доступны все функции 14 дней бесплатно. По истечении сервис заблокирует без оплаты.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">2</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Тарифы</div>
+            <div class="help-step__text">Доступны три тарифа: «Старт» — до 5 сотрудников, «Бизнес» — до 20, «Про» — без ограничений. У всех одинаковый набор функций.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">3</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Оплата</div>
+            <div class="help-step__text">Оплата через ЮКассу: карта, СБП, електронные кошельки. После оплаты доступ открывается автоматически, чек приходит на email.</div>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step__num">4</div>
+          <div class="help-step__content">
+            <div class="help-step__title">Отмена подписки</div>
+            <div class="help-step__text">Отменить можно в любой момент в разделе «Подписка». Данные остаются сохранены — при продлении всё восстановится.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="help-modal__footer">
+      <a href="mailto:evgeniymalykh@gmail.com" class="help-contact">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Есть вопрос? Напишите нам
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+function openHelpModal() {
+  var overlay = document.getElementById('help-modal-overlay');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(function(){ overlay.classList.add('open'); });
+  document.body.style.overflow = 'hidden';
+}
+function closeHelpModal() {
+  var overlay = document.getElementById('help-modal-overlay');
+  overlay.classList.remove('open');
+  overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
+function showHelpTab(btn, id) {
+  document.querySelectorAll('.help-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.help-panel').forEach(function(p){ p.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById('help-' + id).classList.add('active');
+}
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeHelpModal();
+});
 </script>
 
 </body>

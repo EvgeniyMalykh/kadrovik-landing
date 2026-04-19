@@ -49,7 +49,13 @@ def _make_member(company, user, role='owner'):
 
 
 def _make_subscription(company, plan='trial'):
-    return Subscription.objects.create(company=company, plan=plan)
+    from django.utils import timezone
+    from datetime import timedelta
+    return Subscription.objects.create(
+        company=company, plan=plan,
+        status=Subscription.Status.ACTIVE,
+        expires_at=timezone.now() + timedelta(days=30),
+    )
 
 
 def _make_employee(company, **kw):
@@ -76,7 +82,7 @@ class VacationTests(TestCase):
         self.member = _make_member(self.company, self.user)
         self.sub = _make_subscription(self.company, 'trial')
         self.employee = _make_employee(self.company)
-        self.client.login(email='test@example.com', password='testpass123')
+        self.client.force_login(self.user)
 
     # GET /vacations/schedule/ -> 200
     def test_vacation_schedule_list_200(self):
@@ -137,7 +143,7 @@ class TimesheetTests(TestCase):
         self.member = _make_member(self.company, self.user)
         self.sub = _make_subscription(self.company, 'trial')
         self.employee = _make_employee(self.company)
-        self.client.login(email='test@example.com', password='testpass123')
+        self.client.force_login(self.user)
 
     def test_timesheet_200(self):
         url = reverse('dashboard:timesheet_edit')
@@ -180,7 +186,7 @@ class TeamTests(TestCase):
         self.company = _make_company(self.owner)
         self.member = _make_member(self.company, self.owner, role='owner')
         self.sub = _make_subscription(self.company, 'business')
-        self.client.login(email='owner@example.com', password='testpass123')
+        self.client.force_login(self.owner)
 
     def test_team_list_200(self):
         url = reverse('dashboard:team_list')
@@ -336,13 +342,13 @@ class APITests(TestCase):
         self.assertEqual(resp.status_code, 200)
 
     def test_api_settings_page_200(self):
-        self.client.login(email='api@example.com', password='testpass123')
+        self.client.force_login(self.user)
         url = reverse('dashboard:api_settings')
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
 
     def test_api_token_regenerate(self):
-        self.client.login(email='api@example.com', password='testpass123')
+        self.client.force_login(self.user)
         old_key = self.token.key
         url = reverse('dashboard:api_token_regenerate')
         resp = self.client.post(url)
@@ -372,7 +378,7 @@ class SFRExportTests(TestCase):
             hire_date=date.today() - timedelta(days=10),
             snils='12345678901',
         )
-        self.client.login(email='sfr@example.com', password='testpass123')
+        self.client.force_login(self.user)
 
     def test_sfr_page_200(self):
         url = reverse('dashboard:sfr_export')
@@ -446,7 +452,7 @@ class CustomTemplatesTests(TestCase):
         self.company = _make_company(self.user)
         self.member = _make_member(self.company, self.user)
         self.sub = _make_subscription(self.company, 'pro')
-        self.client.login(email='tpl@example.com', password='testpass123')
+        self.client.force_login(self.user)
 
     def test_templates_page_200(self):
         url = reverse('dashboard:document_templates')
@@ -557,7 +563,7 @@ class DocumentHistoryTests(TestCase):
         self.member = _make_member(self.company, self.user)
         self.sub = _make_subscription(self.company, 'trial')
         self.employee = _make_employee(self.company)
-        self.client.login(email='hist@example.com', password='testpass123')
+        self.client.force_login(self.user)
 
     def test_history_page_200(self):
         url = reverse('dashboard:forms_list')
