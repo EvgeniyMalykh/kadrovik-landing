@@ -5,25 +5,34 @@ from django.http import JsonResponse, HttpResponse
 from django.db.models import Count
 from apps.companies.models import Company, CompanyMember
 from apps.employees.models import Employee
-
-# ===== ROLE-BASED ACCESS CONTROL =====
-ROLE_RANK = {
-    'owner': 4,
-    'admin': 3,
-    'hr': 2,
-    'accountant': 1,
-}
-
-def _check_role(request, min_role):
-    """Проверяет роль. Возвращает True если доступ разрешён."""
-    member = CompanyMember.objects.filter(user=request.user).first()
-    if not member:
-        return False
-    return ROLE_RANK.get(member.role, 0) >= ROLE_RANK.get(min_role, 99)
 from .models import Vacation, VacationSchedule, VacationScheduleEntry
 import re
 import json
 from datetime import date, datetime
+
+
+
+VACATION_TYPE_TO_CODE = {
+    "annual":      "ОТ",
+    "additional":  "ОД",
+    "educational": "УЧ",
+    "maternity":   "ОЖ",
+    "unpaid":      "ОТ",
+}
+
+
+def _sync_vacation_to_timesheet(vacation):
+    from apps.employees.models import TimeRecord
+    import datetime
+    code = VACATION_TYPE_TO_CODE.get(vacation.vacation_type, "ОТ")
+    current = vacation.start_date
+    while current <= vacation.end_date:
+        TimeRecord.objects.update_or_create(
+            employee=vacation.employee,
+            date=current,
+            defaults={"code": code, "hours": 0},
+        )
+        current += datetime.timedelta(days=1)
 
 
 def _parse_date(val):
@@ -71,11 +80,6 @@ def vacation_add(request):
     if not member:
         return JsonResponse({"error": "no company"}, status=400)
     company = member.company
-
-    # Проверка роли — только hr и выше могут добавлять отпуска
-    if not _check_role(request, 'hr'):
-        return JsonResponse({"error": "Недостаточно прав"}, status=403)
-
     employees = list(Employee.objects.filter(company=company)
                      .order_by("last_name")
                      .values("id", "last_name", "first_name", "middle_name", "position"))
@@ -104,6 +108,7 @@ def vacation_add(request):
             end_date=end,
             reason=reason,
         )
+        _sync_vacation_to_timesheet(v)
         # Создаём запись в журнале документов
         try:
             from apps.documents.models import Document
@@ -183,28 +188,13 @@ def vacation_print(request, vacation_id):
     })
 
 
-@login_required
-def vacation_additional_pdf(request, vacation_id):
-    """PDF-заявление на дополнительный оплачиваемый отпуск."""
-    member = CompanyMember.objects.filter(user=request.user).first()
-    if not member:
-        return redirect("dashboard:employees")
-    v = get_object_or_404(Vacation, id=vacation_id, employee__company=member.company)
-    from apps.documents.services import generate_additional_vacation_application
-    pdf = generate_additional_vacation_application(v)
-    response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="additional_vacation_{v.employee.last_name}.pdf"'
-    return response
-
-
 # ─── ПУБЛИЧНАЯ ФОРМА ДЛЯ РАБОТНИКА ──────────────────────────────────────────
 
 VACATION_TYPE_LABELS = {
     'annual':      'Ежегодный оплачиваемый',
-    'additional':  'Дополнительный оплачиваемый',
     'unpaid':      'За свой счёт (без сохранения зарплаты)',
     'educational': 'Учебный',
-    'maternity':   'По беременности и родам',
+    'maternity':   'Декретный',
 }
 
 def vacation_request_public(request, company_id):
@@ -281,6 +271,7 @@ def vacation_request_public(request, company_id):
             end_date=end,
             reason=reason,
         )
+        _sync_vacation_to_timesheet(v)
 
         days = (end - start).days + 1
         return render(request, "dashboard/vacation_request_success.html", {
@@ -344,22 +335,12 @@ def vacation_schedule(request):
         )
         entries.append(entry)
 
-    # Праздники для JS-подсчёта (year и year+1, т.к. периоды могут перекрывать два года)
-    from apps.employees.models import ProductionCalendar
-    import json as _json
-    holidays_qs = ProductionCalendar.objects.filter(
-        date__year__in=[year - 1, year, year + 1],
-        day_type='holiday',
-    ).values_list('date', flat=True)
-    holidays_js = _json.dumps([str(d) for d in holidays_qs])
-
     return render(request, "dashboard/vacation_schedule.html", {
         "entries": entries,
         "year": year,
         "years": years,
         "company": company,
         "schedule": schedule,
-        "holidays_js": holidays_js,
     })
 
 
@@ -369,10 +350,6 @@ def vacation_schedule_save(request):
     member = CompanyMember.objects.filter(user=request.user).first()
     if not member:
         return JsonResponse({"error": "no company"}, status=400)
-
-    # Проверка роли — только hr и выше
-    if not _check_role(request, 'hr'):
-        return JsonResponse({"error": "Недостаточно прав"}, status=403)
     company = member.company
 
     try:
@@ -488,17 +465,17 @@ def generate_t7_pdf(company, year, entries):
 
     # Header
     header_data = [
-        [,
-         ,
-         Paragraph(УТВЕРЖДАЮ, right)],
-        [, ,
-         Paragraph(company.name or , right)],
-        [, ,
-         Paragraph(f{company.director_position or Директор} ________________, right)],
-        [, ,
-         Paragraph(f____ _____________ {year} г., right)],
+        ['',
+         '',
+         Paragraph('УТВЕРЖДАЮ', right)],
+        ['', '',
+         Paragraph(company.name or '', right)],
+        ['', '',
+         Paragraph(f'{company.director_position or "Директор"} ________________', right)],
+        ['', '',
+         Paragraph(f'"____" _____________ {year} г.', right)],
     ]
-    header_table = Table(header_data, colWidths=[110 * mm, 57 * mm, 100 * mm])
+    header_table = Table(header_data, colWidths=[120 * mm, 60 * mm, 90 * mm])
     header_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
@@ -512,9 +489,7 @@ def generate_t7_pdf(company, year, entries):
     elements.append(Spacer(1, 5 * mm))
 
     # Table header
-    # Полезная ширина: 297 - 15 - 15 = 267 мм
-    # 8+35+50+32+16+40+40+18+28 = 267 мм
-    col_widths = [8 * mm, 35 * mm, 50 * mm, 32 * mm, 16 * mm, 40 * mm, 40 * mm, 18 * mm, 28 * mm]
+    col_widths = [10 * mm, 40 * mm, 55 * mm, 35 * mm, 20 * mm, 45 * mm, 45 * mm, 20 * mm, 30 * mm]
 
     table_data = [
         [Paragraph('№<br/>п/п', small_center),
