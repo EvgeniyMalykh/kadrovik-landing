@@ -1562,3 +1562,61 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 [data-theme="light"] textarea::placeholder {
   color: #94a3b8;
 }
+
+/* === График отпусков: адаптация шапки и тегов для светлой темы === */
+[data-theme="light"] {
+  --bg-secondary: #f1f5f9;
+  --tag-north-bg: #dcfce7;
+  --tag-north-color: #166534;
+  --tag-extra-bg: #dbeafe;
+  --tag-extra-color: #1d4ed8;
+  --tag-main-bg: #f1f5f9;
+  --tag-main-color: #475569;
+}
+
+/* === Подписка: читаемость мелких лейблов === */
+[data-theme="light"] {
+  --text-muted: #4b5563;
+}
+
+/* === Команда: заголовки таблицы === */
+[data-theme="light"] .team-desktop-table th,
+[data-theme="light"] .data-table th {
+  color: #374151;
+}
+
+/* === Шаблоны: статус Стандартный === */
+[data-theme="light"] .status-badge {
+  color: #374151;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+/* === СФР: лейблы периода === */
+[data-theme="light"] label,
+[data-theme="light"] .sfr-label {
+  color: #374151;
+}
+
+/* === API: заголовки секций и лейблы === */
+[data-theme="light"] .api-section-title,
+[data-theme="light"] .card h3,
+[data-theme="light"] .card h4 {
+  color: #1e293b;
+}
+
+/* === Общее: все мелкие вспомогательные тексты === */
+[data-theme="light"] small,
+[data-theme="light"] .hint,
+[data-theme="light"] .text-muted {
+  color: #4b5563;
+}
+
+/* === Таблицы документов: дата создания (мелкий текст) === */
+[data-theme="light"] .data-table td {
+  color: #1e293b;
+}
+[data-theme="light"] .data-table .text-secondary,
+[data-theme="light"] .data-table small {
+  color: #4b5563;
+}

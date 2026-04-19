@@ -3,16 +3,16 @@
 
 {% block content %}
 <div style="max-width:900px;margin:0 auto;">
-  <h2 style="color:#fff;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;">
+  <h2 style="color:var(--text-primary);margin-bottom:1.5rem;display:flex;align-items:center;gap:10px;">
     <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     События и напоминания
   </h2>
 
   {% if not events %}
-  <div style="background:rgba(255,255,255,0.06);border-radius:14px;padding:48px 24px;text-align:center;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:48px 24px;text-align:center;">
     <div style="font-size:3rem;margin-bottom:16px;">📋</div>
-    <div style="color:#94a3b8;font-size:1.1rem;">Нет предстоящих событий на 30 дней</div>
-    <div style="color:#64748b;font-size:0.9rem;margin-top:8px;">Здесь будут отображаться дни рождения, окончания договоров, отпуска и другие HR-события</div>
+    <div style="color:var(--text-primary);font-size:1.1rem;">Нет предстоящих событий на 30 дней</div>
+    <div style="color:var(--text-secondary);font-size:0.9rem;margin-top:8px;">Здесь будут отображаться дни рождения, окончания договоров, отпуска и другие HR-события</div>
   </div>
   {% else %}
 
@@ -23,11 +23,11 @@
       Срочно (ближайшие 3 дня) — {{ urgent_events|length }}
     </h4>
     {% for event in urgent_events %}
-    <div style="background:{% if event.urgency == 'today' %}rgba(239,68,68,0.15);border-left:4px solid #ef4444;{% else %}rgba(245,158,11,0.12);border-left:4px solid #f59e0b;{% endif %}border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;gap:16px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='{% if event.urgency == 'today' %}rgba(239,68,68,0.15){% else %}rgba(245,158,11,0.12){% endif %}'">
+    <div style="background:{% if event.urgency == 'today' %}rgba(239,68,68,0.12);border-left:4px solid #ef4444;{% else %}rgba(245,158,11,0.1);border-left:4px solid #f59e0b;{% endif %}border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;gap:16px;">
       <div style="font-size:2rem;flex-shrink:0;">{{ event.icon }}</div>
       <div style="flex:1;min-width:0;">
-        <div style="color:#fff;font-weight:600;font-size:0.95rem;">{{ event.title }}</div>
-        <div style="color:#94a3b8;font-size:0.85rem;margin-top:2px;">{{ event.description }}</div>
+        <div style="color:var(--text-primary);font-weight:600;font-size:0.95rem;">{{ event.title }}</div>
+        <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:2px;">{{ event.description }}</div>
         {% if event.employee %}
         <a href="/dashboard/employees/{{ event.employee.id }}/edit/" style="color:#6366f1;font-size:0.82rem;text-decoration:none;margin-top:4px;display:inline-block;">Открыть карточку →</a>
         {% endif %}
@@ -38,7 +38,7 @@
         {% else %}
         <span style="background:rgba(245,158,11,0.2);color:#f59e0b;padding:4px 12px;border-radius:20px;font-size:0.78rem;font-weight:600;">Через {{ event.days_until }} дн.</span>
         {% endif %}
-        <div style="color:#64748b;font-size:0.78rem;margin-top:4px;">{{ event.date|date:"d.m.Y" }}</div>
+        <div style="color:var(--text-secondary);font-size:0.78rem;margin-top:4px;">{{ event.date|date:"d.m.Y" }}</div>
       </div>
     </div>
     {% endfor %}
@@ -47,23 +47,23 @@
 
   {% if upcoming_events %}
   <div>
-    <h4 style="color:#94a3b8;margin-bottom:1rem;font-size:1rem;display:flex;align-items:center;gap:8px;">
-      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748b;"></span>
+    <h4 style="color:var(--text-secondary);margin-bottom:1rem;font-size:1rem;display:flex;align-items:center;gap:8px;">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-muted);"></span>
       Предстоящие — {{ upcoming_events|length }}
     </h4>
     {% for event in upcoming_events %}
-    <div style="background:rgba(255,255,255,0.04);border-left:4px solid {% if event.color == 'info' %}#3b82f6{% elif event.color == 'warning' %}#f59e0b{% elif event.color == 'danger' %}#ef4444{% elif event.color == 'success' %}#22c55e{% else %}#6366f1{% endif %};border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;gap:16px;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'">
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-left:4px solid {% if event.color == 'info' %}#3b82f6{% elif event.color == 'warning' %}#f59e0b{% elif event.color == 'danger' %}#ef4444{% elif event.color == 'success' %}#22c55e{% else %}#6366f1{% endif %};border-radius:12px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:center;gap:16px;">
       <div style="font-size:1.8rem;flex-shrink:0;">{{ event.icon }}</div>
       <div style="flex:1;min-width:0;">
-        <div style="color:#e2e8f0;font-weight:500;font-size:0.92rem;">{{ event.title }}</div>
-        <div style="color:#94a3b8;font-size:0.83rem;margin-top:2px;">{{ event.description }}</div>
+        <div style="color:var(--text-primary);font-weight:500;font-size:0.92rem;">{{ event.title }}</div>
+        <div style="color:var(--text-secondary);font-size:0.83rem;margin-top:2px;">{{ event.description }}</div>
         {% if event.employee %}
         <a href="/dashboard/employees/{{ event.employee.id }}/edit/" style="color:#6366f1;font-size:0.8rem;text-decoration:none;margin-top:3px;display:inline-block;">Открыть карточку →</a>
         {% endif %}
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <span style="background:rgba(100,116,139,0.2);color:#94a3b8;padding:4px 10px;border-radius:20px;font-size:0.78rem;">Через {{ event.days_until }} дн.</span>
-        <div style="color:#64748b;font-size:0.78rem;margin-top:4px;">{{ event.date|date:"d.m.Y" }}</div>
+        <span style="background:var(--bg-primary);color:var(--text-secondary);padding:4px 10px;border-radius:20px;font-size:0.78rem;">Через {{ event.days_until }} дн.</span>
+        <div style="color:var(--text-secondary);font-size:0.78rem;margin-top:4px;">{{ event.date|date:"d.m.Y" }}</div>
       </div>
     </div>
     {% endfor %}

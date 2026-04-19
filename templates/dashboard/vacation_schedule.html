@@ -10,7 +10,7 @@
 .vs-tbl th {
     padding:5px 6px; white-space:nowrap; text-align:center;
     font-size:0.68rem; font-weight:700;
-    border-bottom:1px solid var(--border); background:#1e293b;
+    border-bottom:1px solid var(--border); background:var(--bg-secondary, #1e293b);
 }
 .vs-tbl td { padding:3px 4px; vertical-align:middle; border-bottom:1px solid rgba(255,255,255,0.04); }
 .vs-emp-row td { background:rgba(255,255,255,0.02); }
@@ -45,9 +45,9 @@
 .vs-remain { color:#22c55e; font-weight:700; text-align:center; }
 .vs-remain.neg { color:#ef4444; }
 
-.tag-north { display:inline-block; background:#14532d; color:#86efac; border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
-.tag-extra { display:inline-block; background:#1e3a5f; color:#93c5fd; border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
-.tag-main  { display:inline-block; background:#1e293b; color:#94a3b8; border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
+.tag-north { display:inline-block; background:var(--tag-north-bg, #14532d); color:var(--tag-north-color, #86efac); border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
+.tag-extra { display:inline-block; background:var(--tag-extra-bg, #1e3a5f); color:var(--tag-extra-color, #93c5fd); border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
+.tag-main  { display:inline-block; background:var(--tag-main-bg, #1e293b); color:var(--tag-main-color, #94a3b8); border-radius:3px; padding:0 4px; font-size:0.6rem; margin-right:3px; }
 </style>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
