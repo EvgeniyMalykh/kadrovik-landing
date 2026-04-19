@@ -161,8 +161,7 @@
     <!-- ─── «Кому» справа ─── -->
     <div class="doc-header">
         <div class="doc-header-right">
-            <div>Руководителю</div>
-            <div>{{ company.director_position|default:"Директору" }}</div>
+            <div>{{ company.director_position|default:"Директор" }}у</div>
             <div>{{ company.name }}</div>
             <div style="margin-top:8px;">{{ company.director_name|default:"" }}</div>
             <div style="margin-top:16px;">от {{ v.employee.position|default:"работника" }}</div>
