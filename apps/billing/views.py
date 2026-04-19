@@ -210,3 +210,61 @@ def yukassa_webhook(request):
                 pass
 
     return HttpResponse(status=200)
+
+
+def donate(request):
+    """Создаёт разовый платёж в ЮКасса на произвольную сумму (поддержка проекта).
+    POST: amount — сумма в рублях (целое число, минимум 10).
+    Возвращает редирект на страницу оплаты ЮКасса.
+    """
+    from django.conf import settings
+    from django.shortcuts import redirect
+    try:
+        # Поддерживаем и POST (дашборд) и GET (лендинг)
+        raw = request.POST.get('amount') or request.GET.get('amount', '0')
+        amount = int(raw)
+    except (ValueError, TypeError):
+        amount = 0
+
+    if amount < 10:
+        from django.contrib import messages
+        messages.error(request, 'Минимальная сумма перевода — 10 ₽')
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    import uuid
+    from apps.billing.services import _get_yookassa
+
+    shop_id = getattr(settings, 'YUKASSA_SHOP_ID', '')
+    secret_key = getattr(settings, 'YUKASSA_SECRET_KEY', '')
+    if not shop_id or not secret_key:
+        from django.http import HttpResponseServerError
+        return HttpResponseServerError('Платёжный модуль не настроен')
+
+    return_url = request.build_absolute_uri('/dashboard/')
+    idempotence_key = str(uuid.uuid4())
+
+    try:
+        yookassa = _get_yookassa()
+        yk_payment = yookassa.Payment.create({
+            'amount': {
+                'value': str(amount) + '.00',
+                'currency': 'RUB',
+            },
+            'confirmation': {
+                'type': 'redirect',
+                'return_url': return_url,
+            },
+            'capture': True,
+            'description': 'Поддержка проекта «Кадровый автопилот»',
+            'metadata': {'type': 'donation'},
+        }, idempotence_key)
+        confirmation_url = yk_payment.confirmation.confirmation_url
+        from django.shortcuts import redirect
+        return redirect(confirmation_url)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'Donate payment error: {e}')
+        from django.shortcuts import redirect
+        from django.contrib import messages
+        messages.error(request, f'Ошибка создания платежа: {e}')
+        return redirect(request.META.get('HTTP_REFERER', '/'))

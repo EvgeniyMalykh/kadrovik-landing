@@ -9,4 +9,5 @@ urlpatterns = [
     path("webhook/yukassa/",          views.yukassa_webhook,     name="yukassa_webhook"),
     path("cancel-autorenew/",         views.cancel_autorenew,    name="cancel_autorenew"),
     path("detach-card/",              views.detach_card,         name="detach_card"),
+    path("donate/",                   views.donate,              name="donate"),
 ]

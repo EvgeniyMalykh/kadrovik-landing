@@ -836,16 +836,31 @@ function closeOnboarding() {
     </div>
     <h3 style="margin:0 0 8px;font-size:1.1rem;font-weight:700;color:var(--text-primary);">Помочь проекту</h3>
     <p style="margin:0 0 20px;font-size:0.875rem;color:var(--text-secondary);line-height:1.55;">«Кадровый автопилот» — независимый проект одного разработчика. Если сервис вам полезен, вы можете поддержать его развитие переводом на любую сумму.</p>
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      <a href="https://yoomoney.ru/to/4100119516621012" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;background:#8b5cf6;color:#fff;border-radius:10px;text-decoration:none;font-size:0.9rem;font-weight:600;">
+    <form action="/dashboard/donate/" method="post" style="display:flex;flex-direction:column;gap:10px;" onsubmit="return validateDonateAmount(this)">
+      {% csrf_token %}
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div style="position:relative;flex:1;">
+          <input type="number" name="amount" id="donateAmount" min="10" max="999999"
+            placeholder="Сумма"
+            style="width:100%;padding:11px 40px 11px 14px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;color:var(--text-primary);font-size:0.95rem;font-weight:600;outline:none;box-sizing:border-box;">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:0.9rem;pointer-events:none;">₽</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button type="button" onclick="setDonate(100)" style="flex:1;padding:7px 4px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:0.8rem;cursor:pointer;">100 ₽</button>
+        <button type="button" onclick="setDonate(300)" style="flex:1;padding:7px 4px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:0.8rem;cursor:pointer;">300 ₽</button>
+        <button type="button" onclick="setDonate(500)" style="flex:1;padding:7px 4px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:0.8rem;cursor:pointer;">500 ₽</button>
+        <button type="button" onclick="setDonate(1000)" style="flex:1;padding:7px 4px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:0.8rem;cursor:pointer;">1 000 ₽</button>
+      </div>
+      <button type="submit" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;background:#8b5cf6;color:#fff;border:none;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;width:100%;">
         <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-        Перевести через ЮМани
-      </a>
-      <button onclick="showSbpDetails()" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;width:100%;">
+        Оплатить через ЮКасса
+      </button>
+      <button type="button" onclick="showSbpDetails()" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;width:100%;">
         <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         Перевод по СБП
       </button>
-    </div>
+    </form>
     <div id="sbpDetails" style="display:none;margin-top:16px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
       <p style="margin:0 0 4px;font-size:0.8rem;color:var(--text-secondary);">Откройте приложение банка → СБП → по номеру:</p>
       <div style="font-size:1.35rem;font-weight:800;color:var(--accent);letter-spacing:0.04em;margin:6px 0;">+7 909 860-42-63</div>
@@ -855,6 +870,14 @@ function closeOnboarding() {
   </div>
 </div>
 <script>
+function setDonate(amount) {
+  document.getElementById('donateAmount').value = amount;
+}
+function validateDonateAmount(form) {
+  var v = parseInt(form.amount.value);
+  if (!v || v < 10) { alert('Укажите сумму от 10 ₽'); return false; }
+  return true;
+}
 function openSupportModal() {
   const m = document.getElementById('supportModal');
   m.style.display = 'flex';
