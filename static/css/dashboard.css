@@ -1494,3 +1494,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     min-width: 70px;
   }
 }
+
+/* Support button in sidebar */
+.nav-support-btn {
+  margin-top: 4px;
+  color: #e11d48 !important;
+  opacity: 0.85;
+}
+.nav-support-btn:hover {
+  background: rgba(225, 29, 72, 0.1) !important;
+  color: #e11d48 !important;
+  opacity: 1;
+}
+[data-theme='light'] .nav-support-btn { color: #be123c !important; }
+[data-theme='light'] .nav-support-btn:hover { background: rgba(225,29,72,0.08) !important; }

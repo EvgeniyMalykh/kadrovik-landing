@@ -203,6 +203,10 @@
                 {% if plan_key == 'pro' %}<span class="plan-badge plan-badge--pro">Про</span>{% endif %}
             </a>
             {% endif %}
+        <button class="nav-item nav-support-btn" onclick="openSupportModal()" style="width:100%;border:none;cursor:pointer;background:none;text-align:left;">
+                <svg width="18" height="18" fill="#e11d48" stroke="#e11d48" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                Помочь проекту
+        </button>
         </nav>
         <div class="sidebar-footer">
             <div class="user-info" style="position:relative;">
@@ -821,6 +825,52 @@ function closeOnboarding() {
 }
 </script>
 {% endif %}
+
+
+<!-- SUPPORT MODAL -->
+<div id="supportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:360px;width:100%;text-align:center;position:relative;">
+    <button onclick="closeSupportModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:var(--text-secondary);">&times;</button>
+    <div style="width:56px;height:56px;border-radius:50%;background:rgba(225,29,72,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+      <svg width="28" height="28" fill="none" stroke="#e11d48" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    </div>
+    <h3 style="margin:0 0 8px;font-size:1.1rem;font-weight:700;color:var(--text-primary);">Помочь проекту</h3>
+    <p style="margin:0 0 20px;font-size:0.875rem;color:var(--text-secondary);line-height:1.55;">«Кадровый автопилот» — независимый проект одного разработчика. Если сервис вам полезен, вы можете поддержать его развитие переводом на любую сумму.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <a href="https://yoomoney.ru/to/4100119516621012" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;background:#8b5cf6;color:#fff;border-radius:10px;text-decoration:none;font-size:0.9rem;font-weight:600;">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Перевести через ЮМани
+      </a>
+      <button onclick="showSbpDetails()" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;width:100%;">
+        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Перевод по СБП
+      </button>
+    </div>
+    <div id="sbpDetails" style="display:none;margin-top:16px;padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border);">
+      <p style="margin:0 0 4px;font-size:0.8rem;color:var(--text-secondary);">Откройте приложение банка → СБП → по номеру:</p>
+      <div style="font-size:1.35rem;font-weight:800;color:var(--accent);letter-spacing:0.04em;margin:6px 0;">+7 909 860-42-63</div>
+      <p style="margin:0;font-size:0.8rem;color:var(--text-secondary);">Малых Евгений Васильевич · Тинькофф</p>
+    </div>
+    <p style="margin:16px 0 0;font-size:0.78rem;color:var(--text-secondary);">Любая сумма на ваше усмотрение. Спасибо!</p>
+  </div>
+</div>
+<script>
+function openSupportModal() {
+  const m = document.getElementById('supportModal');
+  m.style.display = 'flex';
+  document.getElementById('sbpDetails').style.display = 'none';
+}
+function closeSupportModal() {
+  document.getElementById('supportModal').style.display = 'none';
+}
+function showSbpDetails() {
+  const d = document.getElementById('sbpDetails');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+document.getElementById('supportModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSupportModal();
+});
+</script>
 
 </body>
 </html>
