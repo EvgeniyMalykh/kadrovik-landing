@@ -123,6 +123,9 @@
                 <div class="form-group form-group--full" id="notify-contact-telegram">
                     <label style="font-size:0.82rem;margin-bottom:4px;display:block;">Telegram ID <span style="font-size:0.75rem;color:var(--text-muted);">(числовой — узнать через @userinfobot)</span></label>
                     <input type="text" name="notify_telegram_contact" id="notify_telegram_contact" value="{{ company.notify_telegram_contact }}" placeholder="123456789">
+                    <span style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">
+                        Узнать свой ID: напишите боту <a href="https://t.me/userinfobot" target="_blank" style="color:var(--accent);">@userinfobot</a> в Telegram команду <code style="background:rgba(99,102,241,0.1);padding:1px 5px;border-radius:4px;">/start</code> — он ответит вашим числовым ID.
+                    </span>
                 </div>
                 <div class="form-group form-group--full" id="notify-contact-whatsapp">
                     <label style="font-size:0.82rem;margin-bottom:4px;display:block;">WhatsApp номер</label>
