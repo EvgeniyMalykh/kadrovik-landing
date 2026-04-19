@@ -11,22 +11,37 @@ logger = logging.getLogger(__name__)
 
 
 def _send_telegram(text, chat_id=None):
-    """Отправляет сообщение в Telegram. chat_id — конкретный пользователь или из settings."""
-    token = settings.TELEGRAM_BOT_TOKEN
-    if not token:
-        return
+    """Отправляет сообщение в Telegram через Green API TG-инстанс.
+    Прямой api.telegram.org заблокирован провайдером VPS — используем Green API.
+    """
+    instance_id = getattr(settings, 'GREEN_API_TG_INSTANCE_ID', '')
+    tg_token    = getattr(settings, 'GREEN_API_TG_TOKEN', '')
+
     target = chat_id or getattr(settings, 'TELEGRAM_CHAT_ID', None)
     if not target:
         return
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": target, "text": text, "parse_mode": "HTML"},
-            timeout=10,
-        )
-    except Exception:
-        pass
 
+    # Убираем HTML-теги: Green API Telegram не поддерживает parse_mode
+    plain_text = re.sub(r'<[^>]+>', '', str(text)).strip()
+
+    if instance_id and tg_token:
+        # Green API: chatId = "123456789@c.us"
+        target_str = str(target).strip().lstrip('@')
+        green_chat_id = target_str + '@c.us'
+        _green_api_send(instance_id, tg_token, green_chat_id, plain_text)
+    else:
+        # Fallback: прямой Telegram Bot API (для локальной разработки)
+        direct_token = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+        if not direct_token:
+            return
+        try:
+            requests.post(
+                f"https://api.telegram.org/bot{direct_token}/sendMessage",
+                json={"chat_id": target, "text": plain_text},
+                timeout=10,
+            )
+        except Exception:
+            pass
 
 def _resolve_telegram_chat_id(contact):
     """Получает Telegram chat_id по username через getChat API."""
@@ -49,33 +64,52 @@ def _resolve_telegram_chat_id(contact):
 
 
 
-def _send_whatsapp(phone: str, text: str):
-    """Отправляет сообщение в WhatsApp через Green API.
-    phone — номер в любом формате (79001234567, +7 900 123-45-67 и т.п.).
-    """
-    instance_id = getattr(settings, 'GREEN_API_INSTANCE_ID', '')
-    token = getattr(settings, 'GREEN_API_TOKEN', '')
-    if not instance_id or not token:
-        logger.warning('GREEN_API не настроен — пропускаем WhatsApp уведомление')
-        return
+def _green_api_send(instance_id: str, token: str, chat_id: str, text: str):
+    """Универсальная отправка через Green API (sendMessage)."""
+    url = f'https://api.green-api.com/waInstance{instance_id}/sendMessage/{token}'
+    payload = {'chatId': chat_id, 'message': text}
+    try:
+        resp = requests.post(url, json=payload, timeout=15)
+        resp.raise_for_status()
+        logger.info(f'Green API sent to {chat_id}: {resp.status_code}')
+    except Exception as e:
+        logger.error(f'Green API error (instance {instance_id}): {e}')
 
-    # Нормализуем номер: только цифры, убираем ведущий +
+
+def _normalize_phone(phone: str) -> str:
+    """Нормализует номер телефона → только цифры, начиная с 7."""
     import re
     digits = re.sub(r'\D', '', phone)
     if digits.startswith('8') and len(digits) == 11:
         digits = '7' + digits[1:]
-    chat_id = digits + '@c.us'
+    return digits
 
-    url = f'https://api.green-api.com/waInstance{instance_id}/sendMessage/{token}'
-    payload = {
-        'chatId': chat_id,
-        'message': text,
-    }
-    try:
-        resp = requests.post(url, json=payload, timeout=15)
-        resp.raise_for_status()
-    except Exception as e:
-        logger.error(f'Green API WhatsApp error: {e}')
+
+def _send_whatsapp(phone: str, text: str):
+    """Отправляет сообщение в WhatsApp через Green API WA-инстанс."""
+    instance_id = getattr(settings, 'GREEN_API_WA_INSTANCE_ID', '')
+    token = getattr(settings, 'GREEN_API_WA_TOKEN', '')
+    if not instance_id or not token:
+        logger.warning('GREEN_API_WA не настроен — пропускаем WhatsApp уведомление')
+        return
+    digits = _normalize_phone(phone)
+    chat_id = digits + '@c.us'
+    _green_api_send(instance_id, token, chat_id, text)
+
+
+def _send_max(phone_or_id: str, text: str):
+    """Отправляет сообщение в Max (ВКонтакте Мессенджер) через Green API Max-инстанс.
+    phone_or_id — номер телефона или userId.
+    """
+    instance_id = getattr(settings, 'GREEN_API_MAX_INSTANCE_ID', '')
+    token = getattr(settings, 'GREEN_API_MAX_TOKEN', '')
+    if not instance_id or not token:
+        logger.warning('GREEN_API_MAX не настроен — пропускаем Max уведомление')
+        return
+    # Max использует chatId = номер@c.us или userId@c.us
+    digits = _normalize_phone(phone_or_id)
+    chat_id = (digits + '@c.us') if digits else (phone_or_id.lstrip('+') + '@c.us')
+    _green_api_send(instance_id, token, chat_id, text)
 
 
 def _send_email_to_company(company, subject, html_body, plain_body):
@@ -121,8 +155,13 @@ def _send_notification_to_company(company, text, subject, html_body, plain_body)
         else:
             # Нет номера — fallback на email
             _send_email_to_company(company, subject, html_body, plain_body)
+    elif messenger == 'max':
+        if contact:
+            _send_max(contact, text)
+        else:
+            _send_email_to_company(company, subject, html_body, plain_body)
     else:
-        # Viber и прочие — пока fallback на email
+        # Viber и прочие — fallback на email
         _send_email_to_company(company, subject, html_body, plain_body)
 
 
