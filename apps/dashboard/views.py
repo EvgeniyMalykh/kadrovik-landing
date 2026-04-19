@@ -38,8 +38,8 @@ def get_active_member(request):
         member = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
         if member:
             return member
-    # fallback — первое членство (прямой запрос, без рекурсии)
-    member = CompanyMember.objects.filter(user=request.user).first()
+    # fallback — последнее (самое свежее) членство (прямой запрос, без рекурсии)
+    member = CompanyMember.objects.filter(user=request.user).order_by('-pk').first()
     if member:
         request.session['active_company_id'] = member.company_id
     return member
@@ -506,7 +506,7 @@ def login_view(request):
                     )
                     inv.accepted = True
                     inv.save()
-            _m = CompanyMember.objects.filter(user=user).first()
+            _m = CompanyMember.objects.filter(user=user).order_by('-pk').first()
             if _m:
                 request.session['active_company_id'] = _m.company_id
             if request.POST.get("remember_me"):
@@ -865,7 +865,6 @@ def company_profile(request):
     if not member:
         return redirect("dashboard:employees")
     company = member.company
-    saved = False
     if request.method == "POST":
         role = get_active_member_role(request)
         if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
@@ -892,10 +891,10 @@ def company_profile(request):
         company.notify_viber_contact    = request.POST.get("notify_viber_contact", company.notify_viber_contact)
         company.notify_max_contact      = request.POST.get("notify_max_contact", company.notify_max_contact)
         company.save()
-        saved = True
+        messages.success(request, 'Данные сохранены — реквизиты обновлены во всех документах')
+        return redirect('dashboard:company')
     return render(request, "dashboard/company.html", {
         "company": company,
-        "saved": saved,
         "messengers": company.MESSENGER_CHOICES,
     })
 
