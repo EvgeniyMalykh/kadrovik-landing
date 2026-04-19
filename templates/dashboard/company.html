@@ -95,7 +95,7 @@
 
         <div class="form-section">
             <h3 class="form-section-title">Уведомления</h3>
-            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">Выберите, куда приходят напоминания о событиях — днях рождения, окончании отпусков, договоров и пробного периода.</p>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;">Уведомления приходят сразу везде по заполненным формам.</p>
             <div class="messenger-selector">
                 {% for value, label in messengers %}
                 <label class="messenger-option {% if company.notify_messenger == value %}selected{% endif %}" data-value="{{ value }}">
