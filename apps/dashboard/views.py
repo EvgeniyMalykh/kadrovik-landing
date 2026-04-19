@@ -38,8 +38,8 @@ def get_active_member(request):
         member = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
         if member:
             return member
-    # fallback — первое членство
-    member = get_active_member(request)
+    # fallback — первое членство (прямой запрос, без рекурсии)
+    member = CompanyMember.objects.filter(user=request.user).first()
     if member:
         request.session['active_company_id'] = member.company_id
     return member
