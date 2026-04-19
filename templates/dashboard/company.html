@@ -9,6 +9,9 @@
     </div>
 </div>
 
+{% for message in messages %}
+<div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">{{ message }}</div>
+{% endfor %}
 {% if saved %}
 <div class="alert alert-success">Данные сохранены — реквизиты обновлены во всех документах</div>
 {% endif %}

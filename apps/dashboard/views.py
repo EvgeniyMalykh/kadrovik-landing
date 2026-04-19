@@ -855,7 +855,7 @@ def company_profile(request):
     saved = False
     if request.method == "POST":
         role = get_active_member_role(request)
-        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('admin', 0):
+        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
             messages.error(request, 'Недостаточно прав для изменения настроек компании.')
             return redirect('dashboard:company')
         company.name             = request.POST.get("name", company.name)
