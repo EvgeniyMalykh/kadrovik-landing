@@ -842,6 +842,8 @@ def company_profile(request):
         company.director_position = request.POST.get("director_position", company.director_position)
         company.phone            = request.POST.get("phone", company.phone)
         company.email            = request.POST.get("email", company.email)
+        company.notify_messenger = request.POST.get("notify_messenger", company.notify_messenger)
+        company.notify_contact   = request.POST.get("notify_contact", company.notify_contact)
         company.save()
         saved = True
     return render(request, "dashboard/company.html", {
