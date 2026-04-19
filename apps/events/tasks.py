@@ -189,8 +189,11 @@ def _send_notification_to_company(company, text, subject, html_body, plain_body)
 
     # Telegram
     tg_contact = (getattr(company, 'notify_telegram_contact', '') or '').strip()
-    if not tg_contact and (company.notify_messenger or '') == 'telegram':
-        tg_contact = (company.notify_contact or '').strip()
+    if not tg_contact:
+        # Fallback: старое единое поле если мессенджер был telegram
+        old_contact = (company.notify_contact or '').strip()
+        if old_contact and old_contact.lstrip('-').isdigit():
+            tg_contact = old_contact
     if tg_contact:
         try:
             _send_telegram(text, chat_id=tg_contact)
