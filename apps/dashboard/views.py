@@ -844,7 +844,11 @@ def company_profile(request):
         company.email            = request.POST.get("email", company.email)
         company.save()
         saved = True
-    return render(request, "dashboard/company.html", {"company": company, "saved": saved})
+    return render(request, "dashboard/company.html", {
+        "company": company,
+        "saved": saved,
+        "messengers": company.MESSENGER_CHOICES,
+    })
 
 
 @login_required

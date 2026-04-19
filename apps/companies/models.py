@@ -25,6 +25,25 @@ class Company(models.Model):
     director_position = models.CharField('Должность руководителя', max_length=255, default='Директор')
     phone = models.CharField('Телефон', max_length=20, blank=True)
     email = models.EmailField('Email', blank=True)
+    MESSENGER_CHOICES = [
+        ('email', 'Email'),
+        ('telegram', 'Telegram'),
+        ('whatsapp', 'WhatsApp'),
+        ('viber', 'Viber'),
+    ]
+    notify_messenger = models.CharField(
+        'Мессенджер для уведомлений',
+        max_length=20,
+        choices=MESSENGER_CHOICES,
+        default='email',
+        blank=True
+    )
+    notify_contact = models.CharField(
+        'Контакт для уведомлений',
+        max_length=255,
+        blank=True,
+        help_text='Email, номер телефона или @username в Telegram'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
