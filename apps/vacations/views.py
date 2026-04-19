@@ -574,13 +574,6 @@ def generate_t7_pdf(company, year, entries):
             Paragraph('', small),
         ])
 
-    # Add empty rows if less than 5
-    for i in range(max(0, 5 - len(entries))):
-        table_data.append([
-            Paragraph(str(len(entries) + i + 1), small_center),
-            '', '', '', '', '', '', '', '',
-        ])
-
     main_table = Table(table_data, colWidths=col_widths, repeatRows=1)
     main_table.setStyle(TableStyle([
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
