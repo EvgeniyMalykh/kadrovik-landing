@@ -344,12 +344,22 @@ def vacation_schedule(request):
         )
         entries.append(entry)
 
+    # Праздники для JS-подсчёта (year и year+1, т.к. периоды могут перекрывать два года)
+    from apps.employees.models import ProductionCalendar
+    import json as _json
+    holidays_qs = ProductionCalendar.objects.filter(
+        date__year__in=[year - 1, year, year + 1],
+        day_type='holiday',
+    ).values_list('date', flat=True)
+    holidays_js = _json.dumps([str(d) for d in holidays_qs])
+
     return render(request, "dashboard/vacation_schedule.html", {
         "entries": entries,
         "year": year,
         "years": years,
         "company": company,
         "schedule": schedule,
+        "holidays_js": holidays_js,
     })
 
 

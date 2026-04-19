@@ -26,21 +26,20 @@ def _send_telegram(text):
 
 
 def _send_email_to_company(company, subject, html_body, plain_body):
-    """Отправляет письмо всем владельцам/администраторам компании."""
-    from apps.companies.models import CompanyMember
-    emails = list(
-        CompanyMember.objects.filter(company=company)
-        .values_list("user__email", flat=True)
-        .distinct()
-    )
-    if not emails:
+    """Отправляет письмо на email руководителя из карточки компании.
+    Если company.email не заполнен — fallback на email владельца аккаунта."""
+    recipient = company.email
+    if not recipient:
+        # Fallback: email владельца аккаунта
+        recipient = getattr(company.owner, 'email', None)
+    if not recipient:
         return
     try:
         send_mail(
             subject=subject,
             message=plain_body,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=emails,
+            recipient_list=[recipient],
             html_message=html_body,
             fail_silently=True,
         )
@@ -394,3 +393,77 @@ def check_vacation_events():
         notified += len(messages)
 
     return f"Vacation event check for {today}: notified {notified}"
+
+
+@shared_task(name="events.check_vacation_endings")
+def check_vacation_endings():
+    """Напоминание за 3 дня до окончания отпуска сотрудника."""
+    from apps.vacations.models import Vacation
+    from apps.companies.models import Company
+
+    today = timezone.now().date()
+    target = today + timedelta(days=3)
+    notified = 0
+
+    for company in Company.objects.select_related('owner').all():
+        vacations = Vacation.objects.filter(
+            employee__company=company,
+            employee__status='active',
+            end_date=target,
+        ).select_related('employee')
+
+        if not vacations.exists():
+            continue
+
+        vac_type_map = {
+            'annual': 'Ежегодный отпуск',
+            'additional': 'Доп. отпуск',
+            'unpaid': 'Отпуск без содержания',
+            'maternity': 'Декретный отпуск',
+            'educational': 'Учебный отпуск',
+        }
+
+        messages = []
+        email_items = []
+        for vac in vacations:
+            emp = vac.employee
+            vac_type_name = vac_type_map.get(vac.vacation_type, 'Отпуск')
+            text = (
+                f"🏖️ <b>Отпуск заканчивается через 3 дня</b>\n"
+                f"Сотрудник: {emp.full_name}\n"
+                f"Должность: {emp.position}\n"
+                f"Тип: {vac_type_name}\n"
+                f"Компания: {company.name}\n"
+                f"Дата выхода: {vac.end_date.strftime('%d.%m.%Y')}"
+            )
+            messages.append(text)
+            email_items.append((emp, vac, vac_type_name))
+
+        if not messages:
+            continue
+
+        # Telegram
+        try:
+            _send_telegram('\n\n'.join(messages))
+        except Exception as e:
+            logger.error(f'Vacation ending Telegram error company {company.id}: {e}')
+
+        # Email руководителю
+        if _has_email_notify(company):
+            for emp, vac, vac_type_name in email_items:
+                try:
+                    _send_hr_email(
+                        company=company,
+                        icon='🏖️',
+                        title='Сотрудник выходит из отпуска через 3 дня',
+                        employee_name=emp.full_name,
+                        position=emp.position or '',
+                        event_date=vac.end_date.strftime('%d.%m.%Y'),
+                        description=f'{vac_type_name} завершается {vac.end_date.strftime("%d.%m.%Y")}. Подготовьте рабочее место.',
+                    )
+                except Exception as e:
+                    logger.error(f'Vacation ending email error: {e}')
+
+        notified += len(messages)
+
+    return f"Vacation ending check for {today}: notified {notified}"

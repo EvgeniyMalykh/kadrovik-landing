@@ -2,6 +2,35 @@ from django.db import models
 from apps.employees.models import Employee
 from apps.documents.models import Document
 from apps.companies.models import Company
+from datetime import timedelta
+
+
+def _count_vacation_days(start_date, end_date):
+    """
+    Считает количество дней отпуска по ТК РФ:
+    календарные дни минус нерабочие праздничные дни из производственного календаря.
+    Выходные (сб/вс) в отпуск ВКЛЮЧАЮТСЯ — они не продлевают отпуск.
+    Только праздники (day_type='holiday') — не включаются.
+    """
+    if not start_date or not end_date or end_date < start_date:
+        return 0
+    try:
+        from apps.employees.models import ProductionCalendar
+        # Собираем все праздники за период
+        holidays = set(
+            ProductionCalendar.objects.filter(
+                date__gte=start_date,
+                date__lte=end_date,
+                day_type='holiday',
+            ).values_list('date', flat=True)
+        )
+    except Exception:
+        holidays = set()
+
+    total = (end_date - start_date).days + 1
+    # Вычитаем ВСЕ праздничные дни (ст. 120 ТК РФ — включая выпадающие на сб/вс)
+    holiday_count = len(holidays)
+    return max(total - holiday_count, 0)
 
 
 class Vacation(models.Model):
@@ -36,7 +65,7 @@ class Vacation(models.Model):
 
     def save(self, *args, **kwargs):
         if self.start_date and self.end_date:
-            self.days_count = (self.end_date - self.start_date).days + 1
+            self.days_count = _count_vacation_days(self.start_date, self.end_date)
         super().save(*args, **kwargs)
 
 
@@ -88,7 +117,7 @@ class VacationScheduleEntry(models.Model):
             (self.extra_start, self.extra_end),
         ]:
             if s and e:
-                total += (e - s).days + 1
+                total += _count_vacation_days(s, e)
         return total
 
     @property

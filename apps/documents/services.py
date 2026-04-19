@@ -932,7 +932,7 @@ def generate_work_certificate_pdf(employee) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
         leftMargin=20*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=20*mm)
-    normal = ParagraphStyle("N", fontName=font_name, fontSize=10, leading=14)
+    normal = ParagraphStyle("N", fontName=font_name, fontSize=10, leading=14, firstLineIndent=12)
     center = ParagraphStyle("C", fontName=font_name, fontSize=10, leading=14, alignment=TA_CENTER)
     title  = ParagraphStyle("T", fontName=font_name, fontSize=12, leading=16, alignment=TA_CENTER)
     from datetime import date as dt_date

@@ -82,6 +82,7 @@ def subscription_required(view_func):
 
 @login_required
 def employees_list(request):
+    show_onboarding = request.session.pop('show_onboarding', False)
     member = CompanyMember.objects.filter(user=request.user).first()
     if member:
         company = member.company
@@ -173,6 +174,7 @@ def employees_list(request):
         "fired_count": fired_count,
         "departments": departments,
         "total_count": employees.count(),
+        "show_onboarding": show_onboarding,
         **sub_ctx,
     })
 
@@ -576,6 +578,7 @@ def verify_email_view(request, token):
     )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    request.session['show_onboarding'] = True
     return render(request, "dashboard/email_verified.html")
 
 

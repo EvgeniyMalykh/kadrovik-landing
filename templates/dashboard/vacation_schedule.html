@@ -230,13 +230,35 @@ function delPeriod(btn) {
   row.remove();
 }
 
+// Праздничные дни из производственного календаря (передаются из Django)
+var HOLIDAYS = new Set({{ holidays_js|safe }});
+
+function countVacationDays(startStr, endStr) {
+  // Считает дни отпуска по ТК РФ: календарные дни минус будние праздники
+  if (!startStr || !endStr) return 0;
+  var s = new Date(startStr), e = new Date(endStr);
+  if (e < s) return 0;
+  var total = Math.round((e - s) / 86400000) + 1;
+  var holidayCount = 0;
+  var cur = new Date(s);
+  while (cur <= e) {
+    var iso = cur.toISOString().slice(0, 10);
+    var dow = cur.getDay(); // 0=вс, 6=сб
+    if (HOLIDAYS.has(iso)) {
+      holidayCount++;
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return Math.max(total - holidayCount, 0);
+}
+
 function calcRowByTr(tr) {
   var used = 0;
   tr.querySelectorAll('.period-row').forEach(function(pr) {
     var inputs = pr.querySelectorAll('input[type="date"]');
     if (inputs.length >= 2) {
       var s = inputs[0].value, e = inputs[1].value;
-      if (s && e) { var d = (new Date(e) - new Date(s)) / 86400000 + 1; if (d > 0) used += d; }
+      if (s && e) { var d = countVacationDays(s, e); if (d > 0) used += d; }
     }
   });
   var dM = parseInt(tr.querySelector('[data-field="days_total"]').value) || 0;

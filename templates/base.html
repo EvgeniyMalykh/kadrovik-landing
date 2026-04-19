@@ -638,7 +638,7 @@
           <div class="help-step__num">2</div>
           <div class="help-step__content">
             <div class="help-step__title">Тарифы</div>
-            <div class="help-step__text">Доступны три тарифа: «Старт» — до 5 сотрудников, «Бизнес» — до 20, «Про» — без ограничений. У всех одинаковый набор функций.</div>
+            <div class="help-step__text">Доступны три тарифа: «Старт» — до 10 сотрудников (790 ₽/мес), «Бизнес» — до 50 сотрудников (1 990 ₽/мес), «Корпоратив» — до 200 сотрудников (4 900 ₽/мес). Тарифы отличаются лимитом сотрудников и набором функций.</div>
           </div>
         </div>
         <div class="help-step">
@@ -690,6 +690,137 @@ document.addEventListener('keydown', function(e){
   if(e.key === 'Escape') closeHelpModal();
 });
 </script>
+
+{% if show_onboarding %}
+<div class="onboarding-overlay" id="onboardingModal">
+  <div class="onboarding-modal">
+    <!-- Step indicators -->
+    <div class="onboarding-steps">
+      <div class="step active" data-step="1">1</div>
+      <div class="step-line"></div>
+      <div class="step" data-step="2">2</div>
+      <div class="step-line"></div>
+      <div class="step" data-step="3">3</div>
+    </div>
+
+    <!-- Шаг 1: Компания -->
+    <div class="onboarding-step" id="step1">
+      <h2>Настройте компанию</h2>
+      <p>Заполните данные вашей организации</p>
+      <form id="companyForm">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Название компании *</label>
+          <input type="text" name="name" required placeholder="ООО Ромашка">
+        </div>
+        <div class="form-group">
+          <label>ИНН</label>
+          <input type="text" name="inn" placeholder="1234567890">
+        </div>
+        <div class="form-group">
+          <label>Руководитель</label>
+          <input type="text" name="director" placeholder="Иванов Иван Иванович">
+        </div>
+      </form>
+      <div class="onboarding-actions">
+        <button class="btn-skip" onclick="skipToStep(2)">Пропустить</button>
+        <button class="btn-next" onclick="saveCompany()">Далее →</button>
+      </div>
+    </div>
+
+    <!-- Шаг 2: Сотрудник -->
+    <div class="onboarding-step hidden" id="step2">
+      <h2>Добавьте первого сотрудника</h2>
+      <p>Можно добавить больше позже</p>
+      <form id="employeeForm">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>ФИО *</label>
+          <input type="text" name="full_name" required placeholder="Петров Пётр Петрович">
+        </div>
+        <div class="form-group">
+          <label>Должность</label>
+          <input type="text" name="position" placeholder="Менеджер">
+        </div>
+        <div class="form-group">
+          <label>Дата приёма</label>
+          <input type="date" name="hire_date">
+        </div>
+      </form>
+      <div class="onboarding-actions">
+        <button class="btn-skip" onclick="skipToStep(3)">Пропустить</button>
+        <button class="btn-next" onclick="saveEmployee()">Далее →</button>
+      </div>
+    </div>
+
+    <!-- Шаг 3: Готово -->
+    <div class="onboarding-step hidden" id="step3">
+      <div class="onboarding-success">
+        <div class="success-icon">✓</div>
+        <h2>Всё готово!</h2>
+        <p>У вас есть <strong>14 дней бесплатного периода</strong> для знакомства с сервисом</p>
+        <div class="onboarding-links">
+          <a href="/dashboard/employees/" class="onboarding-link">
+            <span class="icon">👥</span>
+            <span>Сотрудники</span>
+          </a>
+          <a href="/dashboard/vacations/" class="onboarding-link">
+            <span class="icon">🏖️</span>
+            <span>Отпуска</span>
+          </a>
+          <a href="/dashboard/documents/" class="onboarding-link">
+            <span class="icon">📄</span>
+            <span>Документы</span>
+          </a>
+        </div>
+        <button class="btn-finish" onclick="closeOnboarding()">Начать работу</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function showStep(n) {
+  document.querySelectorAll('.onboarding-step').forEach(s => s.classList.add('hidden'));
+  document.getElementById('step' + n).classList.remove('hidden');
+  document.querySelectorAll('.onboarding-steps .step').forEach((s, i) => {
+    s.classList.toggle('active', i + 1 <= n);
+    s.classList.toggle('completed', i + 1 < n);
+  });
+}
+
+function skipToStep(n) {
+  showStep(n);
+}
+
+function saveCompany() {
+  const form = document.getElementById('companyForm');
+  const data = new FormData(form);
+  fetch('/dashboard/company/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': data.get('csrfmiddlewaretoken'), 'X-Requested-With': 'XMLHttpRequest'},
+    body: data
+  }).then(r => {
+    showStep(2);
+  }).catch(() => showStep(2));
+}
+
+function saveEmployee() {
+  const form = document.getElementById('employeeForm');
+  const data = new FormData(form);
+  fetch('/dashboard/employees/add/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': data.get('csrfmiddlewaretoken'), 'X-Requested-With': 'XMLHttpRequest'},
+    body: data
+  }).then(r => {
+    showStep(3);
+  }).catch(() => showStep(3));
+}
+
+function closeOnboarding() {
+  document.getElementById('onboardingModal').style.display = 'none';
+}
+</script>
+{% endif %}
 
 </body>
 </html>
