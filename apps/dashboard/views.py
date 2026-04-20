@@ -1384,6 +1384,36 @@ def form_save(request, doc_type):
             extra_data=extra_data,
         )
 
+    # При сохранении vacation — создаём/обновляем Vacation и синхронизируем табель
+    if doc_type == 'vacation' and employee:
+        from apps.vacations.models import Vacation
+        from apps.vacations.views import _sync_vacation_to_timesheet, _parse_date as _parse_date_v
+        from apps.employees.models import TimeRecord
+        v_start = _parse_date_v(extra_data.get('start_date'))
+        v_end = _parse_date_v(extra_data.get('end_date'))
+        v_type = extra_data.get('vacation_type', 'annual')
+        v_reason = extra_data.get('reason', '')
+        if v_start and v_end and v_end >= v_start:
+            old_vacation = Vacation.objects.filter(document=document).first()
+            if old_vacation:
+                TimeRecord.objects.filter(
+                    employee=old_vacation.employee,
+                    date__gte=old_vacation.start_date,
+                    date__lte=old_vacation.end_date,
+                    code__in=['ОТ', 'ОД', 'УЧ', 'ОЖ'],
+                ).delete()
+            vacation, _ = Vacation.objects.update_or_create(
+                document=document,
+                defaults={
+                    'employee': employee,
+                    'vacation_type': v_type,
+                    'start_date': v_start,
+                    'end_date': v_end,
+                    'reason': v_reason,
+                },
+            )
+            _sync_vacation_to_timesheet(vacation)
+
     # При сохранении salary_change — записываем старый оклад в историю и обновляем employee.salary
     if doc_type == 'salary_change' and employee:
         new_salary_raw = extra_data.get('new_salary')
