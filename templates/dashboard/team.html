@@ -14,21 +14,7 @@
 </div>
 {% endfor %}
 
-{% if not plan_features.multi_user %}
-<!-- Тариф не поддерживает multi_user -->
-<div class="card" style="padding:40px;text-align:center;">
-    <div style="font-size:48px;margin-bottom:16px;">&#128101;</div>
-    <h2 style="font-size:1.2rem;margin-bottom:8px;">Работа в команде</h2>
-    <p style="color:var(--text-secondary);margin-bottom:24px;max-width:400px;margin-left:auto;margin-right:auto;">
-        Приглашайте коллег в систему — кадровиков, бухгалтеров, администраторов.
-        Все работают в одной компании с общими данными.
-    </p>
-    <a href="{% url 'dashboard:subscription' %}" class="btn-primary" style="padding:12px 32px;">
-        Перейти на тариф Бизнес
-    </a>
-</div>
-{% else %}
-
+{% if plan_features.multi_user %}
 <!-- Форма приглашения -->
 <div class="card" style="padding:24px;margin-bottom:24px;">
     <h3 style="font-size:1rem;font-weight:600;margin:0 0 16px 0;">Пригласить участника</h3>
@@ -50,6 +36,7 @@
         <button type="submit" class="btn-primary" style="padding:10px 24px;white-space:nowrap;">Пригласить</button>
     </form>
 </div>
+{% endif %}
 
 <!-- Участники команды -->
 <div class="card" style="margin-bottom:24px;">
@@ -204,5 +191,4 @@
 </div>
 {% endif %}
 
-{% endif %}
 {% endblock %}
