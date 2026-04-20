@@ -281,27 +281,15 @@ def check_probation_endings():
         ).select_related("company")
         for emp in employees:
             label = {7: "через 7 дней", 3: "через 3 дня", 1: "завтра"}[days_left]
-            text = (
-                f"⚠️ <b>Испытательный срок истекает {label}</b>\n"
-                f"Сотрудник: {emp.full_name}\n"
-                f"Должность: {emp.position}\n"
-                f"Компания: {emp.company.name}\n"
-                f"Дата окончания: {emp.probation_end_date.strftime('%d.%m.%Y')}\n\n"
-                f"Примите решение: оформить постоянно или уволить."
+            _send_hr_email(
+                company=emp.company,
+                icon='⚠️',
+                title=f'Испытательный срок истекает {label}',
+                employee_name=emp.full_name,
+                position=emp.position,
+                event_date=emp.probation_end_date.strftime('%d.%m.%Y'),
+                description='Примите решение: оформить сотрудника на постоянную основу или подготовить документы на увольнение.',
             )
-            _send_telegram(text)
-
-            # Email-уведомление (если доступно по плану)
-            if _has_email_notify(emp.company):
-                _send_hr_email(
-                    company=emp.company,
-                    icon='⚠️',
-                    title=f'Испытательный срок истекает {label}',
-                    employee_name=emp.full_name,
-                    position=emp.position,
-                    event_date=emp.probation_end_date.strftime('%d.%m.%Y'),
-                    description='Примите решение: оформить сотрудника на постоянную основу или подготовить документы на увольнение.',
-                )
     return f"Checked probation endings for {today}"
 
 
@@ -319,27 +307,15 @@ def check_contract_endings():
         ).select_related("company")
         for emp in employees:
             label = {14: "через 14 дней", 7: "через 7 дней", 3: "через 3 дня"}[days_left]
-            text = (
-                f"📋 <b>Срочный договор истекает {label}</b>\n"
-                f"Сотрудник: {emp.full_name}\n"
-                f"Должность: {emp.position}\n"
-                f"Компания: {emp.company.name}\n"
-                f"Дата окончания договора: {emp.contract_end_date.strftime('%d.%m.%Y')}\n\n"
-                f"Подготовьте продление или уведомление об увольнении."
+            _send_hr_email(
+                company=emp.company,
+                icon='📋',
+                title=f'Срочный договор истекает {label}',
+                employee_name=emp.full_name,
+                position=emp.position,
+                event_date=emp.contract_end_date.strftime('%d.%m.%Y'),
+                description='Подготовьте продление договора или уведомление сотрудника об увольнении.',
             )
-            _send_telegram(text)
-
-            # Email-уведомление (если доступно по плану)
-            if _has_email_notify(emp.company):
-                _send_hr_email(
-                    company=emp.company,
-                    icon='📋',
-                    title=f'Срочный договор истекает {label}',
-                    employee_name=emp.full_name,
-                    position=emp.position,
-                    event_date=emp.contract_end_date.strftime('%d.%m.%Y'),
-                    description='Подготовьте продление договора или уведомление сотрудника об увольнении.',
-                )
     return f"Checked contract endings for {today}"
 
 
@@ -436,8 +412,6 @@ def check_birthdays():
     for company in Company.objects.all():
         employees = Employee.objects.filter(company=company, status='active')
 
-        messages = []
-        email_items = []
         for emp in employees:
             if not emp.birth_date:
                 continue
@@ -452,50 +426,22 @@ def check_birthdays():
 
             age = today.year - emp.birth_date.year
             if days_until == 0:
-                text = (
-                    f"🎂 <b>Сегодня день рождения</b>\n"
-                    f"Сотрудник: {emp.full_name}\n"
-                    f"Исполняется {age} лет"
-                )
+                title = 'Сегодня день рождения сотрудника'
                 description = f'Исполняется {age} лет'
             else:
-                text = (
-                    f"🎂 <b>Через {days_until} дня день рождения</b>\n"
-                    f"Сотрудник: {emp.full_name}\n"
-                    f"Исполняется {age} лет"
-                )
+                title = 'Скоро день рождения сотрудника'
                 description = f'Через {days_until} дня, исполняется {age} лет'
 
-            messages.append(text)
-            email_items.append((emp, description, bday_this_year, days_until))
-
-        if not messages:
-            continue
-
-        # Telegram
-        try:
-            _send_telegram('\n\n'.join(messages))
-        except Exception as e:
-            logger.error(f'Birthday Telegram error company {company.id}: {e}')
-
-        # Email (если тариф позволяет)
-        if _has_email_notify(company):
-            for emp, description, bday, days_until in email_items:
-                try:
-                    title = 'Сегодня день рождения сотрудника' if days_until == 0 else 'Скоро день рождения сотрудника'
-                    _send_hr_email(
-                        company=company,
-                        icon='🎂',
-                        title=title,
-                        employee_name=emp.full_name,
-                        position=emp.position or '',
-                        event_date=bday.strftime('%d.%m.%Y'),
-                        description=description,
-                    )
-                except Exception as e:
-                    logger.error(f'Birthday email error: {e}')
-
-        notified += len(messages)
+            _send_hr_email(
+                company=company,
+                icon='🎂',
+                title=title,
+                employee_name=emp.full_name,
+                position=emp.position or '',
+                event_date=bday_this_year.strftime('%d.%m.%Y'),
+                description=description,
+            )
+            notified += 1
 
     return f"Birthday check for {today}: notified {notified}"
 
@@ -526,59 +472,25 @@ def check_vacation_events():
             'educational': 'Учебный отпуск',
         }
 
-        messages = []
-        email_items = []
         for vac in vacations:
             emp = vac.employee
             days_until = (vac.start_date - today).days
-            vac_type_name = vac_type_map.get(vac.vacation_type, 'Отпуск')
 
             if days_until == 0:
-                text = (
-                    f"🏖️ <b>Сегодня начинается отпуск</b>\n"
-                    f"Сотрудник: {emp.full_name}\n"
-                    f"Тип: {vac_type_name}\n"
-                    f"Период: {vac.start_date.strftime('%d.%m.%Y')} — {vac.end_date.strftime('%d.%m.%Y')}"
-                )
                 title = 'Сегодня начинается отпуск'
             else:
-                text = (
-                    f"🏖️ <b>Завтра начинается отпуск</b>\n"
-                    f"Сотрудник: {emp.full_name}\n"
-                    f"Тип: {vac_type_name}\n"
-                    f"Период: {vac.start_date.strftime('%d.%m.%Y')} — {vac.end_date.strftime('%d.%m.%Y')}"
-                )
                 title = 'Завтра начинается отпуск'
 
-            messages.append(text)
-            email_items.append((emp, vac, title))
-
-        if not messages:
-            continue
-
-        # Telegram
-        try:
-            _send_telegram('\n\n'.join(messages))
-        except Exception as e:
-            logger.error(f'Vacation Telegram error company {company.id}: {e}')
-
-        # Email (если тариф позволяет)
-        if _has_email_notify(company):
-            for emp, vac, title in email_items:
-                try:
-                    _send_hr_email(
-                        company=company,
-                        icon='🏖️',
-                        title=title,
-                        employee_name=emp.full_name,
-                        position=emp.position or '',
-                        event_date=vac.start_date.strftime('%d.%m.%Y'),
-                        description=f'{vac.get_vacation_type_display()} до {vac.end_date.strftime("%d.%m.%Y")}',
-                    )
-                except Exception as e:
-                    logger.error(f'Vacation email error: {e}')
-
-        notified += len(messages)
+            _send_hr_email(
+                company=company,
+                icon='🏖️',
+                title=title,
+                employee_name=emp.full_name,
+                position=emp.position or '',
+                event_date=vac.start_date.strftime('%d.%m.%Y'),
+                description=f'{vac.get_vacation_type_display()} до {vac.end_date.strftime("%d.%m.%Y")}',
+            )
+            notified += 1
 
     return f"Vacation event check for {today}: notified {notified}"
 
@@ -611,47 +523,18 @@ def check_vacation_endings():
             'educational': 'Учебный отпуск',
         }
 
-        messages = []
-        email_items = []
         for vac in vacations:
             emp = vac.employee
             vac_type_name = vac_type_map.get(vac.vacation_type, 'Отпуск')
-            text = (
-                f"🏖️ <b>Отпуск заканчивается через 3 дня</b>\n"
-                f"Сотрудник: {emp.full_name}\n"
-                f"Должность: {emp.position}\n"
-                f"Тип: {vac_type_name}\n"
-                f"Компания: {company.name}\n"
-                f"Дата выхода: {vac.end_date.strftime('%d.%m.%Y')}"
+            _send_hr_email(
+                company=company,
+                icon='🏖️',
+                title='Сотрудник выходит из отпуска через 3 дня',
+                employee_name=emp.full_name,
+                position=emp.position or '',
+                event_date=vac.end_date.strftime('%d.%m.%Y'),
+                description=f'{vac_type_name} завершается {vac.end_date.strftime("%d.%m.%Y")}. Подготовьте рабочее место.',
             )
-            messages.append(text)
-            email_items.append((emp, vac, vac_type_name))
-
-        if not messages:
-            continue
-
-        # Telegram
-        try:
-            _send_telegram('\n\n'.join(messages))
-        except Exception as e:
-            logger.error(f'Vacation ending Telegram error company {company.id}: {e}')
-
-        # Email руководителю
-        if _has_email_notify(company):
-            for emp, vac, vac_type_name in email_items:
-                try:
-                    _send_hr_email(
-                        company=company,
-                        icon='🏖️',
-                        title='Сотрудник выходит из отпуска через 3 дня',
-                        employee_name=emp.full_name,
-                        position=emp.position or '',
-                        event_date=vac.end_date.strftime('%d.%m.%Y'),
-                        description=f'{vac_type_name} завершается {vac.end_date.strftime("%d.%m.%Y")}. Подготовьте рабочее место.',
-                    )
-                except Exception as e:
-                    logger.error(f'Vacation ending email error: {e}')
-
-        notified += len(messages)
+            notified += 1
 
     return f"Vacation ending check for {today}: notified {notified}"
