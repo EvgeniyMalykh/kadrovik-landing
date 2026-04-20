@@ -16,6 +16,7 @@
       <a href="{% url 'billing:checkout' 'business' %}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Бизнес — 1 990 &#8381;/мес</a>
       <a href="{% url 'billing:checkout' 'pro' %}" style="background:#8b5cf6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Про — 4 900 &#8381;/мес</a>
     </div>
+    <p style="color:#64748b;font-size:0.8rem;margin-top:16px;">Или выберите годовой тариф со скидкой 25% ниже</p>
   </div>
 </div>
 {% endif %}
@@ -93,9 +94,21 @@
     <div>
       <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:3px;">Стоимость</div>
       <div style="font-weight:700;color:var(--text-primary);">
-        {% if sub.plan == "start" %}790 ₽/мес
-        {% elif sub.plan == "business" %}1 990 ₽/мес
-        {% elif sub.plan == "pro" %}4 900 ₽/мес{% endif %}
+        {% if sub.billing_period == "annual" %}
+          {% if sub.plan == "start" %}7 110 ₽/год (592 ₽/мес)
+          {% elif sub.plan == "business" %}17 910 ₽/год (1 492 ₽/мес)
+          {% elif sub.plan == "pro" %}44 100 ₽/год (3 675 ₽/мес){% endif %}
+        {% else %}
+          {% if sub.plan == "start" %}790 ₽/мес
+          {% elif sub.plan == "business" %}1 990 ₽/мес
+          {% elif sub.plan == "pro" %}4 900 ₽/мес{% endif %}
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:3px;">Период</div>
+      <div style="font-weight:700;color:var(--text-primary);">
+        {% if sub.billing_period == "annual" %}Годовой{% else %}Помесячно{% endif %}
       </div>
     </div>
     {% endif %}
@@ -176,13 +189,22 @@
   {% if sub and sub.is_active and sub.plan != "trial" %}Сменить тариф{% else %}Выбрать тариф{% endif %}
 </h2>
 
+<div class="billing-toggle" style="display:flex;gap:8px;margin-bottom:20px;background:var(--bg-card);padding:6px;border-radius:12px;width:fit-content;border:1px solid var(--border-color);">
+  <button class="billing-btn active" data-period="monthly" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600;background:var(--color-primary);color:#fff;transition:all 0.2s;">Помесячно</button>
+  <button class="billing-btn" data-period="annual" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;background:transparent;color:var(--text-muted);transition:all 0.2s;">Годовой <span style="background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:20px;margin-left:4px;">−25%</span></button>
+</div>
+
 <div class="pricing-grid">
 
   <!-- СТАРТ -->
   <div class="pricing-card {% if sub.plan == "start" and sub.is_active %}pricing-card--active{% endif %}">
     {% if sub.plan == "start" and sub.is_active %}<div class="pricing-badge pricing-badge--active">Ваш тариф</div>{% endif %}
     <div class="pricing-name">Старт</div>
-    <div class="pricing-price">790 <span>₽/мес</span></div>
+    <div class="price-monthly"><div class="pricing-price">790 <span>₽/мес</span></div></div>
+    <div class="price-annual" style="display:none">
+      <div class="pricing-price">592 <span>₽/мес</span></div>
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">7 110 ₽/год</div>
+    </div>
     <ul class="pricing-features">
       <li>✓ До 10 сотрудников</li>
       <li>✓ Все 11 кадровых документов</li>
@@ -196,7 +218,7 @@
       <button class="btn-disabled" disabled>Активен</button>
       {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
     {% else %}
-      <a href="{% url 'billing:checkout' 'start' %}" class="btn-primary btn-block">
+      <a href="{% url 'billing:checkout' 'start' %}" class="btn-primary btn-block checkout-btn" data-plan="start" data-monthly-label="{% if sub and sub.is_active and sub.plan != 'trial' %}Перейти на Старт{% else %}Подключить — 790 ₽{% endif %}" data-annual-label="{% if sub and sub.is_active and sub.plan != 'trial' %}Перейти на Старт (год){% else %}Подключить — 7 110 ₽/год{% endif %}">
         {% if sub and sub.is_active and sub.plan != "trial" %}Перейти на Старт{% else %}Подключить — 790 ₽{% endif %}
       </a>
     {% endif %}
@@ -210,7 +232,11 @@
       <div class="pricing-badge">Популярный</div>
     {% endif %}
     <div class="pricing-name">Бизнес</div>
-    <div class="pricing-price">1 990 <span>₽/мес</span></div>
+    <div class="price-monthly"><div class="pricing-price">1 990 <span>₽/мес</span></div></div>
+    <div class="price-annual" style="display:none">
+      <div class="pricing-price">1 492 <span>₽/мес</span></div>
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">17 910 ₽/год</div>
+    </div>
     <ul class="pricing-features">
       <li>✓ До 50 сотрудников</li>
       <li>✓ Все кадровые документы</li>
@@ -224,7 +250,7 @@
       <button class="btn-disabled" disabled>Активен</button>
       {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
     {% else %}
-      <a href="{% url 'billing:checkout' 'business' %}" class="btn-primary btn-block">
+      <a href="{% url 'billing:checkout' 'business' %}" class="btn-primary btn-block checkout-btn" data-plan="business" data-monthly-label="{% if sub and sub.is_active and sub.plan != 'trial' %}Перейти на Бизнес{% else %}Подключить — 1 990 ₽{% endif %}" data-annual-label="{% if sub and sub.is_active and sub.plan != 'trial' %}Перейти на Бизнес (год){% else %}Подключить — 17 910 ₽/год{% endif %}">
         {% if sub and sub.is_active and sub.plan != "trial" %}Перейти на Бизнес{% else %}Подключить — 1 990 ₽{% endif %}
       </a>
     {% endif %}
@@ -234,7 +260,11 @@
   <div class="pricing-card {% if sub.plan == "pro" and sub.is_active %}pricing-card--active{% endif %}">
     {% if sub.plan == "pro" and sub.is_active %}<div class="pricing-badge pricing-badge--active">Ваш тариф</div>{% endif %}
     <div class="pricing-name">Корпоратив</div>
-    <div class="pricing-price">4 900 <span>₽/мес</span></div>
+    <div class="price-monthly"><div class="pricing-price">4 900 <span>₽/мес</span></div></div>
+    <div class="price-annual" style="display:none">
+      <div class="pricing-price">3 675 <span>₽/мес</span></div>
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">44 100 ₽/год</div>
+    </div>
     <ul class="pricing-features">
       <li>✓ До 200 сотрудников</li>
       <li>✓ Все кадровые документы</li>
@@ -249,7 +279,7 @@
       <button class="btn-disabled" disabled>Активен</button>
       {% if sub.expires_at %}<p class="pricing-expires">до {{ sub.expires_at|date:"d.m.Y" }}</p>{% endif %}
     {% else %}
-      <a href="{% url 'billing:checkout' 'pro' %}" class="btn-primary btn-block">
+      <a href="{% url 'billing:checkout' 'pro' %}" class="btn-primary btn-block checkout-btn" data-plan="pro" data-monthly-label="{% if sub and sub.is_active and sub.plan != 'trial' %}Перейти на Корпоратив{% else %}Подключить — 4 900 ₽{% endif %}" data-annual-label="{% if sub and sub.is_active and sub.plan != 'trial' %}Перейти на Корпоратив (год){% else %}Подключить — 44 100 ₽/год{% endif %}">
         {% if sub and sub.is_active and sub.plan != "trial" %}Перейти на Корпоратив{% else %}Подключить — 4 900 ₽{% endif %}
       </a>
     {% endif %}
@@ -298,5 +328,40 @@
     <a href="mailto:evgeniymalykh@gmail.com" style="color:var(--color-primary);">evgeniymalykh@gmail.com</a>
   </p>
 </div>
+
+<script>
+(function() {
+  var btns = document.querySelectorAll('.billing-toggle .billing-btn');
+  btns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      btns.forEach(function(b) {
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-muted)';
+        b.style.fontWeight = '500';
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      btn.style.background = 'var(--color-primary)';
+      btn.style.color = '#fff';
+      btn.style.fontWeight = '600';
+      var isAnnual = btn.dataset.period === 'annual';
+      document.querySelectorAll('.price-monthly').forEach(function(el) { el.style.display = isAnnual ? 'none' : 'block'; });
+      document.querySelectorAll('.price-annual').forEach(function(el) { el.style.display = isAnnual ? 'block' : 'none'; });
+      // Update checkout links
+      document.querySelectorAll('.checkout-btn').forEach(function(a) {
+        var plan = a.dataset.plan;
+        var baseUrl = '/billing/checkout/' + plan + '/';
+        if (isAnnual) {
+          a.href = baseUrl + '?period=annual';
+          a.textContent = a.dataset.annualLabel;
+        } else {
+          a.href = baseUrl;
+          a.textContent = a.dataset.monthlyLabel;
+        }
+      });
+    });
+  });
+})();
+</script>
 
 {% endblock %}
