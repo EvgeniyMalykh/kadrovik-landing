@@ -1,3 +1,4 @@
+import os
 import re
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
@@ -334,6 +335,21 @@ def _save_employee_from_post(post, employee):
     return employee
 
 
+def _save_employee_photo(request, employee):
+    """Сохраняет фото сотрудника из request.FILES."""
+    if 'photo' not in request.FILES:
+        return
+    photo = request.FILES['photo']
+    if photo.size > 5 * 1024 * 1024:
+        return
+    if employee.photo:
+        old_path = employee.photo.path
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    employee.photo = photo
+    employee.save(update_fields=['photo'])
+
+
 @login_required
 @subscription_required
 @require_role("hr")
@@ -356,6 +372,7 @@ def employee_add(request):
         emp = Employee(company=member.company)
         _save_employee_from_post(request.POST, emp)
         emp.save()
+        _save_employee_photo(request, emp)
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
 
@@ -393,6 +410,7 @@ def employee_edit(request, employee_id):
             return redirect('dashboard:employees')
         _save_employee_from_post(request.POST, employee)
         employee.save()
+        _save_employee_photo(request, employee)
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
     from apps.employees.models import Department as _Dept

@@ -60,6 +60,7 @@ function openEditEmployee(empId) {
 <table class="data-table">
     <thead>
         <tr>
+            <th style="width:48px;"></th>
             <th>ФИО</th>
             <th>Должность</th>
             <th>Дата приёма</th>
@@ -71,6 +72,18 @@ function openEditEmployee(empId) {
     <tbody>
         {% for emp in employees %}
         <tr id="emp-row-{{ emp.id }}">
+            <td style="width:48px;padding-right:0;">
+                {% if emp.photo %}
+                <img src="{{ emp.photo.url }}" alt=""
+                     style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+                {% else %}
+                <div style="width:36px;height:36px;border-radius:50%;background:var(--color-primary-light, #e8f0fe);
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:13px;font-weight:600;color:var(--color-primary, #1a73e8);">
+                    {{ emp.last_name|first }}{{ emp.first_name|first }}
+                </div>
+                {% endif %}
+            </td>
             <td><strong>{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</strong></td>
             <td>{{ emp.position|default:"—" }}</td>
             <td>{{ emp.hire_date|date:"d.m.Y"|default:"—" }}</td>
@@ -140,7 +153,19 @@ function openEditEmployee(empId) {
 <div class="employees-mobile-cards" style="display:none;">
     {% for emp in employees %}
     <div class="emp-card" id="emp-card-{{ emp.id }}">
-        <div class="emp-card__name">{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+            {% if emp.photo %}
+            <img src="{{ emp.photo.url }}" alt=""
+                 style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            {% else %}
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--color-primary-light, #e8f0fe);
+                        display:flex;align-items:center;justify-content:center;flex-shrink:0;
+                        font-size:13px;font-weight:600;color:var(--color-primary, #1a73e8);">
+                {{ emp.last_name|first }}{{ emp.first_name|first }}
+            </div>
+            {% endif %}
+            <div class="emp-card__name">{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</div>
+        </div>
         <div class="emp-card__position">{{ emp.position|default:"Должность не указана" }}</div>
         <div class="emp-card__row">
             <span class="emp-card__label">Дата приёма</span>

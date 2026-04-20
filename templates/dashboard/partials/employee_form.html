@@ -6,9 +6,21 @@
       hx-post="{% url 'dashboard:employee_add' %}"
       hx-target="#employees-table"
       hx-swap="innerHTML"
+      hx-encoding="multipart/form-data"
+      enctype="multipart/form-data"
       hx-on::after-request="if(event.detail.successful){closeModal()}">
     {% csrf_token %}
     <div class="drawer-body">
+
+        <!-- Фото сотрудника -->
+        <div class="form-group" style="margin-bottom:20px;">
+            <label>Фото сотрудника</label>
+            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp"
+                   style="width:100%;">
+            <div style="font-size:12px;color:var(--text-secondary, #6b7280);margin-top:4px;">
+                JPG, PNG или WebP, до 5 МБ
+            </div>
+        </div>
 
         <div class="form-section-title">Основные данные</div>
         <div class="form-row-2">
