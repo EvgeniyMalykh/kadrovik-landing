@@ -242,9 +242,10 @@ def _save_employee_from_post(post, employee):
         try:
             employee.salary = Decimal(salary_raw)
         except (InvalidOperation, ValueError):
-            employee.salary = None
-    else:
+            pass  # не затираем при ошибке парсинга
+    elif is_new:
         employee.salary = None
+    # при редактировании пустое поле — не трогаем текущий оклад
 
     # Структурное подразделение
     dept_id = post.get("department_id")
@@ -279,16 +280,19 @@ def _save_employee_from_post(post, employee):
     if probation_months:
         try:
             months = int(probation_months)
-            employee.probation_end_date = employee.hire_date + timedelta(days=30 * months)
-        except ValueError:
-            if is_new:
+            if months == 0:
                 employee.probation_end_date = None
+            else:
+                employee.probation_end_date = employee.hire_date + timedelta(days=30 * months)
+        except ValueError:
+            employee.probation_end_date = None
     else:
         probation_end_str = post.get("probation_end_date")
         parsed_probation = _parse_date_flexible(probation_end_str)
         if parsed_probation:
             employee.probation_end_date = parsed_probation
-        elif is_new:
+        else:
+            # Пустое поле: всегда сбрасываем (и при создании, и при редактировании)
             employee.probation_end_date = None
 
     employee.phone  = post.get("phone", "")
