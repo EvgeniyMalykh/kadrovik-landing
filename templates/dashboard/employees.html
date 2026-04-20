@@ -181,7 +181,8 @@ document.getElementById('importForm').addEventListener('submit', async function(
   btn.disabled = true; btn.textContent = 'Загружаю...';
   resultDiv.style.display = 'none';
   try {
-    var resp = await fetch('{% url "dashboard:employee_import" %}', {method: 'POST', body: formData});
+    var csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    var resp = await fetch("{% url 'dashboard:employee_import' %}", {method: "POST", body: formData, headers: {"X-CSRFToken": csrfToken}});
     var data = await resp.json();
     resultDiv.style.display = 'block';
     if (data.error) {
