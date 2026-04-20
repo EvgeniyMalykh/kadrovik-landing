@@ -353,7 +353,7 @@ body {
 .data-table td:last-child { border-right: none; }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tbody tr:nth-child(even) { background: var(--table-row-alt); }
-.data-table tbody tr:nth-child(odd) { background: #FFFFFF; }
+.data-table tbody tr:nth-child(odd) { background: var(--table-row-odd, #FFFFFF); }
 .data-table tbody tr:hover { background: var(--table-hover); }
 .data-table tbody tr:active,
 .data-table tbody tr.selected { background: var(--table-active); }
@@ -1978,6 +1978,10 @@ body {
 [data-theme="dark"] .data-table thead th { background: var(--table-header-bg); color: var(--text-primary); }
 [data-theme="dark"] .data-table tbody tr:hover { background: var(--table-hover); }
 [data-theme="dark"] .data-table td { color: var(--text-primary); border-color: var(--border); }
+[data-theme="dark"] .data-table tbody tr:nth-child(odd) { background: var(--bg-card); }
+[data-theme="dark"] .data-table tbody tr:nth-child(even) { background: var(--bg-secondary); }
+[data-theme="dark"] .data-table tbody td { color: var(--text-primary) !important; }
+[data-theme="dark"] .data-table tbody td strong { color: var(--text-primary) !important; }
 [data-theme="dark"] .data-table th { border-color: var(--border); }
 [data-theme="dark"] .topbar-1c { background: #333333; }
 
