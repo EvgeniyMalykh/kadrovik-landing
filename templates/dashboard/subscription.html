@@ -350,7 +350,7 @@
       // Update checkout links
       document.querySelectorAll('.checkout-btn').forEach(function(a) {
         var plan = a.dataset.plan;
-        var baseUrl = '/billing/checkout/' + plan + '/';
+        var baseUrl = '/dashboard/checkout/' + plan + '/';
         if (isAnnual) {
           a.href = baseUrl + '?period=annual';
           a.textContent = a.dataset.annualLabel;
