@@ -2877,3 +2877,27 @@ def events_count_api(request):
         pass
 
     return JsonResponse({'count': count})
+
+
+@login_required
+@subscription_required
+def employee_import_template(request):
+    from .employee_import import generate_employee_import_template
+    data = generate_employee_import_template()
+    response = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = "attachment; filename=\"employee_import_template.xlsx\""
+    return response
+
+
+@login_required
+@subscription_required
+def employee_import_upload(request):
+    if request.method == "POST" and request.FILES.get("file"):
+        member = get_active_member(request)
+        role = get_active_member_role(request)
+        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get("hr", 0):
+            return JsonResponse({"error": "Нет прав"}, status=403)
+        from .employee_import import import_employees_from_excel
+        result = import_employees_from_excel(request.FILES["file"], member.company)
+        return JsonResponse(result)
+    return JsonResponse({"error": "Файл не загружен"}, status=400)

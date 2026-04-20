@@ -82,4 +82,6 @@ urlpatterns = [
     path("templates/<str:doc_type>/delete/", views.document_template_delete, name="document_template_delete"),
     path("templates/<str:doc_type>/download/<int:employee_id>/", views.document_template_download, name="document_template_download"),
     path("switch-company/<int:company_id>/", views.switch_company, name="switch_company"),
+    path("employees/import/template/", views.employee_import_template, name="employee_import_template"),
+    path("employees/import/", views.employee_import_upload, name="employee_import"),
 ]
