@@ -318,10 +318,22 @@
       <div class="container">
         <div class="section-label">Тарифы</div>
         <h2 class="section-title">Понятная цена<br>без скрытых платежей</h2>
+        <div class="billing-toggle">
+          <button class="billing-btn active" data-period="monthly">Помесячно</button>
+          <button class="billing-btn" data-period="annual">
+            Годовой <span class="discount-badge">−25%</span>
+          </button>
+        </div>
         <div class="pricing__grid">
           <div class="pricing-card">
             <div class="pricing-card__name">Старт</div>
-            <div class="pricing-card__price">790 <span>₽/мес</span></div>
+            <div class="price-monthly">
+              <div class="pricing-card__price">790 <span>₽/мес</span></div>
+            </div>
+            <div class="price-annual" style="display:none">
+              <div class="pricing-card__price price-main">592 <span>₽/мес</span></div>
+              <div class="price-total">7 110 ₽/год</div>
+            </div>
             <div class="pricing-card__desc">Для ИП и микробизнеса</div>
             <ul class="pricing-card__features" role="list">
               <li>До 10 сотрудников</li>
@@ -334,7 +346,13 @@
           <div class="pricing-card pricing-card--featured">
             <div class="pricing-card__popular">Популярный</div>
             <div class="pricing-card__name">Бизнес</div>
-            <div class="pricing-card__price">1 990 <span>₽/мес</span></div>
+            <div class="price-monthly">
+              <div class="pricing-card__price">1 990 <span>₽/мес</span></div>
+            </div>
+            <div class="price-annual" style="display:none">
+              <div class="pricing-card__price price-main">1 492 <span>₽/мес</span></div>
+              <div class="price-total">17 910 ₽/год</div>
+            </div>
             <div class="pricing-card__desc">Для малых ООО</div>
             <ul class="pricing-card__features" role="list">
               <li>До 50 сотрудников</li>
@@ -347,7 +365,13 @@
           </div>
           <div class="pricing-card">
             <div class="pricing-card__name">Про</div>
-            <div class="pricing-card__price">4 900 <span>₽/мес</span></div>
+            <div class="price-monthly">
+              <div class="pricing-card__price">4 900 <span>₽/мес</span></div>
+            </div>
+            <div class="price-annual" style="display:none">
+              <div class="pricing-card__price price-main">3 675 <span>₽/мес</span></div>
+              <div class="price-total">44 100 ₽/год</div>
+            </div>
             <div class="pricing-card__desc">Для среднего бизнеса</div>
             <ul class="pricing-card__features" role="list">
               <li>До 200 сотрудников</li>

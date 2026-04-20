@@ -74,6 +74,19 @@
   els.forEach(el => obs.observe(el));
 })();
 
+// Billing period toggle
+(function () {
+  document.querySelectorAll('.billing-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.billing-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const isAnnual = btn.dataset.period === 'annual';
+      document.querySelectorAll('.price-monthly').forEach(el => el.style.display = isAnnual ? 'none' : 'block');
+      document.querySelectorAll('.price-annual').forEach(el => el.style.display = isAnnual ? 'block' : 'none');
+    });
+  });
+})();
+
 // Waitlist form
 (function () {
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjBzH-oPBtC-pJGZ8UCgncTpc21Rs1xCDY4fwpb7URZOdS7ZY0rwEB_1RGcmMb1vUDHg/exec';

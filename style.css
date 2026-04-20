@@ -789,6 +789,16 @@ a { color: inherit; text-decoration: none; }
   font-size: var(--text-xs);
   color: var(--color-text-faint);
 }
+.billing-toggle { display:flex; gap:8px; justify-content:center; margin-bottom:40px; background:#f1f5f9; padding:6px; border-radius:12px; width:fit-content; margin-left:auto; margin-right:auto; }
+[data-theme="dark"] .billing-toggle { background:#1e293b; }
+.billing-btn { padding:10px 24px; border-radius:8px; border:none; cursor:pointer; font-size:15px; font-weight:500; background:transparent; color:#64748b; transition:all 0.2s; }
+.billing-btn.active { background:#fff; color:#1e293b; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+[data-theme="dark"] .billing-btn.active { background:#334155; color:#f1f5f9; }
+.discount-badge { background:#22c55e; color:#fff; font-size:12px; font-weight:700; padding:2px 7px; border-radius:20px; margin-left:6px; }
+.price-annual .price-main { font-size: var(--text-2xl); font-weight:900; letter-spacing:-0.03em; color: var(--color-text); }
+.pricing-card--featured .price-annual .price-main { color: white; }
+.price-annual .price-total { font-size:14px; color:#64748b; margin-top:4px; }
+.pricing-card--featured .price-annual .price-total { color: rgba(255,255,255,0.7); }
 
 /* --- FAQ --- */
 .faq {
