@@ -635,7 +635,7 @@ def generate_t5_pdf(employee, new_position, new_salary=None, order_number="ПР-
     return buffer.getvalue()
 
 
-def generate_salary_change_pdf(employee, new_salary, order_number="З-001", previous_salary=None) -> bytes:
+def generate_salary_change_pdf(employee, new_salary, order_number="З-001", previous_salary=None, effective_date=None) -> bytes:
     """Приказ об изменении оклада."""
     font_name = _register_fonts()
     buffer = io.BytesIO()
@@ -648,6 +648,7 @@ def generate_salary_change_pdf(employee, new_salary, order_number="З-001", prev
     from datetime import date as dt_date
     today = dt_date.today()
     today_str = today.strftime("%d.%m.%Y")
+    effective_date_str = effective_date.strftime("%d.%m.%Y") if effective_date else today_str
     story = []
     co = _get_company_info(employee)
     company_name = co["name"]
@@ -675,7 +676,7 @@ def generate_salary_change_pdf(employee, new_salary, order_number="З-001", prev
     story.append(Spacer(1, 3*mm))
     story.append(Paragraph(
         "1. Установить " + full_name + ", " + position +
-        ", должностной оклад в размере <b>" + str(new_salary) + " (рублей)</b> в месяц с " + today_str + " г." + old_salary_text,
+        ", должностной оклад в размере <b>" + str(new_salary) + " (рублей)</b> в месяц с " + effective_date_str + " г." + old_salary_text,
         normal))
     story.append(Paragraph(
         "2. Бухгалтерии производить начисление заработной платы в соответствии с настоящим приказом.", normal))

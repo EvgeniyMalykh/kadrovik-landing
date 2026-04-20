@@ -713,7 +713,15 @@ def download_salary_change(request, employee_id):
         old_salary = last_doc.extra_data['old_salary']
     if not old_salary:
         old_salary = request.GET.get("old_salary", "")
-    pdf = generate_salary_change_pdf(employee, new_salary, request.GET.get("order", "З-001"), previous_salary=old_salary)
+    # Дата изменения оклада: из extra_data документа, потом из GET, иначе сегодня
+    effective_date = None
+    if last_doc and last_doc.extra_data and last_doc.extra_data.get("change_date"):
+        effective_date = _parse_date_flexible(last_doc.extra_data["change_date"])
+    if not effective_date:
+        raw = request.GET.get("date", "")
+        if raw:
+            effective_date = _parse_date_flexible(raw)
+    pdf = generate_salary_change_pdf(employee, new_salary, request.GET.get("order", "З-001"), previous_salary=old_salary, effective_date=effective_date)
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"SalaryChange_{employee.last_name}.pdf\""
     return r
