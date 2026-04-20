@@ -384,8 +384,6 @@ def employee_add(request):
 @login_required
 @subscription_required
 def employee_edit(request, employee_id):
-    if not request.headers.get("HX-Request"):
-        return redirect("dashboard:employees")
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     if request.method == "POST":
