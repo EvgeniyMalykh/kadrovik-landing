@@ -65,6 +65,9 @@ def generate_employee_import_template() -> bytes:
         cell.alignment = header_align
         cell.border = thin_border
 
+    # Date column indices (1-based)
+    date_cols = {i+1 for i, c in enumerate(COLUMNS) if c[0] in ("Дата приёма", "Дата рождения")}
+
     # Example rows (rows 2-3)
     for row_offset, example in enumerate(EXAMPLE_ROWS):
         row_num = row_offset + 2
@@ -73,6 +76,9 @@ def generate_employee_import_template() -> bytes:
             cell.font = example_font
             cell.fill = example_fill
             cell.border = thin_border
+            # Для дат — явно текстовый формат, чтобы Excel не конвертировал
+            if col_idx in date_cols:
+                cell.number_format = "@"  # text format
 
     # Auto-width
     for col_idx in range(1, len(HEADER_NAMES) + 1):
