@@ -23,6 +23,8 @@ class Subscription(models.Model):
     # Рекуррентные платежи
     payment_method_id  = models.CharField('ИД метода оплаты (рекуррент)', max_length=255, blank=True, default='')
     auto_renew         = models.BooleanField('Автопродление', default=False)
+    BILLING_PERIOD_CHOICES = [('monthly', 'Помесячно'), ('annual', 'Годовой')]
+    billing_period = models.CharField('Период оплаты', max_length=10, choices=BILLING_PERIOD_CHOICES, default='monthly')
 
     class Meta:
         verbose_name = 'Подписка'

@@ -6,7 +6,7 @@
       hx-post="{% url 'dashboard:employee_add' %}"
       hx-target="#employees-table"
       hx-swap="innerHTML"
-      hx-on::after-request="closeModal()">
+      hx-on::after-request="if(event.detail.successful){closeModal()}">
     {% csrf_token %}
     <div class="drawer-body">
 

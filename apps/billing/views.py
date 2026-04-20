@@ -55,10 +55,14 @@ def checkout(request, plan_key):
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
 
+    billing_period = request.GET.get('period', 'monthly')
+    if billing_period not in ('monthly', 'annual'):
+        billing_period = 'monthly'
+
     return_url = request.build_absolute_uri("/dashboard/payment/success/")
 
     try:
-        payment, confirmation_url = create_payment(member.company, plan_key, return_url)
+        payment, confirmation_url = create_payment(member.company, plan_key, return_url, billing_period=billing_period)
     except Exception as e:
         import traceback, logging
         logger = logging.getLogger("billing")
@@ -70,7 +74,7 @@ def checkout(request, plan_key):
         return redirect(confirmation_url)
     else:
         # Заглушка — если ключи не настроены
-        activate_subscription(member.company, plan_key)
+        activate_subscription(member.company, plan_key, billing_period=billing_period)
         payment.status = Payment.Status.SUCCESS
         payment.save(update_fields=["status"])
         return redirect("billing:payment_success")
@@ -163,7 +167,8 @@ def yukassa_webhook(request):
         saved = payment_method.get("saved", False)
         method_id = payment_method.get("id", "") if saved else ""
 
-        sub = activate_subscription(payment.company, plan_key, payment_method_id=method_id or None)
+        billing_period = metadata.get("billing_period", "monthly")
+        sub = activate_subscription(payment.company, plan_key, payment_method_id=method_id or None, billing_period=billing_period)
 
         # Отправляем email об успешной оплате
         try:

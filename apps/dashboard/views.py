@@ -397,8 +397,18 @@ def employee_edit(request, employee_id):
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
     from apps.employees.models import Department as _Dept
     departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
+    salary_val = employee.salary
+    salary_str = ''
+    if salary_val is not None:
+        # Use plain string conversion to avoid locale comma separator
+        s = str(salary_val)
+        # Remove trailing zeros after decimal: 77777.00 -> 77777, 1234.50 -> 1234.5
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        salary_str = s
     return render(request, "dashboard/partials/employee_edit_form.html", {
         "emp": employee,
+        "salary_str": salary_str,
         "birth_date_str":           employee.birth_date.strftime("%d.%m.%Y") if employee.birth_date else "",
         "hire_date_str":            employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else "",
         "probation_end_str":        employee.probation_end_date.strftime("%d.%m.%Y") if employee.probation_end_date else "",
