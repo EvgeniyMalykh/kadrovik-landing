@@ -177,7 +177,7 @@
 <div class="card" style="margin-bottom:1.5rem;padding:1.25rem 1.5rem;border:1px solid rgba(220,53,69,0.2);">
   <h3 style="font-size:1rem;font-weight:600;margin:0 0 8px;color:var(--text-primary);">Отмена подписки</h3>
   <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 12px;">
-    При отмене подписка остаётся активной до <b>{{ sub.end_date|date:"d.m.Y" }}</b>.
+    При отмене подписка остаётся активной до <b>{{ sub.expires_at|date:"d.m.Y" }}</b>.
     После этой даты аккаунт перейдёт в режим чтения — данные сохранятся, новые документы создавать нельзя.
   </p>
   <form method="POST" action="{% url 'billing:cancel_autorenew' %}" style="margin:0;">
