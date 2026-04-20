@@ -268,6 +268,13 @@ def _send_hr_email(company, icon, title, employee_name, position, event_date, de
     )
     _send_notification_to_company(company, text, subject, html_body, plain_body)
 
+def _get_notification_settings(company):
+    """Получает или создаёт настройки уведомлений для компании."""
+    from apps.events.models import NotificationSettings
+    settings_obj, _ = NotificationSettings.objects.get_or_create(company=company)
+    return settings_obj
+
+
 @shared_task(name="events.check_probation_endings")
 def check_probation_endings():
     """Напоминание об истечении испытательного срока через 7, 3 и 1 день."""
@@ -280,6 +287,9 @@ def check_probation_endings():
             status="active",
         ).select_related("company")
         for emp in employees:
+            ns = _get_notification_settings(emp.company)
+            if not ns.notify_probation:
+                continue
             label = {7: "через 7 дней", 3: "через 3 дня", 1: "завтра"}[days_left]
             _send_hr_email(
                 company=emp.company,
@@ -306,6 +316,9 @@ def check_contract_endings():
             status="active",
         ).select_related("company")
         for emp in employees:
+            ns = _get_notification_settings(emp.company)
+            if not ns.notify_contracts:
+                continue
             label = {14: "через 14 дней", 7: "через 7 дней", 3: "через 3 дня"}[days_left]
             _send_hr_email(
                 company=emp.company,
@@ -336,6 +349,9 @@ def check_subscription_expirations():
         ).select_related("company")
 
         for sub in subs:
+            ns = _get_notification_settings(sub.company)
+            if not ns.notify_subscription:
+                continue
             expires_str = sub.expires_at.strftime("%d.%m.%Y")
             renew_url = "https://app.kadrovik-auto.ru/dashboard/subscription/"
 
@@ -410,6 +426,10 @@ def check_birthdays():
     notified = 0
 
     for company in Company.objects.all():
+        ns = _get_notification_settings(company)
+        if not ns.notify_birthdays:
+            continue
+
         employees = Employee.objects.filter(company=company, status='active')
 
         for emp in employees:
@@ -456,6 +476,10 @@ def check_vacation_events():
     notified = 0
 
     for company in Company.objects.all():
+        ns = _get_notification_settings(company)
+        if not ns.notify_vacations:
+            continue
+
         vacations = Vacation.objects.filter(
             employee__company=company,
             employee__status='active',
@@ -506,6 +530,10 @@ def check_vacation_endings():
     notified = 0
 
     for company in Company.objects.select_related('owner').all():
+        ns = _get_notification_settings(company)
+        if not ns.notify_vacations:
+            continue
+
         vacations = Vacation.objects.filter(
             employee__company=company,
             employee__status='active',

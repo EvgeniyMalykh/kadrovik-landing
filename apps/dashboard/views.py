@@ -920,6 +920,35 @@ def company_profile(request):
 
 
 @login_required
+def notification_settings(request):
+    """Страница настроек уведомлений — включение/выключение типов событий."""
+    from apps.events.models import NotificationSettings
+    member = get_active_member(request)
+    if not member:
+        return redirect("dashboard:home")
+    role = get_active_member_role(request)
+    if ROLE_RANK.get(role, 0) < ROLE_RANK.get('owner', 0):
+        messages.error(request, 'Только владелец может менять настройки уведомлений.')
+        return redirect('dashboard:home')
+
+    settings_obj, _ = NotificationSettings.objects.get_or_create(company=member.company)
+
+    if request.method == 'POST':
+        settings_obj.notify_birthdays = 'notify_birthdays' in request.POST
+        settings_obj.notify_vacations = 'notify_vacations' in request.POST
+        settings_obj.notify_probation = 'notify_probation' in request.POST
+        settings_obj.notify_contracts = 'notify_contracts' in request.POST
+        settings_obj.notify_subscription = 'notify_subscription' in request.POST
+        settings_obj.save()
+        messages.success(request, 'Настройки уведомлений сохранены')
+        return redirect('dashboard:notification_settings')
+
+    return render(request, 'dashboard/notification_settings.html', {
+        'ns': settings_obj,
+    })
+
+
+@login_required
 @login_required
 def test_company_notify(request):
     """Отправляет тестовое уведомление во все заполненные каналы."""

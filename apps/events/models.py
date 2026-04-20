@@ -27,3 +27,24 @@ class HREvent(models.Model):
 
     def __str__(self):
         return f'{self.get_event_type_display()} — {self.employee} ({self.event_date})'
+
+
+class NotificationSettings(models.Model):
+    """Настройки уведомлений компании — какие типы событий включены."""
+    company = models.OneToOneField(
+        Company, on_delete=models.CASCADE,
+        related_name='notification_settings',
+        verbose_name='Компания',
+    )
+    notify_birthdays = models.BooleanField('Дни рождения', default=True)
+    notify_vacations = models.BooleanField('Начало/конец отпусков', default=True)
+    notify_probation = models.BooleanField('Испытательный срок', default=True)
+    notify_contracts = models.BooleanField('Истечение договоров', default=True)
+    notify_subscription = models.BooleanField('Подписка (истечение)', default=True)
+
+    class Meta:
+        verbose_name = 'Настройки уведомлений'
+        verbose_name_plural = 'Настройки уведомлений'
+
+    def __str__(self):
+        return f'Настройки уведомлений — {self.company}'
