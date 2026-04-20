@@ -189,9 +189,13 @@
   {% if sub and sub.is_active and sub.plan != "trial" %}Сменить тариф{% else %}Выбрать тариф{% endif %}
 </h2>
 
+<style>
+.billing-btn { padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;background:transparent;color:var(--text-muted);transition:all 0.2s; }
+.billing-btn.active { background:var(--color-primary) !important;color:#fff !important;font-weight:700 !important; }
+</style>
 <div class="billing-toggle" style="display:flex;gap:8px;margin-bottom:20px;background:var(--bg-card);padding:6px;border-radius:12px;width:fit-content;border:1px solid var(--border-color);">
-  <button class="billing-btn active" data-period="monthly" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600;background:var(--color-primary);color:#fff;transition:all 0.2s;">Помесячно</button>
-  <button class="billing-btn" data-period="annual" style="padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;background:transparent;color:var(--text-muted);transition:all 0.2s;">Годовой <span style="background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:20px;margin-left:4px;">−25%</span></button>
+  <button class="billing-btn active" data-period="monthly">Помесячно</button>
+  <button class="billing-btn" data-period="annual">Годовой <span style="background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:20px;margin-left:4px;">−25%</span></button>
 </div>
 
 <div class="pricing-grid">
@@ -202,8 +206,8 @@
     <div class="pricing-name">Старт</div>
     <div class="price-monthly"><div class="pricing-price">790 <span>₽/мес</span></div></div>
     <div class="price-annual" style="display:none">
-      <div class="pricing-price">592 <span>₽/мес</span></div>
-      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">7 110 ₽/год</div>
+      <div class="pricing-price">7 110 <span>₽/год</span></div>
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">592 ₽/мес · скидка 25%</div>
     </div>
     <ul class="pricing-features">
       <li>✓ До 10 сотрудников</li>
@@ -234,8 +238,8 @@
     <div class="pricing-name">Бизнес</div>
     <div class="price-monthly"><div class="pricing-price">1 990 <span>₽/мес</span></div></div>
     <div class="price-annual" style="display:none">
-      <div class="pricing-price">1 492 <span>₽/мес</span></div>
-      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">17 910 ₽/год</div>
+      <div class="pricing-price">17 910 <span>₽/год</span></div>
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">1 492 ₽/мес · скидка 25%</div>
     </div>
     <ul class="pricing-features">
       <li>✓ До 50 сотрудников</li>
@@ -262,8 +266,8 @@
     <div class="pricing-name">Корпоратив</div>
     <div class="price-monthly"><div class="pricing-price">4 900 <span>₽/мес</span></div></div>
     <div class="price-annual" style="display:none">
-      <div class="pricing-price">3 675 <span>₽/мес</span></div>
-      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">44 100 ₽/год</div>
+      <div class="pricing-price">44 100 <span>₽/год</span></div>
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px;">3 675 ₽/мес · скидка 25%</div>
     </div>
     <ul class="pricing-features">
       <li>✓ До 200 сотрудников</li>
@@ -334,16 +338,8 @@
   var btns = document.querySelectorAll('.billing-toggle .billing-btn');
   btns.forEach(function(btn) {
     btn.addEventListener('click', function() {
-      btns.forEach(function(b) {
-        b.style.background = 'transparent';
-        b.style.color = 'var(--text-muted)';
-        b.style.fontWeight = '500';
-        b.classList.remove('active');
-      });
+      btns.forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
-      btn.style.background = 'var(--color-primary)';
-      btn.style.color = '#fff';
-      btn.style.fontWeight = '600';
       var isAnnual = btn.dataset.period === 'annual';
       document.querySelectorAll('.price-monthly').forEach(function(el) { el.style.display = isAnnual ? 'none' : 'block'; });
       document.querySelectorAll('.price-annual').forEach(function(el) { el.style.display = isAnnual ? 'block' : 'none'; });
