@@ -58,6 +58,26 @@ def checkout(request, plan_key):
     if billing_period not in ('monthly', 'annual'):
         billing_period = 'monthly'
 
+    # Защита от дублей: если есть pending-платёж младше 10 минут — перенаправляем на него
+    from django.utils import timezone
+    from datetime import timedelta
+    recent_pending = Payment.objects.filter(
+        company=member.company,
+        status=Payment.Status.PENDING,
+        created_at__gte=timezone.now() - timedelta(minutes=10),
+    ).exclude(yukassa_payment_id='').order_by('-created_at').first()
+    if recent_pending and recent_pending.yukassa_payment_id:
+        try:
+            from apps.billing.services import _get_yookassa
+            yookassa = _get_yookassa()
+            yk = yookassa.Payment.find_one(recent_pending.yukassa_payment_id)
+            if yk.status == 'pending' and yk.confirmation:
+                confirmation_url = yk.confirmation.confirmation_url
+                if confirmation_url:
+                    return redirect(confirmation_url)
+        except Exception:
+            pass
+
     return_url = request.build_absolute_uri("/dashboard/payment/success/")
 
     try:
@@ -81,8 +101,54 @@ def checkout(request, plan_key):
 
 @login_required
 def payment_success(request):
-    """Страница после возврата с ЮKassa — статус уточняем по webhook."""
+    """Страница после возврата с ЮKassa.
+
+    Проверяем последний pending-платёж компании через API ЮKassa,
+    чтобы обновить статус, не дожидаясь webhook (race condition).
+    """
+    member = _get_active_member(request)
+    if member:
+        _sync_pending_payments(member.company)
     return redirect("dashboard:subscription")
+
+
+def _sync_pending_payments(company):
+    """Проверяет pending-платежи через API ЮKassa и обновляет статусы."""
+    from apps.billing.services import _get_yookassa, activate_subscription
+    pending = Payment.objects.filter(
+        company=company,
+        status=Payment.Status.PENDING,
+    ).exclude(yukassa_payment_id='').order_by('-created_at')[:5]
+
+    if not pending:
+        return
+
+    try:
+        yookassa = _get_yookassa()
+    except Exception:
+        return
+
+    for payment in pending:
+        try:
+            yk = yookassa.Payment.find_one(payment.yukassa_payment_id)
+        except Exception as e:
+            logger.warning(f"[sync] YK API error for {payment.yukassa_payment_id}: {e}")
+            continue
+
+        if yk.status == 'succeeded' and payment.status != Payment.Status.SUCCESS:
+            payment.status = Payment.Status.SUCCESS
+            payment.save(update_fields=["status"])
+            metadata = yk.metadata or {}
+            plan_key = metadata.get("plan", payment.plan)
+            billing_period = metadata.get("billing_period", "monthly")
+            pm = yk.payment_method
+            method_id = pm.id if pm and getattr(pm, 'saved', False) else None
+            activate_subscription(company, plan_key, payment_method_id=method_id, billing_period=billing_period)
+            logger.info(f"[sync] Payment {payment.id} synced as succeeded")
+        elif yk.status == 'canceled' and payment.status != Payment.Status.FAILED:
+            payment.status = Payment.Status.FAILED
+            payment.save(update_fields=["status"])
+            logger.info(f"[sync] Payment {payment.id} synced as canceled")
 
 
 @login_required
@@ -137,10 +203,12 @@ def yukassa_webhook(request):
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
+        logger.warning("[webhook] Invalid JSON body")
         return HttpResponse(status=400)
 
     event = data.get("event", "")
     obj = data.get("object", {})
+    logger.info(f"[webhook] event={event} yukassa_id={obj.get('id', '?')}")
 
     # ── payment.succeeded ─────────────────────────────────────────────────────
     if event == "payment.succeeded":
@@ -150,11 +218,13 @@ def yukassa_webhook(request):
         plan_key      = metadata.get("plan")
 
         if not payment_db_id or not plan_key:
+            logger.warning(f"[webhook] payment.succeeded missing metadata: {metadata}")
             return HttpResponse(status=400)
 
         try:
             payment = Payment.objects.get(id=payment_db_id)
         except Payment.DoesNotExist:
+            logger.warning(f"[webhook] payment.succeeded DB id={payment_db_id} not found")
             return HttpResponse(status=404)
 
         payment.status = Payment.Status.SUCCESS
@@ -168,6 +238,7 @@ def yukassa_webhook(request):
 
         billing_period = metadata.get("billing_period", "monthly")
         sub = activate_subscription(payment.company, plan_key, payment_method_id=method_id or None, billing_period=billing_period)
+        logger.info(f"[webhook] Subscription activated: company={payment.company_id} plan={plan_key} period={billing_period} expires={sub.expires_at}")
 
         # Отправляем email об успешной оплате
         try:
@@ -212,6 +283,8 @@ def yukassa_webhook(request):
         yukassa_id    = obj.get("id", "")
         metadata      = obj.get("metadata", {})
         payment_db_id = metadata.get("payment_db_id")
+        cancel_details = obj.get("cancellation_details", {})
+        logger.info(f"[webhook] payment.canceled db_id={payment_db_id} reason={cancel_details.get('reason', '?')} party={cancel_details.get('party', '?')}")
 
         if payment_db_id:
             try:
@@ -220,7 +293,7 @@ def yukassa_webhook(request):
                 payment.yukassa_payment_id = yukassa_id
                 payment.save(update_fields=["status", "yukassa_payment_id"])
             except Payment.DoesNotExist:
-                pass
+                logger.warning(f"[webhook] payment.canceled DB id={payment_db_id} not found")
 
     return HttpResponse(status=200)
 
