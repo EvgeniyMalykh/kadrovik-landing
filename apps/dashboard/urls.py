@@ -16,6 +16,9 @@ urlpatterns = [
     path("employees/<int:employee_id>/edit/", views.employee_edit, name="employee_edit"),
     path("documents/<int:doc_id>/delete/", views.delete_document, name="delete_document"),
     path("employees/<int:employee_id>/delete/", views.employee_delete, name="employee_delete"),
+    # Импорт сотрудников из Excel
+    path("employees/import/template/", views.employee_import_template, name="employee_import_template"),
+    path("employees/import/", views.employee_import_upload, name="employee_import"),
     # Кадровые приказы
     path("employees/<int:employee_id>/t1/", views.download_t1, name="download_t1"),
     path("employees/<int:employee_id>/t2/", views.download_t2, name="download_t2"),

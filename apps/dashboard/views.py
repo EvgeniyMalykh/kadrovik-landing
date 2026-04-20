@@ -2713,3 +2713,39 @@ def events_count_api(request):
         pass
 
     return JsonResponse({'count': count})
+
+
+# ── Employee Import from Excel ──────────────────────────────────────
+
+@login_required
+@subscription_required
+def employee_import_template(request):
+    """GET — скачать шаблон Excel для импорта сотрудников."""
+    from .employee_import import generate_employee_import_template
+    data = generate_employee_import_template()
+    response = HttpResponse(
+        data,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="employee_import_template.xlsx"'
+    return response
+
+
+@login_required
+@subscription_required
+def employee_import_upload(request):
+    """POST — загрузить Excel с сотрудниками."""
+    if request.method != 'POST' or not request.FILES.get('file'):
+        return JsonResponse({'error': 'Файл не загружен'}, status=400)
+
+    member = get_active_member(request)
+    if not member:
+        return JsonResponse({'error': 'Нет компании'}, status=400)
+
+    role = get_active_member_role(request)
+    if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
+        return JsonResponse({'error': 'Нет прав'}, status=403)
+
+    from .employee_import import import_employees_from_excel
+    result = import_employees_from_excel(request.FILES['file'], member.company)
+    return JsonResponse(result)

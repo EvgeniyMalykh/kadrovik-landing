@@ -45,6 +45,10 @@
         Скачать Excel
     </a>
     {% endif %}
+    <button type="button" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px;" onclick="document.getElementById('importModal').style.display='flex'">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
+        Импорт из Excel
+    </button>
     <button class="btn-primary"
         hx-get="{% url 'dashboard:employee_add' %}"
         hx-target="#modal-content"
@@ -129,6 +133,30 @@
 </div>
 {% endif %}
 
+<!-- Модал: Импорт сотрудников из Excel -->
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--color-surface, #1e293b);border-radius:12px;padding:28px;width:480px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+    <h3 style="margin:0 0 12px;color:var(--color-text, #f1f5f9);font-size:1.2rem;">Импорт сотрудников</h3>
+    <p style="color:var(--color-text-secondary, #94a3b8);font-size:14px;margin:0 0 16px;line-height:1.5;">
+      Скачайте шаблон, заполните данные сотрудников и загрузите файл.
+    </p>
+    <a href="{% url 'dashboard:employee_import_template' %}" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;text-decoration:none;padding:8px 14px;font-size:0.85rem;">
+      <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+      Скачать шаблон Excel
+    </a>
+    <form id="importForm" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="file" name="file" accept=".xlsx" id="importFileInput"
+             style="margin-bottom:14px;width:100%;padding:8px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.05);color:#e2e8f0;font-size:0.9rem;">
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" onclick="document.getElementById('importModal').style.display='none'" class="btn-secondary" style="padding:8px 16px;">Отмена</button>
+        <button type="submit" id="importSubmitBtn" class="btn-primary" style="padding:8px 20px;">Загрузить</button>
+      </div>
+    </form>
+    <div id="importResult" style="margin-top:14px;display:none;padding:12px;border-radius:8px;font-size:0.9rem;"></div>
+  </div>
+</div>
+
 <script>
 // Live-фильтр: auto-submit при вводе текста поиска
 document.addEventListener('DOMContentLoaded', function() {
@@ -140,6 +168,60 @@ document.addEventListener('DOMContentLoaded', function() {
     clearTimeout(timer);
     timer = setTimeout(function() { form.submit(); }, 600);
   });
+});
+
+// Импорт сотрудников
+document.getElementById('importForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var fileInput = document.getElementById('importFileInput');
+  if (!fileInput.files.length) { alert('Выберите файл'); return; }
+  var formData = new FormData(this);
+  var btn = document.getElementById('importSubmitBtn');
+  var resultDiv = document.getElementById('importResult');
+  btn.disabled = true; btn.textContent = 'Загружаю...';
+  resultDiv.style.display = 'none';
+  try {
+    var resp = await fetch('{% url "dashboard:employee_import" %}', {method: 'POST', body: formData});
+    var data = await resp.json();
+    resultDiv.style.display = 'block';
+    if (data.error) {
+      resultDiv.style.background = 'rgba(239,68,68,0.15)';
+      resultDiv.style.color = '#f87171';
+      resultDiv.innerHTML = 'Ошибка: ' + data.error;
+    } else {
+      var html = '';
+      if (data.created > 0) {
+        html += '<div style="color:#34d399;margin-bottom:4px;">Добавлено: <b>' + data.created + '</b> сотрудников</div>';
+      }
+      if (data.skipped > 0) {
+        html += '<div style="color:#fbbf24;margin-bottom:4px;">Пропущено: <b>' + data.skipped + '</b></div>';
+      }
+      if (data.errors && data.errors.length) {
+        html += '<div style="color:#f87171;margin-top:4px;font-size:0.85rem;">' + data.errors.join('<br>') + '</div>';
+      }
+      if (!data.created && !data.skipped && (!data.errors || !data.errors.length)) {
+        html = '<div style="color:#94a3b8;">Файл пуст или не содержит данных</div>';
+      }
+      resultDiv.style.background = 'rgba(59,130,246,0.1)';
+      resultDiv.style.color = '#e2e8f0';
+      resultDiv.innerHTML = html;
+      if (data.created > 0) {
+        setTimeout(function() { location.reload(); }, 2000);
+      }
+    }
+  } catch(err) {
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = 'rgba(239,68,68,0.15)';
+    resultDiv.style.color = '#f87171';
+    resultDiv.innerHTML = 'Ошибка сети: ' + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Загрузить';
+  }
+});
+
+// Закрытие модала по клику на фон
+document.getElementById('importModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
 });
 </script>
 {% endblock %}
