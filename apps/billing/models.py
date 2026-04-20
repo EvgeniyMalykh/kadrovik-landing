@@ -25,6 +25,9 @@ class Subscription(models.Model):
     auto_renew         = models.BooleanField('Автопродление', default=False)
     BILLING_PERIOD_CHOICES = [('monthly', 'Помесячно'), ('annual', 'Годовой')]
     billing_period = models.CharField('Период оплаты', max_length=10, choices=BILLING_PERIOD_CHOICES, default='monthly')
+    # Данные карты (заполняются из webhook при успешной оплате)
+    card_last4 = models.CharField('Последние 4 цифры карты', max_length=4, blank=True, default='')
+    card_brand = models.CharField('Тип карты', max_length=20, blank=True, default='')
 
     class Meta:
         verbose_name = 'Подписка'

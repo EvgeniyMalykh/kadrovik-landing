@@ -139,6 +139,51 @@ def _get_yookassa():
     return yookassa
 
 
+def detach_payment_method(subscription):
+    """
+    Отвязывает карту от подписки через ЮКасса API.
+    Очищает payment_method_id и card_last4/card_brand в БД.
+    Возвращает (success: bool, error: str|None).
+    """
+    import requests
+    import base64
+
+    if not subscription.payment_method_id:
+        return False, "Карта не привязана"
+
+    shop_id = getattr(settings, 'YUKASSA_SHOP_ID', '')
+    secret_key = getattr(settings, 'YUKASSA_SECRET_KEY', '')
+
+    if not shop_id or not secret_key:
+        logger.warning("[detach] YooKassa credentials not configured")
+        return False, "Платёжный модуль не настроен"
+
+    credentials = base64.b64encode(f"{shop_id}:{secret_key}".encode()).decode()
+
+    try:
+        resp = requests.delete(
+            f"https://api.yookassa.ru/v3/payment_methods/{subscription.payment_method_id}",
+            headers={"Authorization": f"Basic {credentials}"},
+            timeout=10,
+        )
+    except requests.RequestException as e:
+        logger.error(f"[detach] Request error: {e}")
+        return False, f"Ошибка соединения с ЮКасса: {e}"
+
+    if resp.status_code in (200, 204, 404):
+        # 404 — уже удалена, тоже считаем успехом
+        subscription.payment_method_id = ''
+        subscription.auto_renew = False
+        subscription.card_last4 = ''
+        subscription.card_brand = ''
+        subscription.save(update_fields=['payment_method_id', 'auto_renew', 'card_last4', 'card_brand'])
+        logger.info(f"[detach] Card detached for subscription {subscription.id}")
+        return True, None
+    else:
+        logger.error(f"[detach] YooKassa error {resp.status_code}: {resp.text[:200]}")
+        return False, f"Ошибка ЮКасса: {resp.status_code}"
+
+
 def create_payment(company, plan_key, return_url, billing_period="monthly"):
     """
     Создаёт платёж через ЮKassa.
