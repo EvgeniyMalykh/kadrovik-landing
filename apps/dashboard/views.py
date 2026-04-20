@@ -403,6 +403,9 @@ def employee_add(request):
 def employee_edit(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    # Если запрос не через HTMX — редиректим на страницу сотрудников
+    if request.method == "GET" and not request.headers.get("HX-Request"):
+        return redirect("dashboard:employees")
     if request.method == "POST":
         role = get_active_member_role(request)
         if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
