@@ -2535,6 +2535,170 @@ def _sfr_export_generate(request, company):
     return response
 
 
+@login_required
+def sfr_efs1_11_pdf(request):
+    """GET /dashboard/sfr/efs1/1.1/pdf/?period_start=...&period_end=..."""
+    from apps.documents.sfr_generator import generate_efs1_11_pdf
+    from apps.employees.models import Employee
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+    import datetime as _dt
+
+    member = get_active_member(request)
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+    if not features.get('sfr_export'):
+        return redirect('dashboard:sfr_export')
+
+    today = date.today()
+    try:
+        period_start = _dt.datetime.strptime(request.GET.get('period_start', ''), '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        period_start = date(today.year, today.month, 1)
+    try:
+        period_end = _dt.datetime.strptime(request.GET.get('period_end', ''), '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        period_end = today
+
+    employees = Employee.objects.filter(company=company)
+    events = []
+    for emp in employees:
+        if emp.hire_date and period_start <= emp.hire_date <= period_end:
+            events.append({
+                'employee': emp,
+                'event_type': 'hire',
+                'event_date': emp.hire_date,
+                'position': emp.position or '',
+            })
+        if emp.fire_date and period_start <= emp.fire_date <= period_end:
+            events.append({
+                'employee': emp,
+                'event_type': 'dismiss',
+                'event_date': emp.fire_date,
+                'position': emp.position or '',
+            })
+    events.sort(key=lambda x: x['event_date'])
+
+    pdf_bytes = generate_efs1_11_pdf(company, events, period_start, period_end)
+    filename = 'EFS1_1.1_' + (company.inn or 'noinn') + '_' + today.strftime('%Y%m%d') + '.pdf'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename=' + filename
+    return response
+
+
+@login_required
+def sfr_efs1_12(request):
+    """GET /dashboard/sfr/efs1/1.2/ — страница подраздела 1.2 (стаж)."""
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+    from apps.employees.models import Employee
+
+    member = get_active_member(request)
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+
+    context = {
+        'has_sfr_export': features.get('sfr_export', False),
+        'company': company,
+    }
+
+    if not features.get('sfr_export'):
+        return render(request, 'dashboard/sfr_stazh.html', context)
+
+    year = request.GET.get('year', '')
+    try:
+        year = int(year)
+    except (ValueError, TypeError):
+        year = date.today().year
+
+    from apps.documents.sfr_generator import _build_stazh_records
+    records = _build_stazh_records(company, year)
+
+    current_year = date.today().year
+    year_choices = list(range(current_year, current_year - 6, -1))
+
+    context.update({
+        'year': year,
+        'year_choices': year_choices,
+        'records': records,
+        'has_sfr_reg_number': bool(company.sfr_reg_number),
+        'has_okved': bool(company.okved),
+    })
+    return render(request, 'dashboard/sfr_stazh.html', context)
+
+
+@login_required
+def sfr_efs1_12_xml(request):
+    """GET /dashboard/sfr/efs1/1.2/xml/?year=2024"""
+    from apps.documents.sfr_generator import generate_efs1_12_xml
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+
+    member = get_active_member(request)
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+    if not features.get('sfr_export'):
+        return redirect('dashboard:sfr_export')
+
+    try:
+        year = int(request.GET.get('year', ''))
+    except (ValueError, TypeError):
+        year = date.today().year
+
+    xml_bytes = generate_efs1_12_xml(company, year)
+    today = date.today()
+    filename = 'EFS1_1.2_' + (company.inn or 'noinn') + '_' + str(year) + '.xml'
+    response = HttpResponse(xml_bytes, content_type='application/xml; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename=' + filename
+    return response
+
+
+@login_required
+def sfr_efs1_12_pdf(request):
+    """GET /dashboard/sfr/efs1/1.2/pdf/?year=2024"""
+    from apps.documents.sfr_generator import generate_efs1_12_pdf
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+
+    member = get_active_member(request)
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+    if not features.get('sfr_export'):
+        return redirect('dashboard:sfr_export')
+
+    try:
+        year = int(request.GET.get('year', ''))
+    except (ValueError, TypeError):
+        year = date.today().year
+
+    pdf_bytes = generate_efs1_12_pdf(company, year)
+    today = date.today()
+    filename = 'EFS1_1.2_' + (company.inn or 'noinn') + '_' + str(year) + '.pdf'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename=' + filename
+    return response
+
+
 # ===== СОБЫТИЯ =====
 
 @login_required
@@ -2713,39 +2877,3 @@ def events_count_api(request):
         pass
 
     return JsonResponse({'count': count})
-
-
-# ── Employee Import from Excel ──────────────────────────────────────
-
-@login_required
-@subscription_required
-def employee_import_template(request):
-    """GET — скачать шаблон Excel для импорта сотрудников."""
-    from .employee_import import generate_employee_import_template
-    data = generate_employee_import_template()
-    response = HttpResponse(
-        data,
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    )
-    response['Content-Disposition'] = 'attachment; filename="employee_import_template.xlsx"'
-    return response
-
-
-@login_required
-@subscription_required
-def employee_import_upload(request):
-    """POST — загрузить Excel с сотрудниками."""
-    if request.method != 'POST' or not request.FILES.get('file'):
-        return JsonResponse({'error': 'Файл не загружен'}, status=400)
-
-    member = get_active_member(request)
-    if not member:
-        return JsonResponse({'error': 'Нет компании'}, status=400)
-
-    role = get_active_member_role(request)
-    if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
-        return JsonResponse({'error': 'Нет прав'}, status=403)
-
-    from .employee_import import import_employees_from_excel
-    result = import_employees_from_excel(request.FILES['file'], member.company)
-    return JsonResponse(result)

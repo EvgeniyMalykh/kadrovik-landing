@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Выгрузка в СФР (ЕФС-1)</h1>
-        <p class="page-subtitle">Подраздел 1.1 — кадровые мероприятия</p>
+        <p class="page-subtitle">Единая форма сведений</p>
     </div>
 </div>
 
@@ -14,10 +14,20 @@
 <div class="card" style="max-width:600px;text-align:center;padding:2rem;">
     <div style="font-size:3rem;margin-bottom:1rem;">&#128274;</div>
     <h3 style="margin-bottom:0.5rem;">Выгрузка в СФР доступна на тарифе Корпоратив</h3>
-    <p style="color:var(--text-secondary);margin-bottom:1.5rem;">Формируйте XML-файлы ЕФС-1 для загрузки в личный кабинет СФР или через оператора ЭДО</p>
+    <p style="color:var(--text-secondary);margin-bottom:1.5rem;">Формируйте XML и PDF файлы ЕФС-1 для загрузки в личный кабинет СФР или через оператора ЭДО</p>
     <a href="/dashboard/subscription/" class="btn-primary" style="display:inline-block;text-decoration:none;">Перейти на Корпоратив</a>
 </div>
 {% else %}
+
+<!-- Табы подразделов -->
+<div style="display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid var(--border-color);">
+    <a href="{% url 'dashboard:sfr_export' %}" style="padding:10px 20px;font-size:0.9rem;font-weight:600;text-decoration:none;border-bottom:2px solid var(--accent-color, #3b82f6);margin-bottom:-2px;color:var(--text-primary);">
+        Подраздел 1.1 — Трудовая деятельность
+    </a>
+    <a href="{% url 'dashboard:sfr_efs1_12' %}" style="padding:10px 20px;font-size:0.9rem;text-decoration:none;color:var(--text-secondary);margin-bottom:-2px;">
+        Подраздел 1.2 — Страховой стаж
+    </a>
+</div>
 
 {% if not has_sfr_reg_number or not has_okved %}
 <div style="background:#fef3cd;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin-bottom:1rem;font-size:0.9rem;display:flex;align-items:center;gap:8px;color:#856404;">
@@ -32,11 +42,11 @@
     <form method="get" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.5rem;">
         <div>
             <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:4px;">Начало периода</label>
-            <input type="date" name="period_start" value="{{ period_start }}" style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;">
+            <input type="date" name="period_start" value="{{ period_start }}" style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);">
         </div>
         <div>
             <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:4px;">Конец периода</label>
-            <input type="date" name="period_end" value="{{ period_end }}" style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;">
+            <input type="date" name="period_end" value="{{ period_end }}" style="padding:6px 10px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);">
         </div>
         <button type="submit" class="btn-primary" style="height:36px;font-size:0.85rem;">Посмотреть мероприятия</button>
     </form>
@@ -73,16 +83,22 @@
         </table>
     </div>
 
-    <form method="post" style="margin-top:1rem;display:flex;align-items:center;gap:12px;">
-        {% csrf_token %}
-        <input type="hidden" name="period_start" value="{{ period_start }}">
-        <input type="hidden" name="period_end" value="{{ period_end }}">
-        <button type="submit" class="btn-primary">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Скачать XML (ЕФС-1)
-        </button>
+    <div style="margin-top:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="period_start" value="{{ period_start }}">
+            <input type="hidden" name="period_end" value="{{ period_end }}">
+            <button type="submit" class="btn-primary">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Скачать XML
+            </button>
+        </form>
+        <a href="{% url 'dashboard:sfr_efs1_11_pdf' %}?period_start={{ period_start }}&period_end={{ period_end }}" class="btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Скачать PDF
+        </a>
         <span style="font-size:0.8rem;color:var(--text-secondary);">{{ events_preview|length }} мероприятий</span>
-    </form>
+    </div>
     {% else %}
     <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
         <div style="font-size:2rem;margin-bottom:0.5rem;">&#128196;</div>
@@ -91,7 +107,7 @@
     {% endif %}
 
     <div style="margin-top:1.5rem;padding:12px 16px;background:var(--bg-secondary, #f8fafc);border-radius:8px;font-size:0.82rem;color:var(--text-secondary);">
-        <strong>Как использовать:</strong> XML-файл формируется по формату ЕФС-1 подраздел 1.1. Загрузите файл в личный кабинет СФР или через оператора ЭДО. Включены мероприятия: приём на работу, увольнение.
+        <strong>Как использовать:</strong> XML-файл формируется по формату ЕФС-1 подраздел 1.1. Загрузите файл в личный кабинет СФР или через оператора ЭДО. PDF — для печати и архива. Включены мероприятия: приём на работу, увольнение.
     </div>
 </div>
 {% endif %}
