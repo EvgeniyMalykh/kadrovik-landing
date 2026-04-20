@@ -1,7 +1,7 @@
 {% if employees %}
 <div class="t13-toolbar" style="margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <span style="font-size:0.9rem;font-weight:700;color:#ffffff;">📋 Табель Т-13:</span>
-    <select id="t13-month" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;">
+    <span style="font-size:0.9rem;font-weight:700;color:var(--text-primary);">📋 Табель Т-13:</span>
+    <select id="t13-month" class="form-control" style="padding:5px 10px;font-size:0.85rem;">
         <option value="1">Январь</option>
         <option value="2">Февраль</option>
         <option value="3">Март</option>
@@ -15,7 +15,7 @@
         <option value="11">Ноябрь</option>
         <option value="12">Декабрь</option>
     </select>
-    <select id="t13-year" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;">
+    <select id="t13-year" class="form-control" style="padding:5px 10px;font-size:0.85rem;">
         <option value="2024">2024</option>
         <option value="2025">2025</option>
         <option value="2026">2026</option>

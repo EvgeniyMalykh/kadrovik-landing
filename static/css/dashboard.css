@@ -2045,3 +2045,19 @@ body {
   color: #7EC8E3 !important;
 }
 
+/* Поля ввода в тёмной теме */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .form-control {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] input::placeholder {
+  color: var(--text-muted) !important;
+}
+[data-theme="dark"] select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}

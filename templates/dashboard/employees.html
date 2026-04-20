@@ -79,11 +79,11 @@
   <div style="flex:2;min-width:180px;">
     <input type="text" name="q" value="{{ q }}" class="form-control"
            placeholder="Поиск по ФИО, должности, отделу, таб. номеру..."
-           style="width:100%;padding:2px 6px;border:1px solid #AAAAAA;font-size:13px;background:#fff;color:var(--text-primary);">
+           style="width:100%;padding:2px 6px;border:1px solid #AAAAAA;font-size:13px;background:var(--bg-card);color:var(--text-primary);">
   </div>
   <div style="flex:1;min-width:130px;">
     <select name="department"
-            style="width:100%;padding:2px 4px;border:1px solid #AAAAAA;font-size:13px;background:#fff;color:var(--text-primary);">
+            style="width:100%;padding:2px 4px;border:1px solid #AAAAAA;font-size:13px;background:var(--bg-card);color:var(--text-primary);">
       <option value="">Все отделы</option>
       {% for dept in departments %}
         <option value="{{ dept.id }}" {% if department_filter == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
@@ -92,7 +92,7 @@
   </div>
   <div style="flex:1;min-width:120px;">
     <select name="contract"
-            style="width:100%;padding:2px 4px;border:1px solid #AAAAAA;font-size:13px;background:#fff;color:var(--text-primary);">
+            style="width:100%;padding:2px 4px;border:1px solid #AAAAAA;font-size:13px;background:var(--bg-card);color:var(--text-primary);">
       <option value="">Тип договора</option>
       <option value="permanent" {% if contract_filter == 'permanent' %}selected{% endif %}>Бессрочный</option>
       <option value="fixed" {% if contract_filter == 'fixed' %}selected{% endif %}>Срочный</option>
@@ -135,7 +135,7 @@
     <form id="importForm" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="file" name="file" accept=".xlsx" id="importFileInput"
-             style="margin-bottom:10px;width:100%;padding:4px;border:1px solid #AAAAAA;font-size:13px;background:#fff;color:var(--text-primary);">
+             style="margin-bottom:10px;width:100%;padding:4px;border:1px solid #AAAAAA;font-size:13px;background:var(--bg-card);color:var(--text-primary);">
       <div style="display:flex;gap:6px;justify-content:flex-end;">
         <button type="button" onclick="document.getElementById('importModal').style.display='none'" class="btn-secondary">Отмена</button>
         <button type="submit" id="importSubmitBtn" class="btn-primary">Загрузить</button>
