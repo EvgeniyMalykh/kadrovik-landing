@@ -45,28 +45,29 @@ SSL: Let's Encrypt, действует до 2026-07-14, HSTS включён
 
 | Приложение | Назначение |
 |-----------|-----------|
-| `accounts` | Регистрация, email-верификация, смена/сброс пароля |
-| `companies` | Профиль организации (ИНН, наименование, адрес, подпись) |
-| `employees` | Сотрудники: приём, увольнение, персональные данные, производственный календарь |
-| `documents` | Генерация кадровых документов (Т-1, Т-2, Т-5, Т-6, Т-8, Т-13, ГПХ, справки) |
-| `billing` | Подписки, платежи ЮKassa, вебхук, тарифные планы |
-| `events` | Celery-задачи: уведомления об истечении подписки |
-| `dashboard` | Главный интерфейс, формы, чат поддержки, табель |
-| `vacations` | Журнал отпусков + публичная форма заявки для сотрудников |
+| `accounts` | Регистрация (Redis pending → email-верификация), кастомная модель User (email = USERNAME_FIELD), смена/сброс пароля |
+| `companies` | Профиль организации (ИНН, ОГРН, КПП, адрес, подпись, директор), CompanyMember (роли: owner/admin/hr/accountant), приглашения |
+| `employees` | Сотрудники (приём, увольнение, персональные данные, паспорт, ИНН, СНИЛС), SalaryHistory, TimeRecord, ProductionCalendar РФ |
+| `documents` | PDF-генерация кадровых документов через ReportLab (Т-1, Т-2, Т-5, Т-6, Т-8, Т-13, ГПХ, справки, приказы) |
+| `billing` | Подписки (trial/start/business/pro), платежи ЮKassa (save_payment_method + рекуррент), webhook, SubscriptionMiddleware |
+| `events` | Celery-задачи: уведомления об истечении подписки (за 3 и 1 день), рекуррентные платежи |
+| `dashboard` | Главный интерфейс (HTMX), формы сотрудников, чат поддержки (Telegram), табель, экспорт Excel, журнал документов |
+| `vacations` | Журнал отпусков (5 видов), публичная форма заявки (без авторизации), график отпусков |
 
 ---
 
 ## Тарифные планы
 
-| Тариф | Цена | Сотрудников |
-|-------|------|------------|
-| Пробный | бесплатно | до 50 (7 дней) |
-| Старт | 790 ₽/мес | до 10 |
-| Бизнес | 1 990 ₽/мес | до 50 |
-| Корпоратив | 4 900 ₽/мес | до 200 |
+| Тариф | Ежемесячно | За год (скидка 25%) | Сотрудников | Особенности |
+|-------|-----------|---------------------|------------|-------------|
+| Пробный | бесплатно | — | до 10 (7 дней) | Документы, Telegram, табель |
+| Старт | 790 ₽/мес | 7 110 ₽/год | до 10 | Документы, Telegram, табель |
+| Бизнес | 1 990 ₽/мес | 17 910 ₽/год | до 50 | + Email-уведомления, мультипользователь, Excel-экспорт |
+| Корпоратив | 4 900 ₽/мес | 44 100 ₽/год | до 200 | + Кастомные шаблоны, приоритетная поддержка, API, экспорт СФР |
 
-Пробный период: **7 дней бесплатно** при регистрации.  
-После истечения trial — блокировка с редиректом на `/dashboard/subscription/`.
+Пробный период: **7 дней бесплатно** при регистрации (до 10 сотрудников).  
+После истечения trial — блокировка с редиректом на `/dashboard/subscription/`.  
+Автопродление: при первом платеже сохраняется `payment_method_id` для рекуррентных платежей через ЮKassa.
 
 ---
 
@@ -356,6 +357,13 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+### Запуск тестов (без PostgreSQL)
+
+```bash
+# Тесты используют SQLite in-memory (не нужен PostgreSQL)
+python manage.py test apps.dashboard.tests_part6 --settings=config.settings.test_local -v 2
+```
+
 ---
 
 ## Администрирование
@@ -375,6 +383,56 @@ docker exec -it kadrovik-web-1 python manage.py shell
 # Применить миграции
 docker exec kadrovik-web-1 python manage.py migrate
 ```
+
+---
+
+## Тестирование
+
+Тесты расположены в `apps/dashboard/tests_part*.py` (6 файлов, 310+ тестов).
+
+### Запуск тестов локально (SQLite)
+
+```bash
+# Все тесты
+python manage.py test apps.dashboard.tests_part1 apps.dashboard.tests_part2 \
+    apps.dashboard.tests_part3 apps.dashboard.tests_part4 apps.dashboard.tests_part5 \
+    apps.dashboard.tests_part6 --settings=config.settings.test_local -v 2
+
+# Только новые тесты (billing, dashboard, documents, accounts)
+python manage.py test apps.dashboard.tests_part6 --settings=config.settings.test_local -v 2
+```
+
+### Запуск тестов на сервере (Docker)
+
+```bash
+docker exec kadrovik-web-1 python manage.py test apps.dashboard.tests_part6 \
+    --settings=config.settings.test 2>&1 | tail -50
+```
+
+### Покрытие по модулям
+
+| Файл | Что тестируется |
+|------|----------------|
+| `tests_part1.py` | Авторизация, CRUD сотрудников, экспорт Excel, базовая подписка |
+| `tests_part2.py` | Профиль компании, документы PDF, отпуска, табель, команда |
+| `tests_part3.py` | REST API, экспорт СФР, кастомные шаблоны, события, поиск/фильтр |
+| `tests_part4.py` | Роли (owner/admin/hr/accountant), Celery-задачи, is_active, вебхуки, лимиты |
+| `tests_part5.py` | Уведомления, производственный календарь, подсчёт отпускных дней |
+| `tests_part6.py` | Trial → Paid переходы, расчёт дат (30/365 дней), billing_period, цены тарифов, salary save/preserve, probation reset, PDF-генераторы (robustness + effective_date), регистрация, webhook-обработка |
+
+---
+
+## Changelog (последние коммиты)
+
+| Хэш | Описание |
+|------|----------|
+| `9d52ed6` | fix: salary change PDF — дата изменения вместо даты приказа |
+| `3c08439` | fix: salary не отображался в форме редактирования — locale запятая |
+| `7b9b049` | fix: employee_edit — убран HX-Request gate для POST (оклад + мобильная версия) |
+| `8f47b6c` | fix: оклад не затирается при редактировании; испытательный срок сбрасывается |
+| `4d1eb0f` | fix: billing — 4 бага логики тарифов и оплаты |
+| `614294e` | fix: годовой тариф показывает цену за год (7 110 / 17 910 / 44 100 ₽) |
+| `2ef6227` | feat: годовой тариф со скидкой 25% — лендинг + приложение + тесты |
 
 ---
 

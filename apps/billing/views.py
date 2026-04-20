@@ -41,7 +41,6 @@ def _check_role(request, min_role):
 
 @login_required
 def checkout(request, plan_key):
-    import sys; print(f"[CHK] user={request.user} plan={plan_key}", file=sys.stderr, flush=True)
     """Инициирует оплату через ЮKassa с save_payment_method для рекуррента."""
     if plan_key not in PLANS:
         return redirect("dashboard:subscription")
@@ -50,7 +49,7 @@ def checkout(request, plan_key):
     if not member:
         return redirect("dashboard:subscription")
 
-    role_ok = _check_role(request, "owner"); import sys; print(f"[CHK] role_ok={role_ok} user={request.user.email}", file=sys.stderr, flush=True)
+    role_ok = _check_role(request, "owner")
     if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
@@ -90,7 +89,7 @@ def payment_success(request):
 @require_POST
 def cancel_autorenew(request):
     """Отключает автопродление и отвязывает карту (очищает payment_method_id)."""
-    role_ok = _check_role(request, "owner"); import sys; print(f"[CHK] role_ok={role_ok} user={request.user.email}", file=sys.stderr, flush=True)
+    role_ok = _check_role(request, "owner")
     if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
@@ -109,7 +108,7 @@ def cancel_autorenew(request):
 @require_POST
 def detach_card(request):
     """Отвязывает карту — удаляет payment_method_id из системы (требование ЮКассы)."""
-    role_ok = _check_role(request, "owner"); import sys; print(f"[CHK] role_ok={role_ok} user={request.user.email}", file=sys.stderr, flush=True)
+    role_ok = _check_role(request, "owner")
     if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
