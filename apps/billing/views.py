@@ -9,7 +9,7 @@ from apps.companies.models import CompanyMember
 from apps.billing.models import Payment, Subscription
 import logging
 logger = logging.getLogger(__name__)
-from apps.billing.services import create_payment, activate_subscription, PLANS
+from apps.billing.services import create_payment, activate_subscription, detach_payment_method, PLANS
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings as django_settings
@@ -143,7 +143,15 @@ def _sync_pending_payments(company):
             billing_period = metadata.get("billing_period", "monthly")
             pm = yk.payment_method
             method_id = pm.id if pm and getattr(pm, 'saved', False) else None
-            activate_subscription(company, plan_key, payment_method_id=method_id, billing_period=billing_period)
+            sub = activate_subscription(company, plan_key, payment_method_id=method_id, billing_period=billing_period)
+            # Сохраняем данные карты
+            if pm and hasattr(pm, 'card') and pm.card:
+                card_last4 = getattr(pm.card, 'last4', '')
+                card_brand = getattr(pm.card, 'card_type', '')
+                if card_last4:
+                    sub.card_last4 = card_last4
+                    sub.card_brand = card_brand
+                    sub.save(update_fields=["card_last4", "card_brand"])
             logger.info(f"[sync] Payment {payment.id} synced as succeeded")
         elif yk.status == 'canceled' and payment.status != Payment.Status.FAILED:
             payment.status = Payment.Status.FAILED
@@ -154,7 +162,7 @@ def _sync_pending_payments(company):
 @login_required
 @require_POST
 def cancel_autorenew(request):
-    """Отключает автопродление и отвязывает карту (очищает payment_method_id)."""
+    """Отключает автопродление и отвязывает карту через ЮКасса API."""
     role_ok = _check_role(request, "owner")
     if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
@@ -162,18 +170,23 @@ def cancel_autorenew(request):
     member = _get_active_member(request)
     if member:
         sub = getattr(member.company, 'subscription', None)
-        if sub:
+        if sub and sub.payment_method_id:
+            success, error = detach_payment_method(sub)
+            if success:
+                messages.success(request, 'Карта отвязана. Автопродление отключено.')
+            else:
+                messages.error(request, f'Не удалось отвязать карту: {error}')
+        elif sub:
             sub.auto_renew = False
-            sub.payment_method_id = ''
-            sub.save(update_fields=['auto_renew', 'payment_method_id'])
-            messages.success(request, 'Карта отвязана. Автопродление отключено.')
+            sub.save(update_fields=['auto_renew'])
+            messages.success(request, 'Автопродление отключено.')
     return redirect("dashboard:subscription")
 
 
 @login_required
 @require_POST
 def detach_card(request):
-    """Отвязывает карту — удаляет payment_method_id из системы (требование ЮКассы)."""
+    """Отвязывает карту через ЮКасса API (DELETE payment_method)."""
     role_ok = _check_role(request, "owner")
     if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
@@ -182,11 +195,17 @@ def detach_card(request):
     if not member:
         return redirect("dashboard:login")
     sub = Subscription.objects.filter(company=member.company).order_by('-started_at').first()
-    if sub:
-        sub.payment_method_id = ''
-        sub.auto_renew = False
-        sub.save(update_fields=['payment_method_id', 'auto_renew'])
-        messages.success(request, 'Карта отвязана. Автопродление отключено.')
+    if not sub:
+        messages.error(request, 'Подписка не найдена.')
+        return redirect("dashboard:subscription")
+    if not sub.payment_method_id:
+        messages.info(request, 'Карта уже отвязана.')
+        return redirect("dashboard:subscription")
+    success, error = detach_payment_method(sub)
+    if success:
+        messages.success(request, 'Карта успешно отвязана. Автопродление отключено.')
+    else:
+        messages.error(request, f'Не удалось отвязать карту: {error}')
     return redirect("dashboard:subscription")
 
 
@@ -238,6 +257,16 @@ def yukassa_webhook(request):
 
         billing_period = metadata.get("billing_period", "monthly")
         sub = activate_subscription(payment.company, plan_key, payment_method_id=method_id or None, billing_period=billing_period)
+
+        # Сохраняем данные карты из ответа ЮКасса
+        card_data = payment_method.get("card", {})
+        card_last4 = card_data.get("last4", "")
+        card_brand = card_data.get("card_type", "")
+        if card_last4:
+            sub.card_last4 = card_last4
+            sub.card_brand = card_brand
+            sub.save(update_fields=["card_last4", "card_brand"])
+
         logger.info(f"[webhook] Subscription activated: company={payment.company_id} plan={plan_key} period={billing_period} expires={sub.expires_at}")
 
         # Отправляем email об успешной оплате
