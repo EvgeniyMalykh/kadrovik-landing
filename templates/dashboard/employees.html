@@ -3,17 +3,17 @@
 {% block nav_employees %}active{% endblock %}
 {% block content %}
 {% if subscription_expired %}
-<div id="paywall-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
-  <div style="background:#1e293b;border-radius:16px;padding:40px;max-width:520px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-    <div style="font-size:48px;margin-bottom:16px;">&#128274;</div>
-    <h2 style="color:#f1f5f9;font-size:1.5rem;margin:0 0 12px;">Пробный период завершён</h2>
-    <p style="color:#94a3b8;margin:0 0 32px;line-height:1.6;">
+<div id="paywall-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);padding:28px;max-width:480px;width:100%;text-align:center;">
+    <div style="font-size:36px;margin-bottom:12px;">&#128274;</div>
+    <h2 style="color:var(--text-primary);font-size:16px;font-weight:700;margin:0 0 8px;">Пробный период завершён</h2>
+    <p style="color:var(--text-secondary);margin:0 0 20px;font-size:13px;line-height:1.5;">
       Ваш пробный период истёк. Выберите тариф чтобы продолжить работу с кадровыми документами.
     </p>
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <a href="{% url 'billing:checkout' 'start' %}" style="background:#3b82f6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Старт — 790 &#8381;/мес</a>
-      <a href="{% url 'billing:checkout' 'business' %}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Бизнес — 1 990 &#8381;/мес</a>
-      <a href="{% url 'billing:checkout' 'pro' %}" style="background:#8b5cf6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Про — 4 900 &#8381;/мес</a>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <a href="{% url 'billing:checkout' 'start' %}" class="btn-primary" style="text-decoration:none;">Старт — 790 &#8381;/мес</a>
+      <a href="{% url 'billing:checkout' 'business' %}" class="btn-primary" style="text-decoration:none;">Бизнес — 1 990 &#8381;/мес</a>
+      <a href="{% url 'billing:checkout' 'pro' %}" class="btn-primary" style="text-decoration:none;">Про — 4 900 &#8381;/мес</a>
     </div>
   </div>
 </div>
@@ -57,73 +57,61 @@
     </button>
 </div>
 
-<!-- Вкладки: Активные / Уволенные / Все -->
-<ul class="nav nav-tabs mb-3" style="border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:1rem !important;display:flex;gap:0;">
-  <li class="nav-item">
-    <a class="nav-link {% if status_filter == 'active' %}active{% endif %}"
-       href="?status=active{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}"
-       style="display:inline-block;padding:10px 20px;text-decoration:none;font-weight:600;font-size:0.9rem;border-radius:8px 8px 0 0;
-              {% if status_filter == 'active' %}background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-bottom:2px solid #3b82f6;{% else %}color:#94a3b8;border:1px solid transparent;{% endif %}">
-      Активные <span style="background:{% if status_filter == 'active' %}rgba(59,130,246,0.2){% else %}rgba(148,163,184,0.15){% endif %};padding:2px 8px;border-radius:10px;font-size:0.8rem;margin-left:4px;">{{ active_count }}</span>
+<!-- Вкладки: Активные / Уволенные / Все (1C tabs) -->
+<div class="tabs-1c">
+    <a class="tab-1c {% if status_filter == 'active' %}active{% endif %}"
+       href="?status=active{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}">
+      Активные ({{ active_count }})
     </a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link {% if status_filter == 'fired' %}active{% endif %}"
-       href="?status=fired{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}"
-       style="display:inline-block;padding:10px 20px;text-decoration:none;font-weight:600;font-size:0.9rem;border-radius:8px 8px 0 0;
-              {% if status_filter == 'fired' %}background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-bottom:2px solid #ef4444;{% else %}color:#94a3b8;border:1px solid transparent;{% endif %}">
-      Уволенные <span style="background:{% if status_filter == 'fired' %}rgba(239,68,68,0.2){% else %}rgba(148,163,184,0.15){% endif %};padding:2px 8px;border-radius:10px;font-size:0.8rem;margin-left:4px;">{{ fired_count }}</span>
+    <a class="tab-1c {% if status_filter == 'fired' %}active{% endif %}"
+       href="?status=fired{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}">
+      Уволенные ({{ fired_count }})
     </a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link {% if status_filter == 'all' %}active{% endif %}"
-       href="?status=all{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}"
-       style="display:inline-block;padding:10px 20px;text-decoration:none;font-weight:600;font-size:0.9rem;border-radius:8px 8px 0 0;
-              {% if status_filter == 'all' %}background:rgba(148,163,184,0.15);color:#e2e8f0;border:1px solid rgba(148,163,184,0.3);border-bottom:2px solid #94a3b8;{% else %}color:#94a3b8;border:1px solid transparent;{% endif %}">
+    <a class="tab-1c {% if status_filter == 'all' %}active{% endif %}"
+       href="?status=all{% if q %}&q={{ q }}{% endif %}{% if department_filter %}&department={{ department_filter }}{% endif %}{% if contract_filter %}&contract={{ contract_filter }}{% endif %}">
       Все
     </a>
-  </li>
-</ul>
+</div>
 
-<!-- Поиск и фильтры -->
-<form method="GET" class="row g-2 mb-3" id="search-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem !important;">
+<!-- Поиск и фильтры (1C toolbar style) -->
+<form method="GET" id="search-form" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
   <input type="hidden" name="status" value="{{ status_filter }}">
-  <div style="flex:2;min-width:200px;">
+  <div style="flex:2;min-width:180px;">
     <input type="text" name="q" value="{{ q }}" class="form-control"
            placeholder="Поиск по ФИО, должности, отделу, таб. номеру..."
-           style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:0.9rem;">
+           style="width:100%;padding:2px 6px;border:1px solid #AAAAAA;font-size:13px;background:#fff;color:var(--text-primary);">
   </div>
-  <div style="flex:1;min-width:150px;">
-    <select name="department" class="form-select"
-            style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:0.9rem;">
+  <div style="flex:1;min-width:130px;">
+    <select name="department"
+            style="width:100%;padding:2px 4px;border:1px solid #AAAAAA;font-size:13px;background:#fff;color:var(--text-primary);">
       <option value="">Все отделы</option>
       {% for dept in departments %}
         <option value="{{ dept.id }}" {% if department_filter == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
       {% endfor %}
     </select>
   </div>
-  <div style="flex:1;min-width:140px;">
-    <select name="contract" class="form-select"
-            style="width:100%;padding:10px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:0.9rem;">
+  <div style="flex:1;min-width:120px;">
+    <select name="contract"
+            style="width:100%;padding:2px 4px;border:1px solid #AAAAAA;font-size:13px;background:#fff;color:var(--text-primary);">
       <option value="">Тип договора</option>
       <option value="permanent" {% if contract_filter == 'permanent' %}selected{% endif %}>Бессрочный</option>
       <option value="fixed" {% if contract_filter == 'fixed' %}selected{% endif %}>Срочный</option>
       <option value="gph" {% if contract_filter == 'gph' %}selected{% endif %}>ГПХ</option>
     </select>
   </div>
-  <div style="display:flex;gap:6px;">
-    <button type="submit" class="btn-primary" style="padding:10px 20px;white-space:nowrap;">Найти</button>
+  <div style="display:flex;gap:4px;">
+    <button type="submit" class="btn-primary" style="white-space:nowrap;">Найти</button>
     {% if q or department_filter or contract_filter %}
-      <a href="?status={{ status_filter }}" class="btn-secondary" style="padding:10px 14px;text-decoration:none;white-space:nowrap;">&#10005;</a>
+      <a href="?status={{ status_filter }}" class="btn-secondary" style="text-decoration:none;white-space:nowrap;">&#10005;</a>
     {% endif %}
   </div>
 </form>
 
 {% if total_count == 0 and q or total_count == 0 and department_filter or total_count == 0 and contract_filter %}
-<div style="text-align:center;padding:60px 20px;color:#94a3b8;">
-    <div style="font-size:2.5rem;margin-bottom:12px;">&#128269;</div>
-    <p style="font-size:1rem;margin:0 0 12px;">Ничего не найдено</p>
-    <a href="?status={{ status_filter }}" class="btn-secondary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem;">Сбросить фильтры</a>
+<div class="empty-state">
+    <div class="empty-icon">&#128269;</div>
+    <p>Ничего не найдено</p>
+    <a href="?status={{ status_filter }}" class="btn-secondary" style="text-decoration:none;">Сбросить фильтры</a>
 </div>
 {% else %}
 <div class="card">
@@ -134,26 +122,26 @@
 {% endif %}
 
 <!-- Модал: Импорт сотрудников из Excel -->
-<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:var(--color-surface, #1e293b);border-radius:12px;padding:28px;width:480px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
-    <h3 style="margin:0 0 12px;color:var(--color-text, #f1f5f9);font-size:1.2rem;">Импорт сотрудников</h3>
-    <p style="color:var(--color-text-secondary, #94a3b8);font-size:14px;margin:0 0 16px;line-height:1.5;">
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border:1px solid var(--border);padding:20px;width:440px;max-width:90vw;">
+    <h3 style="margin:0 0 8px;color:var(--text-primary);font-size:14px;font-weight:700;">Импорт сотрудников</h3>
+    <p style="color:var(--text-secondary);font-size:13px;margin:0 0 12px;line-height:1.4;">
       Скачайте шаблон, заполните данные сотрудников и загрузите файл.
     </p>
-    <a href="{% url 'dashboard:employee_import_template' %}" download="employee_import_template.xlsx" target="_blank" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;text-decoration:none;padding:8px 14px;font-size:0.85rem;">
-      <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+    <a href="{% url 'dashboard:employee_import_template' %}" download="employee_import_template.xlsx" target="_blank" class="btn-secondary" style="display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;text-decoration:none;">
+      <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
       Скачать шаблон Excel
     </a>
     <form id="importForm" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="file" name="file" accept=".xlsx" id="importFileInput"
-             style="margin-bottom:14px;width:100%;padding:8px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.05);color:#e2e8f0;font-size:0.9rem;">
-      <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button type="button" onclick="document.getElementById('importModal').style.display='none'" class="btn-secondary" style="padding:8px 16px;">Отмена</button>
-        <button type="submit" id="importSubmitBtn" class="btn-primary" style="padding:8px 20px;">Загрузить</button>
+             style="margin-bottom:10px;width:100%;padding:4px;border:1px solid #AAAAAA;font-size:13px;background:#fff;color:var(--text-primary);">
+      <div style="display:flex;gap:6px;justify-content:flex-end;">
+        <button type="button" onclick="document.getElementById('importModal').style.display='none'" class="btn-secondary">Отмена</button>
+        <button type="submit" id="importSubmitBtn" class="btn-primary">Загрузить</button>
       </div>
     </form>
-    <div id="importResult" style="margin-top:14px;display:none;padding:12px;border-radius:8px;font-size:0.9rem;"></div>
+    <div id="importResult" style="margin-top:10px;display:none;padding:8px;font-size:13px;border:1px solid var(--border);"></div>
   </div>
 </div>
 

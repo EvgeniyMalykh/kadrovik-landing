@@ -7,8 +7,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Кадровый автопилот{% endblock %}</title>
-    <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('kadrovik-theme')||'dark');</script>
-    <link rel="stylesheet" href="/static/css/dashboard.css?v=16">
+    <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('kadrovik-theme')||'light');</script>
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=20">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script>
         // CSRF для HTMX POST запросов
@@ -31,59 +31,34 @@
     </script>
     <noscript><div><img src="https://mc.yandex.ru/watch/108635022" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <!-- /Yandex.Metrika counter -->
-<style>
-/* Нав-группа с подменю */
-.nav-group-toggle {
-  cursor: pointer;
-  user-select: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-start;
-}
-.nav-group-toggle .nav-chevron {
-  margin-left: auto;
-  transition: transform 0.2s ease;
-  flex-shrink: 0;
-}
-.nav-group.open .nav-chevron {
-  transform: rotate(180deg);
-}
-.nav-submenu {
-  display: none;
-  flex-direction: column;
-  padding-left: 12px;
-  margin-top: 2px;
-  border-left: 2px solid var(--border-color, #e5e7eb);
-  margin-left: 10px;
-}
-.nav-group.open .nav-submenu {
-  display: flex;
-}
-.nav-subitem {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 10px;
-  border-radius: 7px;
-  font-size: 0.83rem;
-  color: var(--text-secondary, #6b7280);
-  text-decoration: none;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
-}
-.nav-subitem:hover {
-  background: var(--bg-hover, rgba(99,102,241,0.08));
-  color: var(--color-primary, #6366f1);
-}
-.nav-subitem.active {
-  background: rgba(99,102,241,0.12);
-  color: var(--color-primary, #6366f1);
-  font-weight: 600;
-}
-</style>
+<!-- Nav group styles are in dashboard.css -->
 </head>
 <body class="dashboard-body">
+
+    <!-- 1C Topbar -->
+    <div class="topbar-1c">
+        <div class="topbar-1c__left">
+            <a href="{% url 'dashboard:employees' %}" class="topbar-1c__brand">&#128203; Кадровый автопилот</a>
+            <div class="topbar-1c__menu">
+                <a href="{% url 'dashboard:employees' %}" class="topbar-1c__menu-item">Кадры</a>
+                <a href="{% url 'dashboard:forms_list' %}" class="topbar-1c__menu-item">Документы</a>
+                <a href="{% url 'dashboard:sfr_export' %}" class="topbar-1c__menu-item">Отчёты</a>
+                {% if member_role == 'owner' or member_role == 'admin' %}
+                <a href="{% url 'dashboard:company' %}" class="topbar-1c__menu-item">Настройки</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="topbar-1c__right">
+            <a href="{% url 'dashboard:events_list' %}" id="events-bell" title="События" style="position:relative;text-decoration:none;color:rgba(255,255,255,0.8);transition:color 0.1s;" onmouseover="this.style.color='#FFFFFF'" onmouseout="this.style.color='rgba(255,255,255,0.8)'">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span id="events-badge" style="display:none;position:absolute;top:-6px;right:-8px;background:#CC0000;color:#fff;font-size:9px;font-weight:700;padding:0 4px;min-width:14px;text-align:center;">0</span>
+            </a>
+            <span class="topbar-1c__user">
+                {{ request.user.email }}
+            </span>
+            <a href="{% url 'dashboard:logout' %}" class="topbar-1c__logout">Выход</a>
+        </div>
+    </div>
 
     <!-- Hamburger button (mobile only) -->
     <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Меню">&#9776;</button>
@@ -91,34 +66,32 @@
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <span class="logo-icon">&#128203;</span>
-            <span class="logo-text">Кадровый автопилот</span>
-        </div>
         <nav class="sidebar-nav">
+            <!-- КАДРЫ -->
+            <div class="nav-section-label">Кадры</div>
             <a href="{% url 'dashboard:employees' %}" class="nav-item {% block nav_employees %}{% endblock %}" onclick="closeSidebar()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="nav-icon">&#128100;</span>
                 Сотрудники
             </a>
+            {% if member_role == 'owner' or member_role == 'admin' or member_role == 'hr' %}
+            <a href="{% url 'dashboard:team_list' %}" class="nav-item {% block nav_team %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#127970;</span>
+                Команда
+            </a>
+            {% endif %}
             <a href="{% url 'dashboard:timesheet_edit' %}" class="nav-item {% block nav_timesheet %}{% endblock %}" onclick="closeSidebar()">
-                <span class="nav-icon">&#128197;</span>
-                <span>Табель</span>
+                <span class="nav-icon">&#128203;</span>
+                Табель
             </a>
-                        <a href="{% url 'dashboard:forms_list' %}" class="nav-item {% block nav_forms %}{% endblock %}" onclick="closeSidebar()"><span class="nav-icon">&#128196;</span><span>Формы</span></a>
-            <a href="/vacations/" class="nav-item {% block nav_vacations %}{% endblock %}" onclick="closeSidebar()">
-                <span class="nav-icon">&#127958;&#65039;</span>
-                <span>Отпуска</span>
-            </a>
-            <a href="/vacations/schedule/" class="nav-item {% block nav_vacation_schedule %}{% endblock %}" onclick="closeSidebar()">
-                <span class="nav-icon">&#128197;</span>
-                <span>График отпусков</span>
-            </a>
+
+            <!-- ДОКУМЕНТЫ -->
+            <div class="nav-section-label">Документы</div>
             <!-- История с подменю -->
             <div class="nav-group" id="nav-group-history">
               <div class="nav-item nav-group-toggle {% block nav_history %}{% endblock %}" onclick="toggleNavGroup('nav-group-history')">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                <span>История</span>
-                <svg class="nav-chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="nav-icon">&#128196;</span>
+                <span>Все документы</span>
+                <svg class="nav-chevron" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
               </div>
               <div class="nav-submenu">
                 <a href="{% url 'dashboard:forms_list' %}" class="nav-subitem {% if active_type == '' and request.resolver_match.url_name == 'forms_list' %}active{% endif %}" onclick="closeSidebar()">
@@ -162,46 +135,46 @@
                 </a>
               </div>
             </div>
-
-            <a href="{% url 'dashboard:events_list' %}" class="nav-item {% block nav_events %}{% endblock %}" onclick="closeSidebar()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                События
+            <a href="/vacations/" class="nav-item {% block nav_vacations %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#127958;&#65039;</span>
+                <span>Отпуска</span>
             </a>
+            <a href="/vacations/schedule/" class="nav-item {% block nav_vacation_schedule %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#128197;</span>
+                <span>График отпусков</span>
+            </a>
+            <a href="{% url 'dashboard:sfr_export' %}" class="nav-item {% block nav_sfr %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#128202;</span>
+                ЕФС-1 / СФР
+            </a>
+
+            <!-- НАСТРОЙКИ -->
+            <div class="nav-section-label">Настройки</div>
             {% if member_role == 'owner' or member_role == 'admin' or member_role == 'hr' %}
             <a href="{% url 'dashboard:company' %}" class="nav-item {% block nav_company %}{% endblock %}" onclick="closeSidebar()">
-                <span class="nav-icon">&#127962;</span>
-                <span>Компания</span>
+                <span class="nav-icon">&#127963;</span>
+                Компания
             </a>
             {% endif %}
             {% if member_role == 'owner' %}
             <a href="{% url 'dashboard:notification_settings' %}" class="nav-item {% block nav_notifications %}{% endblock %}" onclick="closeSidebar()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="nav-icon">&#128276;</span>
                 Уведомления
             </a>
             {% endif %}
-            {% if member_role == 'owner' or member_role == 'admin' or member_role == 'hr' %}
-            <a href="{% url 'dashboard:team_list' %}" class="nav-item {% block nav_team %}{% endblock %}" onclick="closeSidebar()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                Команда
-            </a>
-            {% endif %}
             <a href="{% url 'dashboard:document_templates' %}" class="nav-item {% block nav_templates %}{% endblock %}" onclick="closeSidebar()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span class="nav-icon">&#128196;</span>
                 Шаблоны
-            </a>
-            <a href="{% url 'dashboard:sfr_export' %}" class="nav-item {% block nav_sfr %}{% endblock %}" onclick="closeSidebar()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                СФР
             </a>
             {% if member_role == 'owner' or member_role == 'admin' %}
             <a href="{% url 'dashboard:api_settings' %}" class="nav-item {% block nav_api %}{% endblock %}" onclick="closeSidebar()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                <span class="nav-icon">&#128268;</span>
                 API
             </a>
             {% endif %}
             {% if member_role == 'owner' %}
             <a href="{% url 'dashboard:subscription' %}" class="nav-item {% block nav_subscription %}{% endblock %}" onclick="closeSidebar()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <span class="nav-icon">&#128179;</span>
                 Подписка
                 {% if plan_key == 'trial' %}<span class="plan-badge plan-badge--trial">Trial</span>{% endif %}
                 {% if plan_key == 'start' %}<span class="plan-badge plan-badge--start">Старт</span>{% endif %}
@@ -209,21 +182,22 @@
                 {% if plan_key == 'pro' %}<span class="plan-badge plan-badge--pro">Про</span>{% endif %}
             </a>
             {% endif %}
-        <button class="nav-item nav-support-btn" onclick="openSupportModal()" style="width:100%;border:none;cursor:pointer;background:none;text-align:left;">
-                <svg width="18" height="18" fill="#e11d48" stroke="#e11d48" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+
+            <a href="{% url 'dashboard:events_list' %}" class="nav-item {% block nav_events %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#128276;</span>
+                События
+            </a>
+            <button class="nav-item nav-support-btn" onclick="openSupportModal()" style="width:100%;border:none;cursor:pointer;background:none;text-align:left;">
+                <span class="nav-icon">&#10084;</span>
                 Помочь проекту
-        </button>
+            </button>
         </nav>
         <div class="sidebar-footer">
-            <div class="user-info" style="position:relative;">
-                <a href="{% url 'dashboard:events_list' %}" id="events-bell" title="События" style="position:absolute;right:0;top:-8px;text-decoration:none;color:#94a3b8;transition:color 0.2s;" onmouseover="this.style.color='#f59e0b'" onmouseout="this.style.color='#94a3b8'">
-                  <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                  <span id="events-badge" style="display:none;position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;font-size:0.65rem;font-weight:700;padding:1px 5px;border-radius:10px;min-width:16px;text-align:center;">0</span>
-                </a>
+            <div class="user-info">
                 <div class="user-avatar">{{ request.user.email|first|upper }}</div>
                 <div class="user-details">
                     <div class="user-email">{{ request.user.email }}</div>
-                    <div class="user-role-badge" style="font-size:0.72rem;color:#94a3b8;margin-top:2px;">
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:1px;">
                       {% if member_role == 'owner' %}Владелец
                       {% elif member_role == 'admin' %}Администратор
                       {% elif member_role == 'hr' %}Кадровик
@@ -233,31 +207,31 @@
                 </div>
             </div>
             {% if user_memberships|length > 1 %}
-            <div class="company-switcher" style="margin-bottom:6px;">
+            <div style="margin-bottom:4px;">
               {% for m in user_memberships %}
               <a href="{% url 'dashboard:switch_company' m.company.id %}"
-                 style="display:block;padding:6px 10px;border-radius:6px;font-size:0.78rem;text-decoration:none;transition:background 0.15s;{% if m.company.id == active_company_id %}background:var(--accent);color:#fff;font-weight:600;{% else %}color:var(--text-secondary);{% endif %}"
-                 onmouseover="if(this.style.background!='var(--accent)')this.style.background='var(--bg-primary)'"
-                 onmouseout="if(this.style.background!='var(--accent)')this.style.background=''">
-                {% if m.company.id == active_company_id %}✓ {% endif %}{{ m.company.name|truncatechars:22 }}
+                 style="display:block;padding:3px 8px;font-size:11px;text-decoration:none;transition:background 0.1s;{% if m.company.id == active_company_id %}background:var(--accent);color:#fff;font-weight:600;{% else %}color:var(--text-secondary);{% endif %}"
+                 onmouseover="if(!this.style.background.includes('var'))this.style.background='#D6E8F5'"
+                 onmouseout="if(!this.style.background.includes('var'))this.style.background=''">
+                {% if m.company.id == active_company_id %}&#10003; {% endif %}{{ m.company.name|truncatechars:20 }}
               </a>
               {% endfor %}
             </div>
             {% endif %}
             <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()">
-                <span class="theme-toggle__icon" id="theme-icon">🌙</span>
-                <span id="theme-label">Светлая тема</span>
+                <span class="theme-toggle__icon" id="theme-icon">&#9728;&#65039;</span>
+                <span id="theme-label">Тёмная тема</span>
             </button>
             <button class="help-btn" onclick="openHelpModal()">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 Помощь
             </button>
-            <a href="{% url 'dashboard:change_password' %}" class="nav-item" style="font-size:0.82rem;" onclick="closeSidebar()">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <a href="{% url 'dashboard:change_password' %}" class="nav-item" style="font-size:12px;" onclick="closeSidebar()">
+                <span class="nav-icon">&#128274;</span>
                 Сменить пароль
             </a>
-            <a href="{% url 'dashboard:logout' %}" class="nav-item nav-logout">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <a href="{% url 'dashboard:logout' %}" class="nav-item nav-logout" style="font-size:12px;">
+                <span class="nav-icon">&#128682;</span>
                 Выйти
             </a>
         </div>
@@ -265,8 +239,8 @@
     <main class="main-content">
         <div class="content-wrapper">
             {% if subscription and not subscription.is_active %}
-            <div style="background:#dc2626;color:#fff;padding:10px 20px;text-align:center;font-size:0.9rem;border-radius:8px;margin-bottom:1rem;">
-              &#9888;&#65039; Подписка истекла. <a href="/dashboard/subscription/" style="color:#fff;font-weight:600;text-decoration:underline;">Выберите тариф</a> для продолжения работы.
+            <div style="background:#CC0000;color:#fff;padding:6px 12px;text-align:center;font-size:13px;margin-bottom:8px;">
+              &#9888; Подписка истекла. <a href="/dashboard/subscription/" style="color:#fff;font-weight:600;text-decoration:underline;">Выберите тариф</a> для продолжения работы.
             </div>
             {% endif %}
             {% block content %}{% endblock %}
@@ -293,16 +267,16 @@
             var label = document.getElementById('theme-label');
             if (!icon || !label) return;
             if (theme === 'dark') {
-                icon.textContent = '🌙';
+                icon.textContent = '\u263C';
                 label.textContent = 'Светлая тема';
             } else {
-                icon.textContent = '☀️';
+                icon.textContent = '\uD83C\uDF19';
                 label.textContent = 'Тёмная тема';
             }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            var saved = localStorage.getItem('kadrovik-theme') || 'dark';
+            var saved = localStorage.getItem('kadrovik-theme') || 'light';
             updateThemeBtn(saved);
         });
         // ─────────────────────────────────────────────────────────────
