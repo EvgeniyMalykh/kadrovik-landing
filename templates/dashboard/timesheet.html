@@ -14,6 +14,8 @@
         <button onclick="saveTimesheet()" class="btn-primary" id="save-btn">💾 Сохранить</button>
         <a href="{% url 'dashboard:download_t13' %}?year={{ year }}&month={{ month }}" class="btn-secondary">📥 Скачать PDF</a>
         {% if plan_features.export_excel %}<a href="{% url 'dashboard:export_timesheet_excel' %}?year={{ year }}&month={{ month }}" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px;">📊 Скачать Excel</a>{% endif %}
+        {% if plan_features.export_excel %}<a href="{% url 'dashboard:export_timesheet_free' %}?year={{ year }}&month={{ month }}" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px;">📋 Excel (свободная)</a>{% endif %}
+        {% if plan_features.export_excel %}<a href="{% url 'dashboard:export_timesheet_t13' %}?year={{ year }}&month={{ month }}" class="btn-secondary" style="display:inline-flex;align-items:center;gap:6px;">📄 Excel (Т-13)</a>{% endif %}
     </div>
 </div>
 

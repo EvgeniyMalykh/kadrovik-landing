@@ -35,6 +35,8 @@ urlpatterns = [
     # Excel export
     path("export/employees/", views.export_employees_excel, name="export_employees_excel"),
     path("export/timesheet/", views.export_timesheet_excel, name="export_timesheet_excel"),
+    path("export/timesheet/free/", views.export_timesheet_free_view, name="export_timesheet_free"),
+    path("export/timesheet/t13/", views.export_timesheet_t13_view, name="export_timesheet_t13"),
     path("t13/", views.download_t13, name="download_t13"),
     path("timesheet/", views.timesheet_edit, name="timesheet_edit"),
     path("timesheet/save/", views.timesheet_save, name="timesheet_save"),

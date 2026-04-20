@@ -2007,6 +2007,58 @@ def export_timesheet_excel(request):
     return response
 
 
+@login_required
+@subscription_required
+def export_timesheet_free_view(request):
+    """Экспорт табеля — свободная таблица. Тариф Бизнес+."""
+    import datetime
+    from django.http import JsonResponse
+    if not _require_plan(request, 'business'):
+        return JsonResponse({'error': 'Функция доступна на тарифах Бизнес и Корпоратив'}, status=403)
+    member = get_active_member(request)
+    company = member.company
+    try:
+        y = int(request.GET.get('year', datetime.date.today().year))
+        m = int(request.GET.get('month', datetime.date.today().month))
+    except (ValueError, TypeError):
+        y, m = datetime.date.today().year, datetime.date.today().month
+    from .excel_export import export_timesheet_free
+    data = export_timesheet_free(company, y, m)
+    filename = f'tabel_{y}_{m:02d}.xlsx'
+    response = HttpResponse(
+        data,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@subscription_required
+def export_timesheet_t13_view(request):
+    """Экспорт табеля — форма Т-13 (Excel). Тариф Бизнес+."""
+    import datetime
+    from django.http import JsonResponse
+    if not _require_plan(request, 'business'):
+        return JsonResponse({'error': 'Функция доступна на тарифах Бизнес и Корпоратив'}, status=403)
+    member = get_active_member(request)
+    company = member.company
+    try:
+        y = int(request.GET.get('year', datetime.date.today().year))
+        m = int(request.GET.get('month', datetime.date.today().month))
+    except (ValueError, TypeError):
+        y, m = datetime.date.today().year, datetime.date.today().month
+    from .excel_export import export_timesheet_t13
+    data = export_timesheet_t13(company, y, m)
+    filename = f'T13_{y}_{m:02d}.xlsx'
+    response = HttpResponse(
+        data,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
 # ===== TEAM MANAGEMENT =====
 
 from django.contrib import messages as django_messages
