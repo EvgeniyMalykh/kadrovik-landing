@@ -809,11 +809,26 @@ function saveCompany() {
 function saveEmployee() {
   const form = document.getElementById('employeeForm');
   const data = new FormData(form);
+
+  // Разбиваем full_name на last_name / first_name / middle_name
+  const fullName = (data.get('full_name') || '').trim();
+  const parts = fullName.split(/\s+/);
+  data.delete('full_name');
+  data.set('last_name',   parts[0] || '');
+  data.set('first_name',  parts[1] || '');
+  data.set('middle_name', parts.slice(2).join(' ') || '');
+
+  // Если дата приёма пустая — ставим сегодня
+  if (!data.get('hire_date')) {
+    const today = new Date().toISOString().split('T')[0];
+    data.set('hire_date', today);
+  }
+
   fetch('/dashboard/employees/add/', {
     method: 'POST',
     headers: {'X-CSRFToken': data.get('csrfmiddlewaretoken'), 'X-Requested-With': 'XMLHttpRequest'},
     body: data
-  }).then(r => {
+  }).then(r => r.json().catch(() => ({}))).then(json => {
     showStep(3);
   }).catch(() => showStep(3));
 }
