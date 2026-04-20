@@ -2017,3 +2017,31 @@ body {
   border-color: var(--border);
 }
 [data-theme="dark"] .onboarding-step .form-group input::placeholder { color: #888; }
+
+/* btn-doc в тёмной теме */
+[data-theme="dark"] .btn-doc {
+  background: #2A4060;
+  border-color: #4A7AB5;
+  color: #7EC8E3;
+}
+[data-theme="dark"] .btn-doc:hover {
+  background: #5BA3D9;
+  color: #ffffff;
+  border-color: #5BA3D9;
+}
+[data-theme="dark"] .btn-doc-wrap:hover .btn-doc {
+  background: #5BA3D9;
+  color: #ffffff;
+}
+[data-theme="dark"] .btn-doc-label {
+  color: #888888 !important;
+}
+[data-theme="dark"] .btn-doc-wrap:hover .btn-doc-label {
+  color: #7EC8E3 !important;
+}
+/* Аватар без фото в тёмной теме */
+[data-theme="dark"] .emp-avatar-initials {
+  background: #2A4060 !important;
+  color: #7EC8E3 !important;
+}
+
