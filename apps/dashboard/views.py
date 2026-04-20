@@ -129,7 +129,7 @@ def employees_list(request):
             plan=Subscription.Plan.TRIAL,
             status=Subscription.Status.ACTIVE,
             expires_at=timezone.now() + _dt.timedelta(days=7),
-            max_employees=50,
+            max_employees=10,
         )
     # Оставшиеся дни trial
     trial_days_left = None

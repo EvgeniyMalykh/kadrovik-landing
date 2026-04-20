@@ -7,12 +7,24 @@ from apps.billing.models import Payment, Subscription
 
 logger = logging.getLogger(__name__)
 
+# Цены по периодам оплаты
+PLAN_PRICES = {
+    'start':    {'monthly': 790,   'annual': 7110},
+    'business': {'monthly': 1990,  'annual': 17910},
+    'pro':      {'monthly': 4900,  'annual': 44100},
+}
+PLAN_MONTHLY_EQUIVALENT = {
+    'start':    {'annual': 592},
+    'business': {'annual': 1492},
+    'pro':      {'annual': 3675},
+}
+
 # Лимиты и фичи по тарифам
 PLANS = {
     "trial": {
         "name": "Пробный",
         "price": 0,
-        "max_employees": 50,
+        "max_employees": 10,
         "months": 0,
         "features": {
             "documents":         True,
@@ -105,7 +117,8 @@ def get_subscription_context(company):
     plan_key = sub.plan if sub else "start"
     features = get_plan_features(plan_key)
     plan_data = PLANS.get(plan_key, PLANS["start"])
-    max_emp = plan_data["max_employees"]
+    # Берём max_employees из БД (sub) если подписка есть, иначе из PLANS
+    max_emp = sub.max_employees if sub else plan_data["max_employees"]
     emp_count = Employee.objects.filter(company=company).count() if company else 0
     return {
         "sub": sub,
@@ -126,7 +139,7 @@ def _get_yookassa():
     return yookassa
 
 
-def create_payment(company, plan_key, return_url):
+def create_payment(company, plan_key, return_url, billing_period="monthly"):
     """
     Создаёт платёж через ЮKassa.
     Пытается создать с save_payment_method=True для рекуррентных платежей.
@@ -134,10 +147,16 @@ def create_payment(company, plan_key, return_url):
     Возвращает (payment_db, confirmation_url).
     """
     plan = PLANS[plan_key]
+    # Определяем сумму по периоду
+    if billing_period == 'annual' and plan_key in PLAN_PRICES:
+        price = PLAN_PRICES[plan_key]['annual']
+    else:
+        price = plan["price"]
+        billing_period = 'monthly'
 
     payment = Payment.objects.create(
         company=company,
-        amount=plan["price"],
+        amount=price,
         plan=plan_key,
         status=Payment.Status.PENDING,
     )
@@ -159,7 +178,7 @@ def create_payment(company, plan_key, return_url):
 
         payment_data = {
             "amount": {
-                "value": f"{plan['price']:.2f}",
+                "value": f"{price:.2f}",
                 "currency": "RUB",
             },
             "confirmation": {
@@ -167,21 +186,22 @@ def create_payment(company, plan_key, return_url):
                 "return_url": return_url,
             },
             "capture": True,
-            "description": f"Подписка «{plan['name']}» — {company.name}",
+            "description": f"Подписка «{plan['name']}» {'на год' if billing_period == 'annual' else 'на 1 мес'} — {company.name}",
             "metadata": {
                 "payment_db_id": str(payment.id),
                 "plan": plan_key,
                 "company_id": str(company.id),
+                "billing_period": billing_period,
             },
             "receipt": {
                 "customer": {
                     "email": owner_email,
                 },
                 "items": [{
-                    "description": f"Подписка «{plan['name']}» на 1 месяц",
+                    "description": f"Подписка «{plan['name']}» {'на 12 месяцев' if billing_period == 'annual' else 'на 1 месяц'}",
                     "quantity": "1.00",
                     "amount": {
-                        "value": f"{plan['price']:.2f}",
+                        "value": f"{price:.2f}",
                         "currency": "RUB",
                     },
                     "vat_code": 1,
@@ -234,10 +254,16 @@ def create_recurring_payment(company, plan_key):
         return None
 
     plan = PLANS.get(plan_key, PLANS['start'])
+    # Рекуррент: используем период из подписки
+    billing_period = getattr(sub, 'billing_period', 'monthly')
+    if billing_period == 'annual' and plan_key in PLAN_PRICES:
+        price = PLAN_PRICES[plan_key]['annual']
+    else:
+        price = plan["price"]
 
     payment = Payment.objects.create(
         company=company,
-        amount=plan["price"],
+        amount=price,
         plan=plan_key,
         status=Payment.Status.PENDING,
     )
@@ -248,7 +274,7 @@ def create_recurring_payment(company, plan_key):
 
         yk_payment = yookassa.Payment.create({
             "amount": {
-                "value": f"{plan['price']:.2f}",
+                "value": f"{price:.2f}",
                 "currency": "RUB",
             },
             "capture": True,
@@ -258,6 +284,7 @@ def create_recurring_payment(company, plan_key):
                 "payment_db_id": str(payment.id),
                 "plan": plan_key,
                 "company_id": str(company.id),
+                "billing_period": billing_period,
                 "recurring": "true",
             },
         }, idempotence_key)
@@ -269,7 +296,7 @@ def create_recurring_payment(company, plan_key):
         if yk_payment.status == 'succeeded':
             payment.status = Payment.Status.SUCCESS
             payment.save(update_fields=["status"])
-            activate_subscription(company, plan_key)
+            activate_subscription(company, plan_key, billing_period=billing_period)
 
         return payment
 
@@ -279,7 +306,7 @@ def create_recurring_payment(company, plan_key):
         raise
 
 
-def activate_subscription(company, plan_key, payment_method_id=None):
+def activate_subscription(company, plan_key, payment_method_id=None, billing_period='monthly'):
     """Активирует / продлевает подписку после успешной оплаты."""
     plan = PLANS[plan_key]
     sub, _ = Subscription.objects.get_or_create(company=company)
@@ -287,7 +314,11 @@ def activate_subscription(company, plan_key, payment_method_id=None):
     sub.status = Subscription.Status.ACTIVE
     sub.started_at = timezone.now()
     sub.max_employees = plan["max_employees"]
-    sub.expires_at = timezone.now() + timedelta(days=30 * plan["months"])
+    if billing_period == 'annual':
+        sub.expires_at = timezone.now() + timedelta(days=365)
+    else:
+        sub.expires_at = timezone.now() + timedelta(days=30 * plan["months"])
+    sub.billing_period = billing_period
     if payment_method_id:
         sub.payment_method_id = payment_method_id
         sub.auto_renew = True
