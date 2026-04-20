@@ -22,9 +22,18 @@ ROLE_RANK = {
     'accountant': 1,
 }
 
+def _get_active_member(request):
+    """Возвращает активный CompanyMember с учётом active_company_id из сессии."""
+    active_id = request.session.get('active_company_id')
+    if active_id:
+        member = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
+        if member:
+            return member
+    return CompanyMember.objects.filter(user=request.user).order_by('-pk').first()
+
 def _check_role(request, min_role):
     """Проверяет роль. Возвращает True если доступ разрешён."""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = _get_active_member(request)
     if not member:
         return False
     return ROLE_RANK.get(member.role, 0) >= ROLE_RANK.get(min_role, 99)
@@ -37,7 +46,7 @@ def checkout(request, plan_key):
     if plan_key not in PLANS:
         return redirect("dashboard:subscription")
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = _get_active_member(request)
     if not member:
         return redirect("dashboard:subscription")
 
@@ -81,7 +90,7 @@ def cancel_autorenew(request):
     if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = _get_active_member(request)
     if member:
         sub = getattr(member.company, 'subscription', None)
         if sub:
@@ -100,7 +109,7 @@ def detach_card(request):
     if not role_ok:
         messages.error(request, 'Управление подпиской доступно только владельцу.')
         return redirect("dashboard:subscription")
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = _get_active_member(request)
     if not member:
         return redirect("dashboard:login")
     sub = Subscription.objects.filter(company=member.company).order_by('-started_at').first()

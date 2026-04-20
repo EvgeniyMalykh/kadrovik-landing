@@ -17,7 +17,13 @@ def subscription_features(request):
         }
     try:
         from apps.companies.models import CompanyMember
-        member = CompanyMember.objects.filter(user=request.user).first()
+        active_id = request.session.get('active_company_id')
+        if active_id:
+            member = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
+        else:
+            member = None
+        if not member:
+            member = CompanyMember.objects.filter(user=request.user).order_by('-pk').first()
         company = member.company if member else None
         ctx = get_subscription_context(company)
         ctx['subscription'] = ctx.get('sub')

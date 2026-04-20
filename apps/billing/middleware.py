@@ -35,7 +35,13 @@ class SubscriptionMiddleware:
             exempt = any(request.path.startswith(p) for p in EXEMPT_PATHS)
             if not exempt:
                 from apps.companies.models import CompanyMember
-                member = CompanyMember.objects.filter(user=request.user).first()
+                active_id = request.session.get('active_company_id')
+                if active_id:
+                    member = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
+                else:
+                    member = None
+                if not member:
+                    member = CompanyMember.objects.filter(user=request.user).order_by('-pk').first()
                 if member:
                     sub = getattr(member.company, 'subscription', None)
                     if sub and not sub.is_active:
