@@ -7,19 +7,35 @@ from django.utils.html import strip_tags
 
 
 def _send_telegram(text):
-    token   = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
-    chat_id = getattr(settings, 'TELEGRAM_CHAT_ID', '')
-    if not token or not chat_id:
+    """Отправляет уведомление через Green API Telegram (api.telegram.org заблокирован на VPS)."""
+    import re as _re
+    instance_id = getattr(settings, "GREEN_API_TG_INSTANCE_ID", "")
+    tg_token    = getattr(settings, "GREEN_API_TG_TOKEN", "")
+    chat_id     = str(getattr(settings, "TELEGRAM_CHAT_ID", "") or "").strip()
+    if not chat_id:
         return
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-            timeout=10,
-        )
-    except Exception:
-        pass
-
+    plain_text = _re.sub(r"<[^>]+>", "", str(text)).strip()
+    if instance_id and tg_token:
+        try:
+            requests.post(
+                f"https://api.green-api.com/waInstance{instance_id}/sendMessage/{tg_token}",
+                json={"chatId": chat_id, "message": plain_text},
+                timeout=10,
+            )
+        except Exception:
+            pass
+    else:
+        token = getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+        if not token:
+            return
+        try:
+            requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": plain_text},
+                timeout=10,
+            )
+        except Exception:
+            pass
 
 def _send_google_sheets(email, company_name, registered_at):
     gas_url = getattr(settings, 'GAS_URL', '')
