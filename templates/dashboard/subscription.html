@@ -88,7 +88,7 @@
   {% if sub.expires_at %}
   <!-- Прогресс-бар -->
   <div style="margin-top:1.25rem;">
-    <div style="height:6px;background:var(--border-color);border-radius:4px;overflow:hidden;">
+    <div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden;">
       {% now "U" as now_ts %}
       <div style="height:100%;border-radius:4px;
         {% if sub.is_active %}background:linear-gradient(90deg,#3b82f6,#60a5fa);width:60%;
@@ -235,7 +235,7 @@
       {{ employee_count }} / {% if sub.max_employees >= 9999 %}∞{% else %}{{ sub.max_employees }}{% endif %}
     </span>
   </div>
-  <div style="height:6px;background:var(--border-color);border-radius:4px;overflow:hidden;">
+  <div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden;">
     {% if sub.max_employees >= 9999 %}
       <div style="height:100%;width:10%;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:4px;"></div>
     {% else %}
@@ -254,10 +254,10 @@
 </h2>
 
 <style>
-.billing-btn { padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;background:transparent;color:var(--text-muted);transition:all 0.2s; }
-.billing-btn.active { background:var(--color-primary) !important;color:#fff !important;font-weight:700 !important; }
+.billing-btn { padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;background:transparent;color:var(--text-muted);transition:all 0.2s;white-space:nowrap; }
+.billing-btn.active { background:var(--accent) !important;color:#fff !important;font-weight:700 !important; }
 </style>
-<div class="billing-toggle" style="display:flex;gap:8px;margin-bottom:20px;background:var(--bg-card);padding:6px;border-radius:12px;width:fit-content;border:1px solid var(--border-color);">
+<div class="billing-toggle" style="display:flex;gap:8px;margin-bottom:20px;background:var(--bg-card);padding:6px;border-radius:12px;width:fit-content;border:1px solid var(--border);">
   <button class="billing-btn active" data-period="monthly">Помесячно</button>
   <button class="billing-btn" data-period="annual">Годовой <span style="background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:20px;margin-left:4px;">−25%</span></button>
 </div>
@@ -390,10 +390,10 @@
 {% endif %}
 
 <!-- ПОДДЕРЖКА -->
-<div class="card" style="margin-top:1.5rem;padding:1.25rem 1.5rem;background:var(--bg-card);border:1px solid var(--border-color);">
+<div class="card" style="margin-top:1.5rem;padding:1.25rem 1.5rem;background:var(--bg-card);border:1px solid var(--border);">
   <p style="margin:0;font-size:0.85rem;color:var(--text-muted);">
     Вопросы по оплате и тарифам — пишите на
-    <a href="mailto:evgeniymalykh@gmail.com" style="color:var(--color-primary);">evgeniymalykh@gmail.com</a>
+    <a href="mailto:evgeniymalykh@gmail.com" style="color:var(--accent);">evgeniymalykh@gmail.com</a>
   </p>
 </div>
 
