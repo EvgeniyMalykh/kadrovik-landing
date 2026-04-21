@@ -76,8 +76,8 @@
         {% for emp in employees %}
         <tr data-emp="{{ emp.id }}">
             <td class="ts-name">
-                <div style="font-weight:600;font-size:0.8rem;">{{ emp.last_name }} {{ emp.first_name|first }}.{% if emp.middle_name %} {{ emp.middle_name|first }}.{% endif %}</div>
-                <div style="font-size:0.7rem;color:var(--text-muted);">{{ emp.position }}</div>
+                <div style="font-weight:600;font-size:0.8rem;color:var(--text-primary);">{{ emp.last_name }} {{ emp.first_name|first }}.{% if emp.middle_name %} {{ emp.middle_name|first }}.{% endif %}</div>
+                <div style="font-size:0.7rem;color:var(--text-secondary);">{{ emp.position }}</div>
             </td>
             {% for d, dtype in days_with_types %}
             <td class="ts-cell ts-{{ dtype }}"
