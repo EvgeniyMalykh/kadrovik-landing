@@ -1,6 +1,8 @@
 """
 Context processor — добавляет информацию о тарифе в каждый шаблон.
 """
+import math
+from django.utils import timezone
 from apps.billing.services import get_subscription_context, FEATURE_PLAN_LABEL
 
 
@@ -29,6 +31,19 @@ def subscription_features(request):
         ctx['subscription'] = ctx.get('sub')
         ctx['member'] = member
         ctx['member_role'] = member.role if member else None
+
+        # Добавляем информацию о grace period
+        sub = ctx.get('sub')
+        if sub and sub.data_deletion_scheduled_at:
+            now = timezone.now()
+            delta = sub.data_deletion_scheduled_at - now
+            ctx['data_deletion_date'] = sub.data_deletion_scheduled_at
+            ctx['days_until_deletion'] = max(0, math.ceil(delta.total_seconds() / 86400))
+        else:
+            ctx['data_deletion_date'] = None
+            ctx['days_until_deletion'] = None
+        ctx['data_cleaned'] = sub.data_cleaned if sub else False
+
         return ctx
     except Exception:
         return {

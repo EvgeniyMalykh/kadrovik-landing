@@ -28,6 +28,13 @@ class Subscription(models.Model):
     # Данные карты (заполняются из webhook при успешной оплате)
     card_last4 = models.CharField('Последние 4 цифры карты', max_length=4, blank=True, default='')
     card_brand = models.CharField('Тип карты', max_length=20, blank=True, default='')
+    # Grace period: дата удаления данных после истечения подписки
+    data_deletion_scheduled_at = models.DateTimeField(
+        'Дата удаления данных',
+        null=True, blank=True,
+        help_text='Дата запланированного удаления данных компании (через 30 дней после истечения подписки)'
+    )
+    data_cleaned = models.BooleanField('Данные очищены', default=False)
 
     class Meta:
         verbose_name = 'Подписка'

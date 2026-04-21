@@ -7,10 +7,30 @@
 <div id="paywall-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;">
   <div style="background:#1e293b;border-radius:16px;padding:40px;max-width:520px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
     <div style="font-size:48px;margin-bottom:16px;">&#128274;</div>
+    {% if sub.plan == "trial" %}
     <h2 style="color:#f1f5f9;font-size:1.5rem;margin:0 0 12px;">Пробный период завершён</h2>
     <p style="color:#94a3b8;margin:0 0 32px;line-height:1.6;">
       Ваш пробный период истёк. Выберите тариф чтобы продолжить работу с кадровыми документами.
     </p>
+    {% elif data_cleaned %}
+    <h2 style="color:#f1f5f9;font-size:1.5rem;margin:0 0 12px;">Данные удалены</h2>
+    <p style="color:#94a3b8;margin:0 0 32px;line-height:1.6;">
+      Подписка истекла и данные вашей компании были удалены. Оформите подписку чтобы начать работу заново.
+    </p>
+    {% elif data_deletion_date %}
+    <h2 style="color:#f1f5f9;font-size:1.5rem;margin:0 0 12px;">Подписка истекла</h2>
+    <p style="color:#94a3b8;margin:0 0 16px;line-height:1.6;">
+      Ваша подписка истекла. Данные будут удалены через <b style="color:#ef4444;">{{ days_until_deletion }}</b> дн. ({{ data_deletion_date|date:"d.m.Y" }}).
+    </p>
+    <p style="color:#f59e0b;margin:0 0 32px;line-height:1.6;font-size:0.9rem;">
+      Продлите подписку чтобы сохранить все данные.
+    </p>
+    {% else %}
+    <h2 style="color:#f1f5f9;font-size:1.5rem;margin:0 0 12px;">Подписка истекла</h2>
+    <p style="color:#94a3b8;margin:0 0 32px;line-height:1.6;">
+      Ваша подписка истекла. Выберите тариф чтобы продолжить работу.
+    </p>
+    {% endif %}
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
       <a href="{% url 'billing:checkout' 'start' %}" style="background:#3b82f6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Старт — 790 &#8381;/мес</a>
       <a href="{% url 'billing:checkout' 'business' %}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Бизнес — 1 990 &#8381;/мес</a>
@@ -115,26 +135,40 @@
   </div>
 
   {% if not sub.is_active %}
-  <div style="margin-top:1.25rem;padding:12px 16px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
-    <p style="color:#991b1b;font-size:0.85rem;margin:0;">
-      ⚠️ Подписка истекла. Ваши данные сохраняются ещё 30 дней. Продлите тариф ниже чтобы восстановить доступ.
-    </p>
-  </div>
+    {% if data_cleaned %}
+    <div style="margin-top:1.25rem;padding:12px 16px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
+      <p style="color:#991b1b;font-size:0.85rem;margin:0;">
+        &#10060; Данные компании были удалены. Оформите подписку для продолжения работы.
+      </p>
+    </div>
+    {% elif data_deletion_date %}
+    <div style="margin-top:1.25rem;padding:12px 16px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
+      <p style="color:#991b1b;font-size:0.85rem;margin:0;">
+        &#9888;&#65039; Подписка истекла. Данные вашего аккаунта будут удалены через <b>{{ days_until_deletion }}</b> дн. (<b>{{ data_deletion_date|date:"d.m.Y" }}</b>). Продлите подписку чтобы сохранить данные.
+      </p>
+    </div>
+    {% else %}
+    <div style="margin-top:1.25rem;padding:12px 16px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
+      <p style="color:#991b1b;font-size:0.85rem;margin:0;">
+        &#9888;&#65039; Подписка истекла. Продлите тариф ниже чтобы восстановить доступ.
+      </p>
+    </div>
+    {% endif %}
   {% elif sub.plan == "trial" %}
   <div style="margin-top:1.25rem;padding:12px 16px;background:#eff6ff;border-radius:8px;border:1px solid #bfdbfe;">
     <p style="color:#1e40af;font-size:0.85rem;margin:0;">
-      🎁 У вас пробный период. Выберите тариф ниже, чтобы продолжить работу после его окончания.
+      &#127873; У вас пробный период. Выберите тариф ниже, чтобы продолжить работу после его окончания.
     </p>
   </div>
   {% elif sub.auto_renew and sub.payment_method_id %}
   <!-- Автопродление подключено — карта привязана -->
   <div style="margin-top:1.25rem;padding:12px 16px;background:#1a3a2a;border-left:3px solid #28a745;border-radius:8px;color:#d4edda;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
     <div>
-      <p style="font-size:0.85rem;margin:0;">✅ Автопродление подключено.</p>
+      <p style="font-size:0.85rem;margin:0;">&#9989; Автопродление подключено.</p>
       {% if sub.card_last4 %}
-      <p style="font-size:0.8rem;margin:4px 0 0;opacity:0.85;">💳 {% if sub.card_brand %}{{ sub.card_brand }}{% else %}Карта{% endif %} •••• {{ sub.card_last4 }}</p>
+      <p style="font-size:0.8rem;margin:4px 0 0;opacity:0.85;">&#128179; {% if sub.card_brand %}{{ sub.card_brand }}{% else %}Карта{% endif %} •••• {{ sub.card_last4 }}</p>
       {% else %}
-      <p style="font-size:0.8rem;margin:4px 0 0;opacity:0.85;">💳 Карта сохранена</p>
+      <p style="font-size:0.8rem;margin:4px 0 0;opacity:0.85;">&#128179; Карта сохранена</p>
       {% endif %}
     </div>
     <form method="POST" action="{% url 'billing:cancel_autorenew' %}" style="margin:0;">
@@ -149,13 +183,13 @@
   {% else %}
   <!-- Автопродление НЕ подключено -->
   <div style="margin-top:1.25rem;padding:12px 16px;background:#3a2a1a;border-left:3px solid #ffc107;border-radius:8px;color:#fff3cd;">
-    <p style="font-size:0.85rem;margin:0;">⚠️ Автопродление не подключено. При следующей оплате карта сохранится автоматически.</p>
+    <p style="font-size:0.85rem;margin:0;">&#9888;&#65039; Автопродление не подключено. При следующей оплате карта сохранится автоматически.</p>
   </div>
   {% if sub.payment_method_id %}
   <!-- Карта привязана, но автопродление выключено — отдельная кнопка отвязки -->
   <div style="margin-top:0.75rem;padding:12px 16px;background:#2a1a1a;border-left:3px solid #dc3545;border-radius:8px;color:#f8d7da;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
     <div>
-      <p style="font-size:0.85rem;margin:0;">💳 {% if sub.card_last4 %}{% if sub.card_brand %}{{ sub.card_brand }}{% else %}Карта{% endif %} •••• {{ sub.card_last4 }}{% else %}Карта привязана к аккаунту{% endif %}</p>
+      <p style="font-size:0.85rem;margin:0;">&#128179; {% if sub.card_last4 %}{% if sub.card_brand %}{{ sub.card_brand }}{% else %}Карта{% endif %} •••• {{ sub.card_last4 }}{% else %}Карта привязана к аккаунту{% endif %}</p>
     </div>
     <form method="POST" action="{% url 'billing:detach_card' %}" style="margin:0;">
       {% csrf_token %}
@@ -178,7 +212,7 @@
   <h3 style="font-size:1rem;font-weight:600;margin:0 0 8px;color:var(--text-primary);">Отмена подписки</h3>
   <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 12px;">
     При отмене подписка остаётся активной до <b>{{ sub.expires_at|date:"d.m.Y" }}</b>.
-    После этой даты аккаунт перейдёт в режим чтения — данные сохранятся, новые документы создавать нельзя.
+    После этой даты данные сохраняются ещё 30 дней, затем автоматически удаляются.
   </p>
   <form method="POST" action="{% url 'billing:cancel_autorenew' %}" style="margin:0;">
     {% csrf_token %}
@@ -209,7 +243,7 @@
     {% endif %}
   </div>
   {% if employee_count >= sub.max_employees and sub.max_employees < 9999 %}
-  <p style="margin:8px 0 0;font-size:0.78rem;color:#dc2626;">⚠️ Лимит достигнут. Обновите тариф чтобы добавить новых сотрудников.</p>
+  <p style="margin:8px 0 0;font-size:0.78rem;color:#dc2626;">&#9888;&#65039; Лимит достигнут. Обновите тариф чтобы добавить новых сотрудников.</p>
   {% endif %}
 </div>
 {% endif %}

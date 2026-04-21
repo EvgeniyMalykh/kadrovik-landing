@@ -1,3 +1,4 @@
+import math
 from django.shortcuts import redirect
 from django.utils import timezone
 
@@ -17,7 +18,6 @@ EXEMPT_PATHS = [
     '/dashboard/invite/',
     '/vacations/request/',
     '/billing/',
-    '/dashboard/employees/',
     '/static/',
     '/media/',
     '/admin/',
@@ -31,7 +31,6 @@ class SubscriptionMiddleware:
     def __call__(self, request):
         protected = any(request.path.startswith(p) for p in PROTECTED_PREFIXES)
         if protected and request.user.is_authenticated:
-            # Проверяем не освобождён ли путь
             exempt = any(request.path.startswith(p) for p in EXEMPT_PATHS)
             if not exempt:
                 from apps.companies.models import CompanyMember
@@ -45,10 +44,20 @@ class SubscriptionMiddleware:
                 if member:
                     sub = getattr(member.company, 'subscription', None)
                     if sub and not sub.is_active:
-                        # AJAX запросы возвращают JSON
                         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
                            request.headers.get('HX-Request'):
                             from django.http import JsonResponse
                             return JsonResponse({'error': 'subscription_expired', 'redirect': '/dashboard/subscription/'}, status=402)
                         return redirect('/dashboard/subscription/')
+
+                    # Добавляем информацию о grace period в request для шаблонов
+                    if sub and sub.data_deletion_scheduled_at:
+                        now = timezone.now()
+                        delta = sub.data_deletion_scheduled_at - now
+                        request.data_deletion_date = sub.data_deletion_scheduled_at
+                        request.days_until_deletion = max(0, math.ceil(delta.total_seconds() / 86400))
+                    else:
+                        request.data_deletion_date = None
+                        request.days_until_deletion = None
+
         return self.get_response(request)

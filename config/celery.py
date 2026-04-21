@@ -8,4 +8,5 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks([
     "apps.events",
     "apps.accounts",
+    "apps.billing",
 ])

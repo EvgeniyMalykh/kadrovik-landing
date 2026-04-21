@@ -367,5 +367,8 @@ def activate_subscription(company, plan_key, payment_method_id=None, billing_per
     if payment_method_id:
         sub.payment_method_id = payment_method_id
         sub.auto_renew = True
+    # Сбрасываем grace period при реактивации подписки
+    sub.data_deletion_scheduled_at = None
+    sub.data_cleaned = False
     sub.save()
     return sub
