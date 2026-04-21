@@ -254,10 +254,11 @@
 </h2>
 
 <style>
-.billing-btn { padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;background:transparent;color:var(--text-muted);transition:all 0.2s;white-space:nowrap; }
-.billing-btn.active { background:var(--accent) !important;color:#fff !important;font-weight:700 !important; }
+.billing-toggle { display:flex;gap:8px;margin-bottom:20px;background:var(--bg-card,#fff);padding:6px;border-radius:12px;width:fit-content;border:1px solid var(--border,#C8C8C8); }
+.billing-btn { padding:8px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;background:transparent;color:var(--text-muted,#808080);transition:all 0.2s;white-space:nowrap; }
+.billing-btn.active { background:var(--accent,#0060AB) !important;color:#fff !important;font-weight:700 !important; }
 </style>
-<div class="billing-toggle" style="display:flex;gap:8px;margin-bottom:20px;background:var(--bg-card);padding:6px;border-radius:12px;width:fit-content;border:1px solid var(--border);">
+<div class="billing-toggle">
   <button class="billing-btn active" data-period="monthly">Помесячно</button>
   <button class="billing-btn" data-period="annual">Годовой <span style="background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:2px 6px;border-radius:20px;margin-left:4px;">−25%</span></button>
 </div>
