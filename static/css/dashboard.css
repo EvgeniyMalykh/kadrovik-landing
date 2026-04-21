@@ -2065,3 +2065,17 @@ body {
   background: var(--bg-secondary);
   color: var(--text-primary);
 }
+
+/* Табель в тёмной теме */
+[data-theme="dark"] .ts-table th,
+[data-theme="dark"] .ts-table td { border-color: var(--border); }
+[data-theme="dark"] .ts-name { color: var(--text-primary) !important; }
+[data-theme="dark"] .ts-name div { color: var(--text-primary) !important; }
+[data-theme="dark"] .ts-name div:last-child { color: var(--text-secondary) !important; }
+[data-theme="dark"] .ts-hdr-work { background: var(--bg-secondary); color: var(--text-primary); }
+[data-theme="dark"] .ts-hdr-weekend { background: #2d3748; color: #9ca3af; }
+[data-theme="dark"] .ts-total-days,
+[data-theme="dark"] .ts-total-hours { color: var(--text-primary) !important; }
+[data-theme="dark"] .ts-work { background: transparent; }
+[data-theme="dark"] .ts-weekend { background: rgba(55,65,81,0.6); }
+[data-theme="dark"] .ts-table tbody tr { color: var(--text-primary); }
