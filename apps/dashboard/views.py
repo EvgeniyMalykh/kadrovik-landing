@@ -177,7 +177,7 @@ def employees_list(request):
     if contract_filter:
         employees = employees.filter(contract_type=contract_filter)
 
-    employees = employees.order_by('last_name', 'first_name')
+    employees = employees.order_by('last_name', 'first_name', 'middle_name')
 
     # Счётчики для вкладок
     active_count = Employee.objects.filter(company=company, status='active').count()
@@ -1038,7 +1038,7 @@ def timesheet_edit(request):
     except (ValueError, TypeError):
         y, m = dt_date.today().year, dt_date.today().month
 
-    employees = Employee.objects.filter(company=member.company).select_related("department")
+    employees = Employee.objects.filter(company=member.company).select_related("department").order_by('last_name', 'first_name', 'middle_name')
     days_in_month = calendar.monthrange(y, m)[1]
     days = list(range(1, days_in_month + 1))
 
