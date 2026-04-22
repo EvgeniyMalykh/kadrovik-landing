@@ -8,10 +8,9 @@ urlpatterns = [
     path("admin/",                      admin.site.urls),
     path("api/v1/",                     include("apps.employees.urls")),
     path("documents/t1/<int:employee_id>/", download_t1, name="document-t1"),
-    path("dashboard/",                  include("apps.dashboard.urls")),
+    path("dashboard/",                  include("apps.dashboard.urls", namespace="dashboard")),
     path("dashboard/",                  include("apps.billing.urls")),
     path("vacations/",                  include("apps.vacations.urls", namespace="vacations")),
-    path("",                            include("apps.dashboard.urls")),
 ]
 
 if settings.DEBUG:
