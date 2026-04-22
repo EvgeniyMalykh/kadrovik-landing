@@ -794,12 +794,19 @@ function skipToStep(n) {
   showStep(n);
 }
 
+function getCSRFToken() {
+  const formToken = document.querySelector('[name=csrfmiddlewaretoken]');
+  if (formToken) return formToken.value;
+  const match = document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? match[1] : '';
+}
+
 function saveCompany() {
   const form = document.getElementById('companyForm');
   const data = new FormData(form);
   fetch('/dashboard/company/', {
     method: 'POST',
-    headers: {'X-CSRFToken': data.get('csrfmiddlewaretoken'), 'X-Requested-With': 'XMLHttpRequest'},
+    headers: {'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest'},
     body: data
   }).then(r => {
     showStep(2);
@@ -812,6 +819,10 @@ function saveEmployee() {
 
   // Разбиваем full_name на last_name / first_name / middle_name
   const fullName = (data.get('full_name') || '').trim();
+  if (!fullName) {
+    showStep(3);
+    return;
+  }
   const parts = fullName.split(/\s+/);
   data.delete('full_name');
   data.set('last_name',   parts[0] || '');
@@ -826,15 +837,19 @@ function saveEmployee() {
 
   fetch('/dashboard/employees/add/', {
     method: 'POST',
-    headers: {'X-CSRFToken': data.get('csrfmiddlewaretoken'), 'X-Requested-With': 'XMLHttpRequest'},
+    headers: {'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest'},
     body: data
-  }).then(r => r.json().catch(() => ({}))).then(json => {
-    showStep(3);
+  }).then(r => {
+    if (r.ok) {
+      showStep(3);
+    } else {
+      showStep(3);
+    }
   }).catch(() => showStep(3));
 }
 
 function closeOnboarding() {
-  document.getElementById('onboardingModal').style.display = 'none';
+  window.location.href = '/dashboard/employees/';
 }
 </script>
 {% endif %}
