@@ -129,7 +129,7 @@ def employees_list(request):
             company=company,
             plan=Subscription.Plan.TRIAL,
             status=Subscription.Status.ACTIVE,
-            expires_at=timezone.now() + _dt.timedelta(days=14),
+            expires_at=timezone.now() + _dt.timedelta(days=7),
             max_employees=200,
         )
     # Оставшиеся дни trial
@@ -671,7 +671,7 @@ def verify_email_view(request, token):
         company=company,
         plan=Subscription.Plan.TRIAL,
         status=Subscription.Status.ACTIVE,
-        expires_at=timezone.now() + datetime.timedelta(days=14),
+        expires_at=timezone.now() + datetime.timedelta(days=7),
         max_employees=200,
     )
 

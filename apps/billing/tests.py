@@ -52,7 +52,7 @@ def _create_subscription(company, **kwargs):
         plan=Subscription.Plan.TRIAL,
         status=Subscription.Status.ACTIVE,
         started_at=timezone.now(),
-        expires_at=timezone.now() + timedelta(days=14),
+        expires_at=timezone.now() + timedelta(days=7),
         max_employees=10,
     )
     defaults.update(kwargs)
