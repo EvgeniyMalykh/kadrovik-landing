@@ -1805,7 +1805,7 @@ def delete_document(request, doc_id):
 
 def _require_plan(request, min_plan):
     """Проверяет тариф пользователя. Возвращает True если доступ разрешён."""
-    PLAN_RANK = {'trial': 0, 'start': 1, 'business': 2, 'pro': 3}
+    PLAN_RANK = {'trial': 3, 'start': 1, 'business': 2, 'pro': 3}
     member = get_active_member(request)
     if not member:
         return False

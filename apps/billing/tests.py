@@ -317,14 +317,14 @@ class TestBillingServices(TestCase):
         _create_subscription(
             self.company,
             plan=Subscription.Plan.TRIAL,
-            max_employees=10,
+            max_employees=200,
         )
         ctx = get_subscription_context(self.company)
         self.assertEqual(ctx["plan_key"], "trial")
-        self.assertEqual(ctx["max_employees"], 10)
+        self.assertEqual(ctx["max_employees"], 200)
         self.assertTrue(ctx["plan_features"]["documents"])
         self.assertTrue(ctx["plan_features"]["telegram"])
-        self.assertFalse(ctx["plan_features"]["export_excel"])
+        self.assertTrue(ctx["plan_features"]["export_excel"])
 
     def test_get_subscription_context_paid(self):
         """Context for paid (business) plan should have correct max_employees."""

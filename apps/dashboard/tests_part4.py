@@ -433,8 +433,8 @@ class PlanLimitsTests(TestCase):
         self.assertEqual(PLANS['pro']['max_employees'], 200)
 
     def test_trial_plan_max_employees(self):
-        """Trial plan allows up to 50 employees."""
-        self.assertEqual(PLANS['trial']['max_employees'], 50)
+        """Trial plan allows up to 200 employees (corporate-level)."""
+        self.assertEqual(PLANS['trial']['max_employees'], 200)
 
     def test_start_no_multiuser(self):
         """Start plan does not allow multi-user."""
@@ -450,8 +450,8 @@ class PlanLimitsTests(TestCase):
     def test_pro_has_api(self):
         self.assertTrue(get_plan_features('pro')['api'])
 
-    def test_trial_no_api(self):
-        self.assertFalse(get_plan_features('trial')['api'])
+    def test_trial_has_api(self):
+        self.assertTrue(get_plan_features('trial')['api'])
 
     def test_subscription_required_blocks_expired(self):
         """Expired subscription → redirect to subscription page."""

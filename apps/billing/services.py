@@ -24,7 +24,7 @@ PLANS = {
     "trial": {
         "name": "Пробный",
         "price": 0,
-        "max_employees": 10,
+        "max_employees": 200,
         "months": 0,
         "features": {
             "documents":         True,
@@ -32,11 +32,11 @@ PLANS = {
             "timesheet":         True,
             "email_notify":      True,
             "multi_user":        True,
-            "export_excel":      False,
-            "custom_templates":  False,
-            "priority_support":  False,
-            "api":               False,
-            "sfr_export":        False,
+            "export_excel":      True,
+            "custom_templates":  True,
+            "priority_support":  True,
+            "api":               True,
+            "sfr_export":        True,
         },
     },
     "start": {
