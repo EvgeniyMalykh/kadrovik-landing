@@ -2501,10 +2501,23 @@ def sfr_export(request):
 
     import datetime as _dt
     today = date.today()
+
+    # Determine smart default: start of the month of the earliest employee event
+    default_start = date(today.year, today.month, 1)
+    all_event_dates = []
+    for emp in employees:
+        if emp.hire_date:
+            all_event_dates.append(emp.hire_date)
+        if emp.fire_date:
+            all_event_dates.append(emp.fire_date)
+    if all_event_dates:
+        earliest = min(all_event_dates)
+        default_start = date(earliest.year, earliest.month, 1)
+
     try:
         period_start = _dt.datetime.strptime(period_start_str, '%Y-%m-%d').date()
     except (ValueError, TypeError):
-        period_start = date(today.year, today.month, 1)
+        period_start = default_start
     try:
         period_end = _dt.datetime.strptime(period_end_str, '%Y-%m-%d').date()
     except (ValueError, TypeError):
@@ -2531,12 +2544,24 @@ def sfr_export(request):
 
     events_preview.sort(key=lambda x: x['event_date'])
 
+    # Collect date hints for empty state
+    hire_dates_outside = []
+    if not events_preview:
+        for emp in employees:
+            if emp.hire_date and not (period_start <= emp.hire_date <= period_end):
+                hire_dates_outside.append({
+                    'employee': emp,
+                    'hire_date': emp.hire_date,
+                })
+
     context.update({
         'events_preview': events_preview,
         'period_start': period_start.strftime('%Y-%m-%d'),
         'period_end': period_end.strftime('%Y-%m-%d'),
         'has_sfr_reg_number': bool(company.sfr_reg_number),
         'has_okved': bool(company.okved),
+        'hire_dates_outside': hire_dates_outside,
+        'total_employees': employees.count(),
     })
 
     return render(request, 'dashboard/sfr_export.html', context)
