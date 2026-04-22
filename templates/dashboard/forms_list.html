@@ -43,6 +43,9 @@
     </h1>
     <p class="page-subtitle">Журнал кадровых документов компании</p>
   </div>
+  <button id="btn-sync-journal" class="btn-secondary" style="font-size:0.82rem;padding:8px 16px;white-space:nowrap;" onclick="syncJournal()">
+    &#128260; Синхронизировать журнал
+  </button>
 </div>
 
 <!-- Кнопки создания -->
@@ -240,6 +243,28 @@ function deleteDocument(docId, btn) {
     }
   })
   .catch(() => alert('Ошибка соединения'));
+}
+
+function syncJournal() {
+  var btn = document.getElementById('btn-sync-journal');
+  btn.disabled = true;
+  btn.textContent = 'Синхронизация...';
+
+  fetch("{% url 'dashboard:sync_documents_journal' %}", {
+    method: 'POST',
+    headers: {'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''}
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) {
+      btn.textContent = '\u2713 Добавлено записей: ' + data.created;
+      setTimeout(function() { location.reload(); }, 1200);
+    } else {
+      btn.textContent = 'Ошибка: ' + (data.error || '');
+      btn.disabled = false;
+    }
+  })
+  .catch(function() { btn.textContent = 'Ошибка сети'; btn.disabled = false; });
 }
 </script>
 

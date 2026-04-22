@@ -1375,6 +1375,55 @@ def forms_list(request):
 
 
 
+
+@require_POST
+@login_required
+def sync_documents_journal(request):
+    """Синхронизирует журнал документов — создаёт записи для всех сотрудников из их данных"""
+    from apps.documents.models import Document
+
+    member = get_active_member(request)
+    if not member:
+        return JsonResponse({'success': False, 'error': 'Нет компании'}, status=403)
+
+    company = member.company
+    employees = Employee.objects.filter(company=company)
+    created = 0
+
+    for emp in employees:
+        # Т-1 — приказ о приёме (если есть hire_date)
+        if emp.hire_date:
+            _, was_created = Document.objects.get_or_create(
+                company=company,
+                employee=emp,
+                doc_type='hire',
+                defaults={
+                    'number': _next_doc_number(company, 'hire'),
+                    'date': emp.hire_date,
+                    'extra_data': {'synced': True},
+                }
+            )
+            if was_created:
+                created += 1
+
+        # Т-8 — приказ об увольнении (если есть fire_date)
+        if emp.fire_date:
+            _, was_created = Document.objects.get_or_create(
+                company=company,
+                employee=emp,
+                doc_type='fire',
+                defaults={
+                    'number': _next_doc_number(company, 'fire'),
+                    'date': emp.fire_date,
+                    'extra_data': {'synced': True},
+                }
+            )
+            if was_created:
+                created += 1
+
+    return JsonResponse({'success': True, 'created': created})
+
+
 @require_POST
 @login_required
 @require_role("admin")
