@@ -555,6 +555,16 @@ def subscription(request):
 
 def login_view(request):
     if request.user.is_authenticated:
+        # Check if user has any company membership to avoid redirect loop
+        # (employees_list redirects back to login when no member exists)
+        member = CompanyMember.objects.filter(user=request.user).first()
+        if not member:
+            from django.contrib.auth import logout
+            logout(request)
+            return render(request, "dashboard/login.html", {
+                "error": "Ваш аккаунт не привязан ни к одной компании. Обратитесь к администратору или зарегистрируйте новую компанию.",
+                "next": "",
+            })
         return redirect("dashboard:employees")
     next_url = request.GET.get("next") or request.POST.get("next", "")
     if request.method == "POST":
