@@ -379,6 +379,8 @@ def employee_add(request):
         _save_employee_from_post(request.POST, emp)
         emp.save()
         _save_employee_photo(request, emp)
+        # Auto-create T-1 hire order document
+        _auto_create_hire_document(member, emp)
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
 
@@ -464,6 +466,36 @@ def employee_delete(request, employee_id):
 
 @login_required
 @subscription_required
+
+
+def _auto_create_hire_document(member, employee):
+    """Auto-create T-1 (hire order) document when a new employee is added."""
+    from apps.documents.models import Document
+    from datetime import date as _date
+    import re as _re_order
+    # Generate next order number: П-001, П-002, ...
+    existing_hire_docs = Document.objects.filter(
+        company=member.company,
+        doc_type='hire',
+    ).values_list('number', flat=True)
+    max_num = 0
+    for num in existing_hire_docs:
+        m = _re_order.search(r'(\d+)', str(num))
+        if m:
+            max_num = max(max_num, int(m.group(1)))
+    order_number = f"П-{str(max_num + 1).zfill(3)}"
+    doc_date = employee.hire_date or _date.today()
+    Document.objects.get_or_create(
+        company=member.company,
+        employee=employee,
+        doc_type='hire',
+        defaults={
+            'number': order_number,
+            'date': doc_date,
+            'extra_data': {},
+        },
+    )
+
 
 def _save_document_record(member, employee, doc_type, order_number, extra_data=None):
     """Save a Document record when a PDF is generated from an employee card.
