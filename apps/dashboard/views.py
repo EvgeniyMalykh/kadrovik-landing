@@ -651,6 +651,7 @@ def register_view(request):
         password     = request.POST.get("password")
         password2    = request.POST.get("password2")
         company_name = request.POST.get("company_name", "").strip()
+        telegram     = request.POST.get("telegram", "").strip()
 
         if not email or not password or not company_name:
             return render(request, "dashboard/register.html", {"error": "Заполните все поля"})
@@ -678,6 +679,7 @@ def register_view(request):
             "email": email,
             "password_hash": password_hash,
             "company_name": company_name,
+            "telegram": telegram,
             "expires_at": expires_at,
         }, ensure_ascii=False))
 
@@ -708,6 +710,7 @@ def verify_email_view(request, token):
     email        = data["email"]
     password_hash = data["password_hash"]
     company_name  = data["company_name"]
+    telegram      = data.get("telegram", "")
 
     # Проверяем — вдруг успели зарегистрироваться с тем же email
     if User.objects.filter(email=email).exists():
@@ -719,6 +722,8 @@ def verify_email_view(request, token):
 
     user = User(username=email, email=email, email_verified=True, is_active=True)
     user.password = password_hash
+    if telegram:
+        user.phone = telegram
     user.save()
 
     company = Company.objects.create(name=company_name, owner=user)
@@ -736,10 +741,17 @@ def verify_email_view(request, token):
 
     # Уведомления — Telegram + Google Sheets (только после реальной регистрации)
     from apps.accounts.tasks import notify_new_registration
+    from apps.employees.models import Employee
+    employee_count = Employee.objects.filter(company=company, status='active').count()
+    owner_name = company.director_name or ''
+    display_name = f"{company_name} / {owner_name}".strip(' /') if owner_name else company_name
     notify_new_registration.delay(
         email=email,
         company_name=company_name,
         registered_at=timezone.now().strftime("%d.%m.%Y %H:%M"),
+        display_name=display_name,
+        telegram=telegram,
+        employee_count=employee_count,
     )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")

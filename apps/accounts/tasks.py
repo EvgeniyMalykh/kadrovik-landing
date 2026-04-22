@@ -37,7 +37,7 @@ def _send_telegram(text):
         except Exception:
             pass
 
-def _send_google_sheets(email, company_name, registered_at):
+def _send_google_sheets(email, company_name, registered_at, display_name='', telegram='', employee_count=0):
     gas_url = getattr(settings, 'GAS_URL', '')
     if not gas_url:
         return
@@ -49,6 +49,10 @@ def _send_google_sheets(email, company_name, registered_at):
                 "email": email,
                 "company": company_name,
                 "date": registered_at,
+                "name": display_name or company_name,
+                "telegram": telegram,
+                "employees": employee_count,
+                "source": "Регистрация",
             },
             timeout=15,
         )
@@ -87,7 +91,7 @@ def send_verification_email(user_id, verify_url):
 
 
 @shared_task(name="accounts.notify_new_registration")
-def notify_new_registration(email, company_name, registered_at):
+def notify_new_registration(email, company_name, registered_at, display_name='', telegram='', employee_count=0):
     """Telegram + Google Sheets при новой регистрации."""
     text = (
         f"🎉 <b>Новая регистрация!</b>\n"
@@ -96,7 +100,7 @@ def notify_new_registration(email, company_name, registered_at):
         f"🕐 Дата: {registered_at}"
     )
     _send_telegram(text)
-    _send_google_sheets(email, company_name, registered_at)
+    _send_google_sheets(email, company_name, registered_at, display_name, telegram, employee_count)
 
 
 @shared_task(name="accounts.send_verification_email_pending")
