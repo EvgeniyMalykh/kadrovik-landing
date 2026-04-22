@@ -351,6 +351,28 @@ def create_recurring_payment(company, plan_key):
         raise
 
 
+def create_trial_subscription(company):
+    """Создаёт trial подписку: 7 дней, 200 сотрудников, все фичи."""
+    sub, created = Subscription.objects.get_or_create(
+        company=company,
+        defaults={
+            'plan': 'trial',
+            'status': Subscription.Status.ACTIVE,
+            'started_at': timezone.now(),
+            'expires_at': timezone.now() + timedelta(days=7),
+            'max_employees': PLANS['trial']['max_employees'],
+        }
+    )
+    if not created:
+        sub.plan = 'trial'
+        sub.status = Subscription.Status.ACTIVE
+        sub.started_at = timezone.now()
+        sub.expires_at = timezone.now() + timedelta(days=7)
+        sub.max_employees = PLANS['trial']['max_employees']
+        sub.save()
+    return sub
+
+
 def activate_subscription(company, plan_key, payment_method_id=None, billing_period='monthly'):
     """Активирует / продлевает подписку после успешной оплаты."""
     plan = PLANS[plan_key]
@@ -359,10 +381,12 @@ def activate_subscription(company, plan_key, payment_method_id=None, billing_per
     sub.status = Subscription.Status.ACTIVE
     sub.started_at = timezone.now()
     sub.max_employees = plan["max_employees"]
-    if billing_period == 'annual':
+    if plan_key == 'trial':
+        sub.expires_at = timezone.now() + timedelta(days=7)
+    elif billing_period == 'annual':
         sub.expires_at = timezone.now() + timedelta(days=365)
     else:
-        sub.expires_at = timezone.now() + timedelta(days=30 * plan["months"])
+        sub.expires_at = timezone.now() + timedelta(days=30)
     sub.billing_period = billing_period
     if payment_method_id:
         sub.payment_method_id = payment_method_id

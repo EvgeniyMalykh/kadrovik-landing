@@ -209,6 +209,46 @@ def detach_card(request):
     return redirect("dashboard:subscription")
 
 
+# Допустимые IP-адреса ЮKassa для webhooks
+YUKASSA_ALLOWED_IPS = [
+    '185.71.76.0/27',
+    '185.71.77.0/27',
+    '77.75.153.0/25',
+    '77.75.156.11',
+    '77.75.156.35',
+    '77.75.154.128/25',
+    '2a02:5180::/32',
+]
+
+
+def _check_yukassa_ip(request):
+    """Проверяет что запрос пришёл от ЮKassa по IP-адресу."""
+    import ipaddress
+    # Получаем реальный IP (за Nginx/proxy)
+    ip_str = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+    if not ip_str:
+        ip_str = request.META.get('HTTP_X_REAL_IP', '')
+    if not ip_str:
+        ip_str = request.META.get('REMOTE_ADDR', '')
+    if not ip_str:
+        return False
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    for allowed in YUKASSA_ALLOWED_IPS:
+        try:
+            if '/' in allowed:
+                if ip in ipaddress.ip_network(allowed, strict=False):
+                    return True
+            else:
+                if ip == ipaddress.ip_address(allowed):
+                    return True
+        except ValueError:
+            continue
+    return False
+
+
 @csrf_exempt
 @require_POST
 def yukassa_webhook(request):
@@ -218,7 +258,13 @@ def yukassa_webhook(request):
       - payment.succeeded  — активирует подписку
       - payment.canceled   — помечает платёж как failed
     При первом платеже сохраняет payment_method_id для рекуррента.
+    Проверяет IP-адрес отправителя (YooKassa whitelist).
     """
+    # Проверяем IP-адрес отправителя
+    if not _check_yukassa_ip(request):
+        logger.warning(f"[webhook] Request from untrusted IP: {request.META.get('REMOTE_ADDR', '?')}")
+        return HttpResponse(status=403)
+
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
