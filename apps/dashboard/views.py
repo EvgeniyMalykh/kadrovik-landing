@@ -470,31 +470,39 @@ def employee_delete(request, employee_id):
 
 def _auto_create_hire_document(member, employee):
     """Auto-create T-1 (hire order) document when a new employee is added."""
-    from apps.documents.models import Document
-    from datetime import date as _date
-    import re as _re_order
-    # Generate next order number: П-001, П-002, ...
-    existing_hire_docs = Document.objects.filter(
-        company=member.company,
-        doc_type='hire',
-    ).values_list('number', flat=True)
-    max_num = 0
-    for num in existing_hire_docs:
-        m = _re_order.search(r'(\d+)', str(num))
-        if m:
-            max_num = max(max_num, int(m.group(1)))
-    order_number = f"П-{str(max_num + 1).zfill(3)}"
-    doc_date = employee.hire_date or _date.today()
-    Document.objects.get_or_create(
-        company=member.company,
-        employee=employee,
-        doc_type='hire',
-        defaults={
-            'number': order_number,
-            'date': doc_date,
-            'extra_data': {},
-        },
-    )
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        from apps.documents.models import Document
+        from datetime import date as _date
+        import re as _re_order
+        # Generate next order number: П-001, П-002, ...
+        existing_hire_docs = Document.objects.filter(
+            company=member.company,
+            doc_type='hire',
+        ).values_list('number', flat=True)
+        max_num = 0
+        for num in existing_hire_docs:
+            m = _re_order.search(r'(\d+)', str(num))
+            if m:
+                max_num = max(max_num, int(m.group(1)))
+        order_number = f"П-{str(max_num + 1).zfill(3)}"
+        doc_date = employee.hire_date or _date.today()
+        doc, created = Document.objects.get_or_create(
+            company=member.company,
+            employee=employee,
+            doc_type='hire',
+            defaults={
+                'number': order_number,
+                'date': doc_date,
+                'extra_data': {},
+            },
+        )
+        logger.info(f'T-1 document for employee {employee.id}: created={created}, number={doc.number}')
+        return doc
+    except Exception as e:
+        logger.error(f'Failed to create T-1 document for employee {employee.id}: {e}', exc_info=True)
+        return None
 
 
 def _save_document_record(member, employee, doc_type, order_number, extra_data=None):
