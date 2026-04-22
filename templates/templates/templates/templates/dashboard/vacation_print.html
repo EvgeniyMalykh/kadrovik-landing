@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заявление об отпуске — {{ v.employee.full_name }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 14pt;
+            color: #000;
+            background: #fff;
+        }
+
+        .print-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 48px;
+        }
+
+        /* ─── Шапка: «Кому» справа ─────────────── */
+        .doc-header {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 60px;
+        }
+        .doc-header-right {
+            width: 280px;
+            line-height: 1.6;
+            font-size: 13pt;
+        }
+        .doc-header-right .label { font-size: 12pt; color: #555; }
+
+        /* ─── Заголовок ─────────────────────────── */
+        .doc-title {
+            text-align: center;
+            font-size: 17pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .doc-subtitle {
+            text-align: center;
+            font-size: 12pt;
+            color: #444;
+            margin-bottom: 50px;
+        }
+
+        /* ─── Тело заявления ────────────────────── */
+        .doc-body {
+            line-height: 2.0;
+            font-size: 14pt;
+            text-align: justify;
+        }
+        .doc-body p { margin-bottom: 16px; }
+
+        .underline-val {
+            border-bottom: 1px solid #000;
+            display: inline-block;
+            min-width: 260px;
+            text-align: center;
+            line-height: 1.2;
+            padding: 0 4px;
+        }
+        .underline-val--short { min-width: 160px; }
+        .underline-val--date  { min-width: 120px; }
+
+        /* ─── Тип отпуска — жирно ───────────────── */
+        .vac-type-text { font-weight: bold; }
+
+        /* ─── Причина ───────────────────────────── */
+        .reason-block {
+            margin-top: 10px;
+            font-size: 13pt;
+            color: #333;
+        }
+
+        /* ─── Подпись ───────────────────────────── */
+        .doc-footer {
+            margin-top: 60px;
+        }
+        .signature-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 14px;
+        }
+        .sig-left { font-size: 13pt; color: #555; }
+        .sig-line {
+            flex: 1;
+            border-bottom: 1px solid #000;
+            margin: 0 20px 4px;
+        }
+        .sig-name { font-size: 13pt; min-width: 200px; text-align: right; }
+
+        .doc-date { margin-top: 20px; font-size: 13pt; }
+
+        /* ─── Кнопка печати (не печатается) ────── */
+        .no-print {
+            position: fixed;
+            top: 20px;
+            right: 24px;
+            display: flex;
+            gap: 10px;
+            z-index: 999;
+        }
+        .btn-print {
+            background: #1d4ed8;
+            color: #fff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .btn-print:hover { background: #1e40af; }
+        .btn-close {
+            background: #6b7280;
+            color: #fff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-close:hover { background: #4b5563; }
+
+        /* ─── Разделитель ───────────────────────── */
+        .doc-divider {
+            border: none;
+            border-top: 1px dashed #ccc;
+            margin: 50px 0;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { font-size: 13pt; }
+            .print-wrapper { padding: 20px 30px; }
+            .doc-header { margin-bottom: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Кнопки печати / закрыть (не выводятся на печать) -->
+<div class="no-print">
+    <button class="btn-print" onclick="window.print()">🖨️ Печать</button>
+    <a href="javascript:history.back()" class="btn-close">← Назад</a>
+</div>
+
+<div class="print-wrapper">
+
+    <!-- ─── «Кому» справа ─── -->
+    <div class="doc-header">
+        <div class="doc-header-right">
+            <div>{{ company.director_position|default:"Директор" }}у</div>
+            <div>{{ company.name }}</div>
+            <div style="margin-top:8px;">{{ company.director_name|default:"" }}</div>
+            <div style="margin-top:16px;">от {{ v.employee.position|default:"работника" }}</div>
+            <div>{{ v.employee.last_name }} {{ v.employee.first_name }}{% if v.employee.middle_name %} {{ v.employee.middle_name }}{% endif %}</div>
+        </div>
+    </div>
+
+    <!-- ─── Заголовок ─── -->
+    <div class="doc-title">Заявление</div>
+    <div class="doc-subtitle">о предоставлении отпуска</div>
+
+    <!-- ─── Тело ─── -->
+    <div class="doc-body">
+        <p>
+            Прошу предоставить мне
+            <span class="vac-type-text">{% if v.vacation_type == 'annual' %}ежегодный оплачиваемый отпуск{% elif v.vacation_type == 'additional' %}дополнительный оплачиваемый отпуск{% elif v.vacation_type == 'unpaid' %}отпуск без сохранения заработной платы{% elif v.vacation_type == 'educational' %}учебный отпуск{% elif v.vacation_type == 'maternity' %}отпуск по беременности и родам{% else %}{{ v.get_vacation_type_display|lower }}{% endif %}</span>
+            продолжительностью <span class="underline-val underline-val--short">{{ v.days_count }}&nbsp;({% spaceless %}{% if v.days_count == 1 %}один{% elif v.days_count == 2 %}два{% elif v.days_count == 3 %}три{% elif v.days_count == 4 %}четыре{% elif v.days_count == 5 %}пять{% elif v.days_count == 6 %}шесть{% elif v.days_count == 7 %}семь{% elif v.days_count == 8 %}восемь{% elif v.days_count == 9 %}девять{% elif v.days_count == 10 %}десять{% else %}{{ v.days_count }}{% endif %}{% endspaceless %}) календарных дней</span>
+            с&nbsp;<span class="underline-val underline-val--date">{{ v.start_date|date:"d.m.Y" }}</span>
+            по&nbsp;<span class="underline-val underline-val--date">{{ v.end_date|date:"d.m.Y" }}</span> включительно.
+        </p>
+
+        {% if v.reason %}
+        <p class="reason-block">
+            Основание: {{ v.reason }}
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- ─── Подпись ─── -->
+    <div class="doc-footer">
+        <div class="signature-row">
+            <span class="sig-left">Подпись</span>
+            <span class="sig-line"></span>
+            <span class="sig-name">{{ v.employee.last_name }} {{ v.employee.first_name|first }}.{% if v.employee.middle_name %}{{ v.employee.middle_name|first }}.{% endif %}</span>
+        </div>
+        <div class="doc-date">
+            Дата: &nbsp;&nbsp;«___»&nbsp;____________&nbsp;{{ v.created_at|date:"Y" }}&nbsp;г.
+        </div>
+    </div>
+
+    <hr class="doc-divider">
+
+    <!-- ─── Виза руководителя (снизу) ─── -->
+    <div style="font-size:12pt;color:#555;margin-bottom:20px;">Отметка руководителя:</div>
+    <div style="display:flex;gap:60px;margin-bottom:30px;font-size:13pt;">
+        <div>
+            <div style="margin-bottom:4px;color:#555;font-size:11pt;">Решение</div>
+            <div style="border-bottom:1px solid #000;width:200px;height:24px;"></div>
+        </div>
+        <div>
+            <div style="margin-bottom:4px;color:#555;font-size:11pt;">Подпись руководителя</div>
+            <div style="border-bottom:1px solid #000;width:200px;height:24px;"></div>
+        </div>
+        <div>
+            <div style="margin-bottom:4px;color:#555;font-size:11pt;">Дата</div>
+            <div style="border-bottom:1px solid #000;width:120px;height:24px;"></div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

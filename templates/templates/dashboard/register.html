@@ -1,0 +1,29 @@
+{% extends "base_auth.html" %}
+{% block title %}Регистрация — Кадровый автопилот{% endblock %}
+{% block content %}
+<h2 class="auth-title">Создать аккаунт</h2>
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+<form method="post" action="{% url 'dashboard:register' %}">
+    {% csrf_token %}
+    <div class="form-group">
+        <label>Название компании</label>
+        <input type="text" name="company_name" placeholder="ООО Ромашка" required autofocus>
+    </div>
+    <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@company.ru" required>
+    </div>
+    <div class="form-group">
+        <label>Пароль</label>
+        <input type="password" name="password" id="password" placeholder="••••••••" required>
+    </div>
+    <div class="form-group">
+        <label>Повторите пароль</label>
+        <input type="password" name="password2" id="password2" placeholder="••••••••" required>
+    </div>
+    <button type="submit" class="btn-primary btn-full">Зарегистрироваться</button>
+</form>
+<p class="auth-switch">Уже есть аккаунт? <a href="{% url 'dashboard:login' %}">Войти</a></p>
+{% endblock %}

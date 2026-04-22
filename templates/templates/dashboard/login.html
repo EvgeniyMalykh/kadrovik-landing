@@ -1,0 +1,85 @@
+{% extends "base_auth.html" %}
+{% block title %}Вход — Кадровый автопилот{% endblock %}
+{% block content %}
+<h2 class="auth-title">Войти в кабинет</h2>
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+<form method="post" action="{% url 'dashboard:login' %}{% if next %}?next={{ next }}{% endif %}">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="you@company.ru" required autofocus
+               lang="en" autocomplete="email" inputmode="email">
+        <small class="text-muted" style="font-size:11px;">Введите email на латинице (EN раскладка)</small>
+    </div>
+    <div class="form-group">
+        <label style="display:flex;justify-content:space-between;align-items:center;">
+            Пароль
+            <a href="{% url 'dashboard:forgot_password' %}" style="font-size:0.8rem;color:var(--accent);text-decoration:none;">Забыли пароль?</a>
+        </label>
+        <input type="password" name="password" placeholder="••••••••" required
+               lang="en" autocomplete="current-password">
+    </div>
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" name="remember_me" id="remember_me">
+        <label class="form-check-label" for="remember_me">Запомнить меня</label>
+    </div>
+    <button type="submit" class="btn-primary btn-full">Войти</button>
+</form>
+<p class="auth-switch">Нет аккаунта? <a href="{% url 'dashboard:register' %}">Зарегистрироваться</a></p>
+<script>
+document.querySelectorAll('input[type="email"], input[name="email"], input[type="password"]').forEach(function(input) {
+    input.addEventListener('focus', function() {
+        this.setAttribute('lang', 'en');
+        this.setAttribute('autocomplete', this.type === 'password' ? 'current-password' : 'email');
+    });
+});
+</script>
+<script>
+(function() {
+  var ru2en = {
+    'й':'q','ц':'w','у':'e','к':'r','е':'t','н':'y','г':'u','ш':'i','щ':'o','з':'p',
+    'х':'[','ъ':']','ф':'a','ы':'s','в':'d','а':'f','п':'g','р':'h','о':'j','л':'k',
+    'д':'l','ж':';','э':"'",'я':'z','ч':'x','с':'c','м':'v','и':'b','т':'n','ь':'m',
+    'б':',','ю':'.','Й':'Q','Ц':'W','У':'E','К':'R','Е':'T','Н':'Y','Г':'U','Ш':'I',
+    'Щ':'O','З':'P','Х':'{','Ъ':'}','Ф':'A','Ы':'S','В':'D','А':'F','П':'G','Р':'H',
+    'О':'J','Л':'K','Д':'L','Ж':':','Э':'"','Я':'Z','Ч':'X','С':'C','М':'V','И':'B',
+    'Т':'N','Ь':'M','Б':'<','Ю':'>'
+  };
+
+  function convertRuToEn(str) {
+    return str.split('').map(function(ch) {
+      return ru2en[ch] !== undefined ? ru2en[ch] : ch;
+    }).join('');
+  }
+
+  function attachConverter(input) {
+    input.addEventListener('input', function() {
+      var pos = this.selectionStart;
+      var converted = convertRuToEn(this.value);
+      if (converted !== this.value) {
+        this.value = converted;
+        try { this.setSelectionRange(pos, pos); } catch(e) {}
+      }
+    });
+
+    input.addEventListener('focus', function() {
+      this.placeholder = this.dataset.origPlaceholder || this.placeholder;
+      this._showHint = true;
+    });
+    input.addEventListener('blur', function() {
+      this._showHint = false;
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var emailInput = document.querySelector('input[type="email"], input[name="email"]');
+    var passInput = document.querySelector('input[type="password"], input[name="password"]');
+    if (emailInput) attachConverter(emailInput);
+    if (passInput) attachConverter(passInput);
+  });
+})();
+</script>
+{% endblock %}

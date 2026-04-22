@@ -1,0 +1,15 @@
+{% extends "base_auth.html" %}
+{% block title %}Email подтверждён — Кадровый автопилот{% endblock %}
+{% block content %}
+<div style="text-align:center; padding: 20px 0;">
+  <div style="font-size: 56px; margin-bottom: 16px;">&#9989;</div>
+  <h2 class="auth-title">Email подтверждён!</h2>
+  <p style="color:#6b7280; font-size:15px; line-height:1.6; margin-bottom:28px;">
+    Ваш аккаунт активирован. Добро пожаловать в <strong>Кадровый автопилот</strong>!<br>
+    Пробный период 7 дней уже активирован.
+  </p>
+  <a href="{% url 'dashboard:employees' %}" class="btn-primary btn-full" style="display:block; text-align:center; text-decoration:none;">
+    Перейти в личный кабинет &#8594;
+  </a>
+</div>
+{% endblock %}

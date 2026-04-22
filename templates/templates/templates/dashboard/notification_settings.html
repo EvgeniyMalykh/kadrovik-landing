@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Настройки уведомлений — Кадровый автопилот{% endblock %}
+{% block nav_notifications %}active{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Настройки уведомлений</h1>
+        <p class="page-subtitle">Включайте и выключайте типы событий, о которых хотите получать уведомления</p>
+    </div>
+</div>
+
+{% for message in messages %}
+<div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %}">{{ message }}</div>
+{% endfor %}
+
+<div class="card" style="max-width:640px;">
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-section">
+            <h3 class="form-section-title">Типы событий</h3>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1.2rem;">
+                Отключите ненужные — перестанут приходить уведомления по этому типу.
+            </p>
+
+            <div class="notify-toggles">
+                <label class="notify-toggle-row">
+                    <div class="notify-toggle-info">
+                        <span class="notify-toggle-icon">&#127874;</span>
+                        <div>
+                            <div class="notify-toggle-title">Дни рождения сотрудников</div>
+                            <div class="notify-toggle-desc">За 3 дня и в день рождения</div>
+                        </div>
+                    </div>
+                    <span class="toggle-switch">
+                        <input type="checkbox" name="notify_birthdays" {% if ns.notify_birthdays %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </span>
+                </label>
+
+                <label class="notify-toggle-row">
+                    <div class="notify-toggle-info">
+                        <span class="notify-toggle-icon">&#127958;&#65039;</span>
+                        <div>
+                            <div class="notify-toggle-title">Начало и окончание отпусков</div>
+                            <div class="notify-toggle-desc">За 1 день до начала, за 3 дня до окончания</div>
+                        </div>
+                    </div>
+                    <span class="toggle-switch">
+                        <input type="checkbox" name="notify_vacations" {% if ns.notify_vacations %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </span>
+                </label>
+
+                <label class="notify-toggle-row">
+                    <div class="notify-toggle-info">
+                        <span class="notify-toggle-icon">&#9888;&#65039;</span>
+                        <div>
+                            <div class="notify-toggle-title">Испытательный срок</div>
+                            <div class="notify-toggle-desc">За 7, 3 и 1 день до окончания</div>
+                        </div>
+                    </div>
+                    <span class="toggle-switch">
+                        <input type="checkbox" name="notify_probation" {% if ns.notify_probation %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </span>
+                </label>
+
+                <label class="notify-toggle-row">
+                    <div class="notify-toggle-info">
+                        <span class="notify-toggle-icon">&#128203;</span>
+                        <div>
+                            <div class="notify-toggle-title">Истечение срочных договоров</div>
+                            <div class="notify-toggle-desc">За 14, 7 и 3 дня до окончания</div>
+                        </div>
+                    </div>
+                    <span class="toggle-switch">
+                        <input type="checkbox" name="notify_contracts" {% if ns.notify_contracts %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </span>
+                </label>
+
+                <label class="notify-toggle-row">
+                    <div class="notify-toggle-info">
+                        <span class="notify-toggle-icon">&#128179;</span>
+                        <div>
+                            <div class="notify-toggle-title">Истечение подписки</div>
+                            <div class="notify-toggle-desc">За 3 дня и за 1 день до окончания</div>
+                        </div>
+                    </div>
+                    <span class="toggle-switch">
+                        <input type="checkbox" name="notify_subscription" {% if ns.notify_subscription %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-section" style="margin-top:1.5rem;">
+            <h3 class="form-section-title">Каналы отправки</h3>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.8rem;">
+                Каналы и контакты настраиваются на странице
+                <a href="{% url 'dashboard:company' %}" style="color:var(--accent);text-decoration:underline;">Компания</a>
+                в разделе «Уведомления».
+            </p>
+        </div>
+
+        <div class="modal-actions" style="margin-top:1.5rem;">
+            <button type="submit" class="btn-primary">Сохранить настройки</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.notify-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.notify-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    cursor: pointer;
+    transition: background 0.12s;
+    gap: 16px;
+}
+.notify-toggle-row:last-child {
+    border-bottom: none;
+}
+.notify-toggle-row:hover {
+    background: var(--bg-hover, rgba(99,102,241,0.04));
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    border-radius: 8px;
+}
+.notify-toggle-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.notify-toggle-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+}
+.notify-toggle-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+}
+.notify-toggle-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted, #9ca3af);
+    margin-top: 2px;
+}
+/* Toggle switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--border, #d1d5db);
+    border-radius: 24px;
+    transition: background 0.25s;
+}
+.toggle-slider:before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.25s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+input:checked + .toggle-slider {
+    background: var(--accent, #6366f1);
+}
+input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+}
+</style>
+
+{% endblock %}
