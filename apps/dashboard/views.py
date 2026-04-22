@@ -458,10 +458,34 @@ def employee_delete(request, employee_id):
 
 @login_required
 @subscription_required
+
+def _save_document_record(member, employee, doc_type, order_number, extra_data=None):
+    """Save a Document record when a PDF is generated from an employee card.
+    Uses get_or_create to avoid duplicates when re-printing."""
+    from apps.documents.models import Document
+    from datetime import date as _save_date
+    doc, created = Document.objects.get_or_create(
+        company=member.company,
+        employee=employee,
+        doc_type=doc_type,
+        number=order_number,
+        defaults={
+            'date': _save_date.today(),
+            'extra_data': extra_data or {},
+        },
+    )
+    if not created and extra_data:
+        doc.extra_data = extra_data
+        doc.save(update_fields=['extra_data'])
+    return doc
+
+
 def download_t1(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
-    pdf = generate_t1_pdf(employee, request.GET.get("order", "П-001"))
+    order_number = request.GET.get("order", "П-001")
+    pdf = generate_t1_pdf(employee, order_number)
+    _save_document_record(member, employee, 'hire', order_number)
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"T1_{employee.last_name}.pdf\""
     return r
@@ -473,6 +497,7 @@ def download_t2(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     pdf = generate_t2_pdf(employee)
+    _save_document_record(member, employee, 'personal_card', 'Т2-' + str(employee.id))
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"T2_{employee.last_name}.pdf\""
     return r
@@ -483,7 +508,9 @@ def download_t2(request, employee_id):
 def download_t8(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
-    pdf = generate_t8_pdf(employee, request.GET.get("order", "У-001"))
+    order_number = request.GET.get("order", "У-001")
+    pdf = generate_t8_pdf(employee, order_number)
+    _save_document_record(member, employee, 'fire', order_number)
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"T8_{employee.last_name}.pdf\""
     return r
@@ -497,7 +524,13 @@ def download_t6(request, employee_id):
     from datetime import date as dt
     v_start = dt.fromisoformat(request.GET.get("start", dt.today().isoformat()))
     v_end   = dt.fromisoformat(request.GET.get("end",   dt.today().isoformat()))
-    pdf = generate_t6_pdf(employee, v_start, v_end, request.GET.get("order", "О-001"), vacation_type=request.GET.get("vtype"))
+    order_number = request.GET.get("order", "О-001")
+    pdf = generate_t6_pdf(employee, v_start, v_end, order_number, vacation_type=request.GET.get("vtype"))
+    _save_document_record(member, employee, 'vacation', order_number, extra_data={
+        'start_date': v_start.isoformat(),
+        'end_date': v_end.isoformat(),
+        'vacation_type': request.GET.get("vtype", ""),
+    })
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"T6_{employee.last_name}.pdf\""
     return r
@@ -712,7 +745,12 @@ def download_t5(request, employee_id):
     from apps.documents.services import generate_t5_pdf
     new_position = request.GET.get("position", employee.position or "Новая должность")
     new_salary   = request.GET.get("salary")
-    pdf = generate_t5_pdf(employee, new_position, new_salary, request.GET.get("order", "ПР-001"))
+    order_number = request.GET.get("order", "ПР-001")
+    pdf = generate_t5_pdf(employee, new_position, new_salary, order_number)
+    _save_document_record(member, employee, 'transfer', order_number, extra_data={
+        'new_position': new_position,
+        'new_salary': new_salary or '',
+    })
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"T5_{employee.last_name}.pdf\""
     return r
@@ -743,7 +781,12 @@ def download_salary_change(request, employee_id):
         raw = request.GET.get("date", "")
         if raw:
             effective_date = _parse_date_flexible(raw)
-    pdf = generate_salary_change_pdf(employee, new_salary, request.GET.get("order", "З-001"), previous_salary=old_salary, effective_date=effective_date)
+    order_number = request.GET.get("order", "З-001")
+    pdf = generate_salary_change_pdf(employee, new_salary, order_number, previous_salary=old_salary, effective_date=effective_date)
+    _save_document_record(member, employee, 'salary_change', order_number, extra_data={
+        'new_salary': new_salary,
+        'old_salary': old_salary,
+    })
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"SalaryChange_{employee.last_name}.pdf\""
     return r
@@ -759,14 +802,21 @@ def download_transfer_order(request, employee_id):
     new_salary = request.GET.get("new_salary", "")
     transfer_date = request.GET.get("transfer_date", "")
     reason = request.GET.get("reason", "")
+    order_number = request.GET.get("order", "ПР-001")
     pdf = generate_transfer_order_pdf(
         employee,
         new_position=new_position or (employee.position or "Новая должность"),
         new_salary=new_salary or None,
-        order_number=request.GET.get("order", "ПР-001"),
+        order_number=order_number,
         transfer_date=transfer_date or None,
         reason=reason or None,
     )
+    _save_document_record(member, employee, 'transfer', order_number, extra_data={
+        'new_position': new_position,
+        'new_salary': new_salary,
+        'transfer_date': transfer_date,
+        'reason': reason,
+    })
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"Transfer_{employee.last_name}.pdf\""
     return r
@@ -778,13 +828,19 @@ def download_dismissal_order(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_dismissal_order_pdf
+    order_number = request.GET.get("order", "У-001")
     pdf = generate_dismissal_order_pdf(
         employee,
-        order_number=request.GET.get("order", "У-001"),
+        order_number=order_number,
         dismissal_date=request.GET.get("dismissal_date", "") or None,
         dismissal_reason=request.GET.get("dismissal_reason", "") or None,
         dismissal_basis_doc=request.GET.get("dismissal_basis_doc", "") or None,
     )
+    _save_document_record(member, employee, 'dismissal', order_number, extra_data={
+        'dismissal_date': request.GET.get("dismissal_date", ""),
+        'dismissal_reason': request.GET.get("dismissal_reason", ""),
+        'dismissal_basis_doc': request.GET.get("dismissal_basis_doc", ""),
+    })
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"Dismissal_{employee.last_name}.pdf\""
     return r
@@ -796,13 +852,19 @@ def download_bonus_order(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_bonus_order_pdf
+    order_number = request.GET.get("order", "П-001")
     pdf = generate_bonus_order_pdf(
         employee,
         bonus_amount=request.GET.get("bonus_amount", "0"),
-        order_number=request.GET.get("order", "П-001"),
+        order_number=order_number,
         reason=request.GET.get("reason", "") or None,
         payment_date=request.GET.get("payment_date", "") or None,
     )
+    _save_document_record(member, employee, 'bonus', order_number, extra_data={
+        'bonus_amount': request.GET.get("bonus_amount", "0"),
+        'reason': request.GET.get("reason", ""),
+        'payment_date': request.GET.get("payment_date", ""),
+    })
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"Bonus_{employee.last_name}.pdf\""
     return r
@@ -814,14 +876,21 @@ def download_disciplinary_order(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_disciplinary_order_pdf
+    order_number = request.GET.get("order", "ДВ-001")
     pdf = generate_disciplinary_order_pdf(
         employee,
         penalty_type=request.GET.get("penalty_type", "Выговор"),
-        order_number=request.GET.get("order", "ДВ-001"),
+        order_number=order_number,
         violation_date=request.GET.get("violation_date", "") or None,
         violation_description=request.GET.get("violation_description", "") or None,
         reason=request.GET.get("reason", "") or None,
     )
+    _save_document_record(member, employee, 'disciplinary', order_number, extra_data={
+        'penalty_type': request.GET.get("penalty_type", "Выговор"),
+        'violation_date': request.GET.get("violation_date", ""),
+        'violation_description': request.GET.get("violation_description", ""),
+        'reason': request.GET.get("reason", ""),
+    })
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"Disciplinary_{employee.last_name}.pdf\""
     return r
@@ -834,6 +903,7 @@ def download_work_certificate(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_work_certificate_pdf
     pdf = generate_work_certificate_pdf(employee)
+    _save_document_record(member, employee, 'reference', 'С-' + str(employee.id))
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"Certificate_{employee.last_name}.pdf\""
     return r
@@ -846,6 +916,7 @@ def download_labor_contract(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_labor_contract_pdf
     pdf = generate_labor_contract_pdf(employee)
+    _save_document_record(member, employee, 'contract', 'ТД-' + str(employee.id))
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"LaborContract_{employee.last_name}.pdf\""
     return r
@@ -858,6 +929,7 @@ def download_gph_contract(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_gph_contract_pdf
     pdf = generate_gph_contract_pdf(employee)
+    _save_document_record(member, employee, 'gph_contract', 'ГПХ-' + str(employee.id))
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"GPH_{employee.last_name}.pdf\""
     return r
@@ -870,6 +942,7 @@ def download_gph_act(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_gph_act_pdf
     pdf = generate_gph_act_pdf(employee)
+    _save_document_record(member, employee, 'gph_act', 'АКТ-' + str(employee.id))
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"GPH_Act_{employee.last_name}.pdf\""
     return r

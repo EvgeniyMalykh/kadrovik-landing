@@ -36,6 +36,8 @@
         {% elif active_type == 'gph_act' %}Акты ГПХ
         {% elif active_type == 'timesheet' %}Табели (Т-13)
         {% elif active_type == 'personal_card' %}Личные карточки (Т-2)
+        {% elif active_type == 'fire' %}Увольнение (Т-8)
+        {% elif active_type == 'contract' %}Трудовые договоры
         {% else %}{{ active_type }}{% endif %}
       {% else %}История документов{% endif %}
     </h1>
@@ -132,6 +134,14 @@
                 <a href="{% url 'dashboard:download_bonus_order' doc.employee_id %}?order={{ doc.number|default:'П-001' }}&bonus_amount={{ doc.extra_data.bonus_amount|default:'' }}&reason={{ doc.extra_data.reason|default:'' }}&payment_date={{ doc.extra_data.payment_date|default:'' }}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
                 {% elif doc.doc_type == 'disciplinary' %}
                 <a href="{% url 'dashboard:download_disciplinary_order' doc.employee_id %}?order={{ doc.number|default:'ДВ-001' }}&penalty_type={{ doc.extra_data.penalty_type|default:'' }}&violation_date={{ doc.extra_data.violation_date|default:'' }}&violation_description={{ doc.extra_data.violation_description|default:'' }}&reason={{ doc.extra_data.reason|default:'' }}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% elif doc.doc_type == 'hire' %}
+                <a href="{% url 'dashboard:download_t1' doc.employee_id %}?order={{ doc.number|default:'П-001' }}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% elif doc.doc_type == 'fire' %}
+                <a href="{% url 'dashboard:download_t8' doc.employee_id %}?order={{ doc.number|default:'У-001' }}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% elif doc.doc_type == 'personal_card' %}
+                <a href="{% url 'dashboard:download_t2' doc.employee_id %}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
+                {% elif doc.doc_type == 'contract' %}
+                <a href="{% url 'dashboard:download_labor_contract' doc.employee_id %}" target="_blank" style="font-size:0.82rem;color:#059669;text-decoration:none;" title="Скачать PDF">&#128424; Печать</a>
                 {% endif %}
               {% endif %}
               <button class="btn-delete-doc"
@@ -183,6 +193,14 @@
           <a href="{% url 'dashboard:download_bonus_order' doc.employee_id %}?order={{ doc.number|default:'П-001' }}&bonus_amount={{ doc.extra_data.bonus_amount|default:'' }}&reason={{ doc.extra_data.reason|default:'' }}&payment_date={{ doc.extra_data.payment_date|default:'' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
           {% elif doc.doc_type == 'disciplinary' %}
           <a href="{% url 'dashboard:download_disciplinary_order' doc.employee_id %}?order={{ doc.number|default:'ДВ-001' }}&penalty_type={{ doc.extra_data.penalty_type|default:'' }}&violation_date={{ doc.extra_data.violation_date|default:'' }}&violation_description={{ doc.extra_data.violation_description|default:'' }}&reason={{ doc.extra_data.reason|default:'' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'hire' %}
+          <a href="{% url 'dashboard:download_t1' doc.employee_id %}?order={{ doc.number|default:'П-001' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'fire' %}
+          <a href="{% url 'dashboard:download_t8' doc.employee_id %}?order={{ doc.number|default:'У-001' }}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'personal_card' %}
+          <a href="{% url 'dashboard:download_t2' doc.employee_id %}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
+          {% elif doc.doc_type == 'contract' %}
+          <a href="{% url 'dashboard:download_labor_contract' doc.employee_id %}" target="_blank" style="background:#dcfce7;color:#166534;text-decoration:none;border-radius:8px;">&#128424; PDF</a>
           {% endif %}
         {% endif %}
         <button class="btn-delete-doc" onclick="deleteDocument({{ doc.id }}, this)" title="Удалить">
