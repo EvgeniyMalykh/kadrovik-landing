@@ -1,16 +1,85 @@
+import os
 import re
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from apps.accounts.models import User
 from apps.employees.models import Employee, Department
-from apps.companies.models import Company, CompanyMember
+from apps.companies.models import Company, CompanyMember, CompanyInvite
 from apps.documents.services import generate_t1_pdf, generate_t2_pdf, generate_t8_pdf, generate_t6_pdf
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
+
+from functools import wraps
+from django.contrib import messages
+from django.conf import settings
+
+# ===== ROLE-BASED ACCESS CONTROL =====
+
+ROLE_RANK = {
+    'owner': 4,
+    'admin': 3,
+    'hr': 2,
+    'accountant': 1,
+}
+
+def get_member_role(user):
+    """Получить роль текущего пользователя в его компании."""
+    member = CompanyMember.objects.filter(user=user).first()
+    return member.role if member else None
+
+
+def get_active_member(request):
+    """Возвращает активный CompanyMember с учётом active_company_id из сессии."""
+    active_id = request.session.get('active_company_id')
+    if active_id:
+        member = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
+        if member:
+            return member
+    # fallback — последнее (самое свежее) членство (прямой запрос, без рекурсии)
+    member = CompanyMember.objects.filter(user=request.user).order_by('-pk').first()
+    if member:
+        request.session['active_company_id'] = member.company_id
+    return member
+
+
+def get_active_member_role(request):
+    """Получить роль пользователя в активной компании (учитывает сессию)."""
+    member = get_active_member(request)
+    return member.role if member else None
+
+
+def require_role(min_role):
+    """
+    Декоратор: требует роль не ниже min_role.
+    Порядок: owner > admin > hr > accountant
+
+    Использование:
+        @require_role('admin')  # нужна роль admin или выше
+        def some_view(request): ...
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                return redirect(settings.LOGIN_URL + '?next=' + request.path)
+            # Используем активную компанию из сессии если доступна
+            active_id = request.session.get("active_company_id")
+            if active_id:
+                _m = CompanyMember.objects.filter(user=request.user, company_id=active_id).first()
+                role = _m.role if _m else get_member_role(request.user)
+            else:
+                role = get_member_role(request.user)
+            if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get(min_role, 99):
+                messages.error(request, 'У вас недостаточно прав для этого действия.')
+                return redirect('dashboard:home')
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
 
 
 @login_required
@@ -40,7 +109,8 @@ def subscription_required(view_func):
 
 @login_required
 def employees_list(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    show_onboarding = request.session.pop('show_onboarding', False)
+    member = get_active_member(request)
     if member:
         company = member.company
     else:
@@ -59,8 +129,8 @@ def employees_list(request):
             company=company,
             plan=Subscription.Plan.TRIAL,
             status=Subscription.Status.ACTIVE,
-            expires_at=timezone.now() + _dt.timedelta(days=7),
-            max_employees=50,
+            expires_at=timezone.now() + _dt.timedelta(days=14),
+            max_employees=10,
         )
     # Оставшиеся дни trial
     trial_days_left = None
@@ -107,7 +177,7 @@ def employees_list(request):
     if contract_filter:
         employees = employees.filter(contract_type=contract_filter)
 
-    employees = employees.order_by('last_name', 'first_name')
+    employees = employees.order_by('last_name', 'first_name', 'middle_name')
 
     # Счётчики для вкладок
     active_count = Employee.objects.filter(company=company, status='active').count()
@@ -131,6 +201,7 @@ def employees_list(request):
         "fired_count": fired_count,
         "departments": departments,
         "total_count": employees.count(),
+        "show_onboarding": show_onboarding,
         **sub_ctx,
     })
 
@@ -172,9 +243,10 @@ def _save_employee_from_post(post, employee):
         try:
             employee.salary = Decimal(salary_raw)
         except (InvalidOperation, ValueError):
-            employee.salary = None
-    else:
+            pass  # не затираем при ошибке парсинга
+    elif is_new:
         employee.salary = None
+    # при редактировании пустое поле — не трогаем текущий оклад
 
     # Структурное подразделение
     dept_id = post.get("department_id")
@@ -209,16 +281,19 @@ def _save_employee_from_post(post, employee):
     if probation_months:
         try:
             months = int(probation_months)
-            employee.probation_end_date = employee.hire_date + timedelta(days=30 * months)
-        except ValueError:
-            if is_new:
+            if months == 0:
                 employee.probation_end_date = None
+            else:
+                employee.probation_end_date = employee.hire_date + timedelta(days=30 * months)
+        except ValueError:
+            employee.probation_end_date = None
     else:
         probation_end_str = post.get("probation_end_date")
         parsed_probation = _parse_date_flexible(probation_end_str)
         if parsed_probation:
             employee.probation_end_date = parsed_probation
-        elif is_new:
+        else:
+            # Пустое поле: всегда сбрасываем (и при создании, и при редактировании)
             employee.probation_end_date = None
 
     employee.phone  = post.get("phone", "")
@@ -260,11 +335,27 @@ def _save_employee_from_post(post, employee):
     return employee
 
 
+def _save_employee_photo(request, employee):
+    """Сохраняет фото сотрудника из request.FILES."""
+    if 'photo' not in request.FILES:
+        return
+    photo = request.FILES['photo']
+    if photo.size > 5 * 1024 * 1024:
+        return
+    if employee.photo:
+        old_path = employee.photo.path
+        if os.path.exists(old_path):
+            os.remove(old_path)
+    employee.photo = photo
+    employee.save(update_fields=['photo'])
+
+
 @login_required
 @subscription_required
+@require_role("hr")
 def employee_add(request):
     from apps.billing.services import get_subscription_context
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return HttpResponse("Нет компании", status=400)
     sub_ctx = get_subscription_context(member.company)
@@ -281,6 +372,7 @@ def employee_add(request):
         emp = Employee(company=member.company)
         _save_employee_from_post(request.POST, emp)
         emp.save()
+        _save_employee_photo(request, emp)
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
 
@@ -309,17 +401,35 @@ def employee_add(request):
 @login_required
 @subscription_required
 def employee_edit(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    # Если запрос не через HTMX — редиректим на страницу сотрудников
+    if request.method == "GET" and not request.headers.get("HX-Request"):
+        return redirect("dashboard:employees")
     if request.method == "POST":
+        role = get_active_member_role(request)
+        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
+            messages.error(request, 'Недостаточно прав для редактирования.')
+            return redirect('dashboard:employees')
         _save_employee_from_post(request.POST, employee)
         employee.save()
+        _save_employee_photo(request, employee)
         employees = Employee.objects.filter(company=member.company).select_related("department")
         return render(request, "dashboard/partials/employees_table.html", {"employees": employees})
     from apps.employees.models import Department as _Dept
     departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
+    salary_val = employee.salary
+    salary_str = ''
+    if salary_val is not None:
+        # Use plain string conversion to avoid locale comma separator
+        s = str(salary_val)
+        # Remove trailing zeros after decimal: 77777.00 -> 77777, 1234.50 -> 1234.5
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        salary_str = s
     return render(request, "dashboard/partials/employee_edit_form.html", {
         "emp": employee,
+        "salary_str": salary_str,
         "birth_date_str":           employee.birth_date.strftime("%d.%m.%Y") if employee.birth_date else "",
         "hire_date_str":            employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else "",
         "probation_end_str":        employee.probation_end_date.strftime("%d.%m.%Y") if employee.probation_end_date else "",
@@ -331,9 +441,11 @@ def employee_edit(request, employee_id):
 
 
 @login_required
+@subscription_required
 @require_POST
+@require_role("admin")
 def employee_delete(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     employee.delete()
     from datetime import date as _date
@@ -347,7 +459,7 @@ def employee_delete(request, employee_id):
 @login_required
 @subscription_required
 def download_t1(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     pdf = generate_t1_pdf(employee, request.GET.get("order", "П-001"))
     r = HttpResponse(pdf, content_type="application/pdf")
@@ -358,7 +470,7 @@ def download_t1(request, employee_id):
 @login_required
 @subscription_required
 def download_t2(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     pdf = generate_t2_pdf(employee)
     r = HttpResponse(pdf, content_type="application/pdf")
@@ -369,7 +481,7 @@ def download_t2(request, employee_id):
 @login_required
 @subscription_required
 def download_t8(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     pdf = generate_t8_pdf(employee, request.GET.get("order", "У-001"))
     r = HttpResponse(pdf, content_type="application/pdf")
@@ -380,12 +492,12 @@ def download_t8(request, employee_id):
 @login_required
 @subscription_required
 def download_t6(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from datetime import date as dt
     v_start = dt.fromisoformat(request.GET.get("start", dt.today().isoformat()))
     v_end   = dt.fromisoformat(request.GET.get("end",   dt.today().isoformat()))
-    pdf = generate_t6_pdf(employee, v_start, v_end, request.GET.get("order", "О-001"))
+    pdf = generate_t6_pdf(employee, v_start, v_end, request.GET.get("order", "О-001"), vacation_type=request.GET.get("vtype"))
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"T6_{employee.last_name}.pdf\""
     return r
@@ -393,7 +505,7 @@ def download_t6(request, employee_id):
 
 @login_required
 def subscription(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     sub = None
     payments = []
     employee_count = 0
@@ -411,19 +523,35 @@ def subscription(request):
 def login_view(request):
     if request.user.is_authenticated:
         return redirect("dashboard:employees")
+    next_url = request.GET.get("next") or request.POST.get("next", "")
     if request.method == "POST":
         email    = request.POST.get("email")
         password = request.POST.get("password")
         user = authenticate(request, username=email, password=password)
         if user:
             login(request, user)
+            # Автоматически принять ожидающие приглашения
+            pending = CompanyInvite.objects.filter(email=user.email, accepted=False)
+            for inv in pending:
+                if not inv.is_expired():
+                    CompanyMember.objects.get_or_create(
+                        company=inv.company, user=user,
+                        defaults={'role': inv.role},
+                    )
+                    inv.accepted = True
+                    inv.save()
+            _m = CompanyMember.objects.filter(user=user).order_by('-pk').first()
+            if _m:
+                request.session['active_company_id'] = _m.company_id
             if request.POST.get("remember_me"):
                 request.session.set_expiry(60 * 60 * 24 * 30)  # 30 дней
             else:
                 request.session.set_expiry(0)  # до закрытия браузера
+            if next_url and next_url.startswith("/"):
+                return redirect(next_url)
             return redirect("dashboard:employees")
-        return render(request, "dashboard/login.html", {"error": "Неверный email или пароль"})
-    return render(request, "dashboard/login.html")
+        return render(request, "dashboard/login.html", {"error": "Неверный email или пароль", "next": next_url})
+    return render(request, "dashboard/login.html", {"next": next_url})
 
 
 def register_view(request):
@@ -510,7 +638,7 @@ def verify_email_view(request, token):
         company=company,
         plan=Subscription.Plan.TRIAL,
         status=Subscription.Status.ACTIVE,
-        expires_at=timezone.now() + datetime.timedelta(days=7),
+        expires_at=timezone.now() + datetime.timedelta(days=14),
         max_employees=10,
     )
 
@@ -526,6 +654,7 @@ def verify_email_view(request, token):
     )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    request.session['show_onboarding'] = True
     return render(request, "dashboard/email_verified.html")
 
 
@@ -578,7 +707,7 @@ def logout_view(request):
 @login_required
 @subscription_required
 def download_t5(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_t5_pdf
     new_position = request.GET.get("position", employee.position or "Новая должность")
@@ -592,7 +721,7 @@ def download_t5(request, employee_id):
 @login_required
 @subscription_required
 def download_salary_change(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_salary_change_pdf
     new_salary = request.GET.get("salary", str(employee.salary or "0"))
@@ -606,7 +735,15 @@ def download_salary_change(request, employee_id):
         old_salary = last_doc.extra_data['old_salary']
     if not old_salary:
         old_salary = request.GET.get("old_salary", "")
-    pdf = generate_salary_change_pdf(employee, new_salary, request.GET.get("order", "З-001"), previous_salary=old_salary)
+    # Дата изменения оклада: из extra_data документа, потом из GET, иначе сегодня
+    effective_date = None
+    if last_doc and last_doc.extra_data and last_doc.extra_data.get("change_date"):
+        effective_date = _parse_date_flexible(last_doc.extra_data["change_date"])
+    if not effective_date:
+        raw = request.GET.get("date", "")
+        if raw:
+            effective_date = _parse_date_flexible(raw)
+    pdf = generate_salary_change_pdf(employee, new_salary, request.GET.get("order", "З-001"), previous_salary=old_salary, effective_date=effective_date)
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"SalaryChange_{employee.last_name}.pdf\""
     return r
@@ -615,7 +752,7 @@ def download_salary_change(request, employee_id):
 @login_required
 @subscription_required
 def download_transfer_order(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_transfer_order_pdf
     new_position = request.GET.get("new_position", "")
@@ -638,7 +775,7 @@ def download_transfer_order(request, employee_id):
 @login_required
 @subscription_required
 def download_dismissal_order(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_dismissal_order_pdf
     pdf = generate_dismissal_order_pdf(
@@ -656,7 +793,7 @@ def download_dismissal_order(request, employee_id):
 @login_required
 @subscription_required
 def download_bonus_order(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_bonus_order_pdf
     pdf = generate_bonus_order_pdf(
@@ -674,7 +811,7 @@ def download_bonus_order(request, employee_id):
 @login_required
 @subscription_required
 def download_disciplinary_order(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_disciplinary_order_pdf
     pdf = generate_disciplinary_order_pdf(
@@ -693,7 +830,7 @@ def download_disciplinary_order(request, employee_id):
 @login_required
 @subscription_required
 def download_work_certificate(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_work_certificate_pdf
     pdf = generate_work_certificate_pdf(employee)
@@ -705,7 +842,7 @@ def download_work_certificate(request, employee_id):
 @login_required
 @subscription_required
 def download_labor_contract(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_labor_contract_pdf
     pdf = generate_labor_contract_pdf(employee)
@@ -717,7 +854,7 @@ def download_labor_contract(request, employee_id):
 @login_required
 @subscription_required
 def download_gph_contract(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_gph_contract_pdf
     pdf = generate_gph_contract_pdf(employee)
@@ -729,7 +866,7 @@ def download_gph_contract(request, employee_id):
 @login_required
 @subscription_required
 def download_gph_act(request, employee_id):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_gph_act_pdf
     pdf = generate_gph_act_pdf(employee)
@@ -741,7 +878,7 @@ def download_gph_act(request, employee_id):
 @login_required
 @subscription_required
 def download_t13(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return HttpResponse("Нет компании", status=400)
     from apps.documents.services import generate_t13_pdf
@@ -766,12 +903,15 @@ def download_t13(request):
 
 @login_required
 def company_profile(request):
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
-    saved = False
     if request.method == "POST":
+        role = get_active_member_role(request)
+        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
+            messages.error(request, 'Недостаточно прав для изменения настроек компании.')
+            return redirect('dashboard:company')
         company.name             = request.POST.get("name", company.name)
         company.inn              = request.POST.get("inn", company.inn)
         company.ogrn             = request.POST.get("ogrn", company.ogrn)
@@ -785,19 +925,111 @@ def company_profile(request):
         company.director_position = request.POST.get("director_position", company.director_position)
         company.phone            = request.POST.get("phone", company.phone)
         company.email            = request.POST.get("email", company.email)
+        company.notify_messenger        = request.POST.get("notify_messenger", company.notify_messenger)
+        company.notify_contact          = request.POST.get("notify_contact", company.notify_contact)
+        company.notify_email_contact    = request.POST.get("notify_email_contact", company.notify_email_contact)
+        company.notify_telegram_contact = request.POST.get("notify_telegram_contact", company.notify_telegram_contact)
+        company.notify_whatsapp_contact = request.POST.get("notify_whatsapp_contact", company.notify_whatsapp_contact)
+        company.notify_viber_contact    = request.POST.get("notify_viber_contact", company.notify_viber_contact)
+        company.notify_max_contact      = request.POST.get("notify_max_contact", company.notify_max_contact)
         company.save()
-        saved = True
-    return render(request, "dashboard/company.html", {"company": company, "saved": saved})
+        messages.success(request, 'Данные сохранены — реквизиты обновлены во всех документах')
+        return redirect('dashboard:company')
+    return render(request, "dashboard/company.html", {
+        "company": company,
+        "messengers": company.MESSENGER_CHOICES,
+    })
 
 
 @login_required
-@subscription_required
+def notification_settings(request):
+    """Страница настроек уведомлений — включение/выключение типов событий."""
+    from apps.events.models import NotificationSettings
+    member = get_active_member(request)
+    if not member:
+        return redirect("dashboard:home")
+    role = get_active_member_role(request)
+    if ROLE_RANK.get(role, 0) < ROLE_RANK.get('owner', 0):
+        messages.error(request, 'Только владелец может менять настройки уведомлений.')
+        return redirect('dashboard:home')
+
+    settings_obj, _ = NotificationSettings.objects.get_or_create(company=member.company)
+
+    if request.method == 'POST':
+        settings_obj.notify_birthdays = 'notify_birthdays' in request.POST
+        settings_obj.notify_vacations = 'notify_vacations' in request.POST
+        settings_obj.notify_probation = 'notify_probation' in request.POST
+        settings_obj.notify_contracts = 'notify_contracts' in request.POST
+        settings_obj.notify_subscription = 'notify_subscription' in request.POST
+        settings_obj.save()
+        messages.success(request, 'Настройки уведомлений сохранены')
+        return redirect('dashboard:notification_settings')
+
+    return render(request, 'dashboard/notification_settings.html', {
+        'ns': settings_obj,
+    })
+
+
+@login_required
+@login_required
+def test_company_notify(request):
+    """Отправляет тестовое уведомление во все заполненные каналы."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'Метод не поддерживается'}, status=405)
+
+    member = get_active_member(request)
+    if not member:
+        return JsonResponse({'ok': False, 'message': 'Компания не найдена'})
+
+    company = member.company
+
+    # Собираем список заполненных каналов для ответа
+    channels = []
+    if (getattr(company, 'notify_email_contact', '') or '').strip():
+        channels.append('Email: ' + company.notify_email_contact.strip())
+    elif (company.email or '').strip():
+        channels.append('Email: ' + company.email.strip())
+    if (getattr(company, 'notify_telegram_contact', '') or '').strip():
+        channels.append('Telegram: ' + company.notify_telegram_contact.strip())
+    elif (company.notify_messenger or '') == 'telegram' and (company.notify_contact or '').strip():
+        channels.append('Telegram: ' + company.notify_contact.strip())
+    if (getattr(company, 'notify_whatsapp_contact', '') or '').strip():
+        channels.append('WhatsApp: ' + company.notify_whatsapp_contact.strip())
+    if (getattr(company, 'notify_max_contact', '') or '').strip():
+        channels.append('Max: ' + company.notify_max_contact.strip())
+
+    if not channels:
+        return JsonResponse({'ok': False, 'message': 'Заполните хотя бы один контакт для уведомлений'})
+
+    from apps.events.tasks import _send_notification_to_company
+    text = "\u2705 \u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435\n\u041a\u0430\u0434\u0440\u043e\u0432\u044b\u0439 \u0430\u0432\u0442\u043e\u043f\u0438\u043b\u043e\u0442 \u0443\u0441\u043f\u0435\u0448\u043d\u043e \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d.\n\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: " + company.name
+    subject = 'Тестовое уведомление — Кадровый автопилот'
+    html_body = (
+        '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"></head>'
+        '<body style="font-family:-apple-system,sans-serif;background:#f8fafc;padding:40px 20px;">'
+        '<div style="max-width:480px;margin:0 auto;background:#1e293b;border-radius:12px;padding:32px;color:#f1f5f9;text-align:center;">'
+        '<div style="font-size:2.5rem;margin-bottom:12px;">✅</div>'
+        '<h2 style="margin:0 0 12px;font-size:1.1rem;">Тестовое уведомление</h2>'
+        '<p style="color:#94a3b8;font-size:0.9rem;margin:0 0 8px;">Кадровый автопилот успешно настроен.</p>'
+        f'<p style="color:#94a3b8;font-size:0.85rem;margin:0;">Компания: <strong style="color:#f1f5f9;">{company.name}</strong></p>'
+        '</div></body></html>'
+    )
+    plain_body = "\u0422\u0435\u0441\u0442\u043e\u0432\u043e\u0435 \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u0435.\n\u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f: " + company.name
+
+    try:
+        _send_notification_to_company(company, text, subject, html_body, plain_body)
+        return JsonResponse({'ok': True, 'message': 'Отправлено: ' + ', '.join(channels)})
+    except Exception as e:
+        return JsonResponse({'ok': False, 'message': str(e)})
+
+
+@login_required
 def timesheet_edit(request):
     """Редактирование табеля Т-13 по месяцу."""
     import calendar
     from datetime import date as dt_date
     from apps.employees.models import TimeRecord
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     try:
@@ -806,7 +1038,7 @@ def timesheet_edit(request):
     except (ValueError, TypeError):
         y, m = dt_date.today().year, dt_date.today().month
 
-    employees = Employee.objects.filter(company=member.company).select_related("department")
+    employees = Employee.objects.filter(company=member.company).select_related("department").order_by('last_name', 'first_name', 'middle_name')
     days_in_month = calendar.monthrange(y, m)[1]
     days = list(range(1, days_in_month + 1))
 
@@ -822,8 +1054,13 @@ def timesheet_edit(request):
     # Словарь: {(employee_id, day): record}
     rec_map = {(r.employee_id, r.date.day): r for r in records}
 
-    # Праздники и выходные
+    # Праздники, сокращённые и выходные
     holidays = _get_ru_holidays_dashboard(y)
+    try:
+        from apps.employees.utils import get_holidays_and_short_days
+        _, short_days_set = get_holidays_and_short_days(y, m)
+    except Exception:
+        short_days_set = set()
     day_types = []
     for d in days:
         dd = datetime.date(y, m, d)
@@ -831,12 +1068,15 @@ def timesheet_edit(request):
             day_types.append('holiday')
         elif dd.weekday() >= 5:
             day_types.append('weekend')
+        elif dd in short_days_set:
+            day_types.append('short')
         else:
             day_types.append('work')
 
     days_with_types = list(zip(days, day_types))
     CODES = [
-        ('Я','Явка'), ('ОТ','Отпуск'), ('ДО','Доп.отпуск'),
+        ('Я','Явка'), ('ОТ','Отпуск'), ('ОД','Доп.отпуск'),
+        ('УЧ','Учебный отпуск'), ('ОЖ','Отпуск по БиР'),
         ('Б','Больничный'), ('К','Командировка'), ('НН','Неявка'),
         ('П','Праздник'), ('В','Выходной'), ('Я½','Неполный'),
         ('РВ','Работа в выходной'), ('Я/С','Сверхурочные'),
@@ -878,6 +1118,7 @@ def _get_ru_holidays_dashboard(year):
 
 @login_required
 @subscription_required
+@require_role("hr")
 def timesheet_save(request):
     """Сохраняет отметки табеля из POST (JSON body)."""
     import json
@@ -886,7 +1127,7 @@ def timesheet_save(request):
     if request.method != "POST":
         from django.http import JsonResponse
         return JsonResponse({"error": "POST required"}, status=405)
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         from django.http import JsonResponse
         return JsonResponse({"error": "no company"}, status=403)
@@ -906,6 +1147,11 @@ def timesheet_save(request):
         try:
             d = dt_date.fromisoformat(rec["date"])
         except Exception:
+            continue
+        # Если clear=true — удалить запись (ячейка очищена)
+        if rec.get("clear") or rec.get("code") == "":
+            TimeRecord.objects.filter(employee_id=emp_id, date=d).delete()
+            saved += 1
             continue
         code = rec.get("code", "Я")[:3]
         hours = int(rec.get("hours", 8))
@@ -1038,7 +1284,7 @@ def change_password_view(request):
 @subscription_required
 def forms_list(request):
     """Журнал всех документов компании с фильтром по типу"""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
@@ -1058,11 +1304,12 @@ def forms_list(request):
 
 @require_POST
 @login_required
+@require_role("admin")
 def delete_document(request, doc_id):
     """Удаление документа из журнала"""
     from django.http import JsonResponse
     from apps.documents.models import Document
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'success': False, 'error': 'Компания не найдена'}, status=403)
     try:
@@ -1103,7 +1350,7 @@ def _next_doc_number(company, doc_type):
 @subscription_required
 def form_editor(request, doc_type):
     """Редактор формы (новый или существующий документ)"""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
@@ -1137,18 +1384,20 @@ def form_editor(request, doc_type):
         'employees': employees,
         'extra_data': document.extra_data if document else {},
         'next_number': next_number,
+        'company': company,
     })
 
 
 @login_required
 @subscription_required
 @require_POST
+@require_role("hr")
 def form_save(request, doc_type):
     """Сохранение документа"""
     import json as _json_save
     from apps.documents.models import Document
     from django.http import JsonResponse
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'error': 'no company'}, status=403)
     company = member.company
@@ -1205,6 +1454,36 @@ def form_save(request, doc_type):
             date=doc_date,
             extra_data=extra_data,
         )
+
+    # При сохранении vacation — создаём/обновляем Vacation и синхронизируем табель
+    if doc_type == 'vacation' and employee:
+        from apps.vacations.models import Vacation
+        from apps.vacations.views import _sync_vacation_to_timesheet, _parse_date as _parse_date_v
+        from apps.employees.models import TimeRecord
+        v_start = _parse_date_v(extra_data.get('start_date'))
+        v_end = _parse_date_v(extra_data.get('end_date'))
+        v_type = extra_data.get('vacation_type', 'annual')
+        v_reason = extra_data.get('reason', '')
+        if v_start and v_end and v_end >= v_start:
+            old_vacation = Vacation.objects.filter(document=document).first()
+            if old_vacation:
+                TimeRecord.objects.filter(
+                    employee=old_vacation.employee,
+                    date__gte=old_vacation.start_date,
+                    date__lte=old_vacation.end_date,
+                    code__in=['ОТ', 'ОД', 'УЧ', 'ОЖ'],
+                ).delete()
+            vacation, _ = Vacation.objects.update_or_create(
+                document=document,
+                defaults={
+                    'employee': employee,
+                    'vacation_type': v_type,
+                    'start_date': v_start,
+                    'end_date': v_end,
+                    'reason': v_reason,
+                },
+            )
+            _sync_vacation_to_timesheet(vacation)
 
     # При сохранении salary_change — записываем старый оклад в историю и обновляем employee.salary
     if doc_type == 'salary_change' and employee:
@@ -1265,7 +1544,7 @@ def form_save(request, doc_type):
 def employee_data_api(request, employee_id):
     """JSON данные сотрудника для автозаполнения"""
     from django.http import JsonResponse
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'error': 'no company'}, status=403)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -1507,10 +1786,11 @@ def chat_poll(request):
 
 @require_POST
 @login_required
+@require_role("admin")
 def delete_document(request, doc_id):
     from django.http import JsonResponse
     from apps.documents.models import Document
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({"success": False, "error": "Нет доступа"}, status=403)
     try:
@@ -1525,8 +1805,8 @@ def delete_document(request, doc_id):
 
 def _require_plan(request, min_plan):
     """Проверяет тариф пользователя. Возвращает True если доступ разрешён."""
-    PLAN_RANK = {'trial': 0, 'start': 1, 'business': 2, 'pro': 3}
-    member = CompanyMember.objects.filter(user=request.user).first()
+    PLAN_RANK = {'trial': 3, 'start': 1, 'business': 2, 'pro': 3}
+    member = get_active_member(request)
     if not member:
         return False
     sub = getattr(member.company, 'subscription', None)
@@ -1547,7 +1827,7 @@ def export_employees_excel(request):
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     company = member.company
     employees = Employee.objects.filter(company=company).select_related('department').order_by('last_name')
 
@@ -1646,7 +1926,7 @@ def export_timesheet_excel(request):
     if not _require_plan(request, 'business'):
         return JsonResponse({'error': 'Функция доступна на тарифах Бизнес и Корпоратив'}, status=403)
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     company = member.company
 
     try:
@@ -1697,6 +1977,11 @@ def export_timesheet_excel(request):
         ws.column_dimensions[get_column_letter(ci)].width = w
 
     holidays = _get_ru_holidays_dashboard(y)
+    try:
+        from apps.employees.utils import get_holidays_and_short_days
+        _, short_days = get_holidays_and_short_days(y, m)
+    except Exception:
+        short_days = set()
     for di, d in enumerate(days, 5):
         dd = datetime.date(y, m, d)
         is_wknd = dd.weekday() >= 5 or dd in holidays
@@ -1732,6 +2017,7 @@ def export_timesheet_excel(request):
             rec = rec_map.get((emp.id, d))
             dd = datetime.date(y, m, d)
             is_wknd = dd.weekday() >= 5 or dd in holidays
+            is_short = dd in short_days
             code = rec.code if rec else ('В' if is_wknd else '')
             hours = rec.hours if rec else 0
             c = ws.cell(ri, di, code)
@@ -1743,7 +2029,7 @@ def export_timesheet_excel(request):
             elif code == 'Я':
                 c.fill = ya_fill
                 total_days += 1
-                total_hours += hours or 8
+                total_hours += hours or (7 if is_short else 8)
             elif code and code not in ('В', 'П', ''):
                 total_days += 1
                 total_hours += hours or 0
@@ -1772,16 +2058,76 @@ def export_timesheet_excel(request):
     return response
 
 
+@login_required
+@subscription_required
+def export_timesheet_free_view(request):
+    """Экспорт табеля — свободная таблица. Тариф Бизнес+."""
+    import datetime
+    from django.http import JsonResponse
+    if not _require_plan(request, 'business'):
+        return JsonResponse({'error': 'Функция доступна на тарифах Бизнес и Корпоратив'}, status=403)
+    member = get_active_member(request)
+    company = member.company
+    try:
+        y = int(request.GET.get('year', datetime.date.today().year))
+        m = int(request.GET.get('month', datetime.date.today().month))
+    except (ValueError, TypeError):
+        y, m = datetime.date.today().year, datetime.date.today().month
+    from .excel_export import export_timesheet_free
+    data = export_timesheet_free(company, y, m)
+    filename = f'tabel_{y}_{m:02d}.xlsx'
+    response = HttpResponse(
+        data,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@subscription_required
+def export_timesheet_t13_view(request):
+    """Экспорт табеля — форма Т-13 (Excel). Тариф Бизнес+."""
+    import datetime
+    from django.http import JsonResponse
+    if not _require_plan(request, 'business'):
+        return JsonResponse({'error': 'Функция доступна на тарифах Бизнес и Корпоратив'}, status=403)
+    member = get_active_member(request)
+    company = member.company
+    try:
+        y = int(request.GET.get('year', datetime.date.today().year))
+        m = int(request.GET.get('month', datetime.date.today().month))
+    except (ValueError, TypeError):
+        y, m = datetime.date.today().year, datetime.date.today().month
+    from .excel_export import export_timesheet_t13
+    data = export_timesheet_t13(company, y, m)
+    filename = f'T13_{y}_{m:02d}.xlsx'
+    response = HttpResponse(
+        data,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
 # ===== TEAM MANAGEMENT =====
 
-from apps.companies.models import CompanyInvite
 from django.contrib import messages as django_messages
 
+
+
+@login_required
+def switch_company(request, company_id):
+    """Переключить активную компанию."""
+    member = CompanyMember.objects.filter(user=request.user, company_id=company_id).first()
+    if member:
+        request.session['active_company_id'] = company_id
+    return redirect(request.META.get('HTTP_REFERER', '/dashboard/employees/'))
 
 @login_required
 def team_list(request):
     """Страница управления командой."""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -1796,11 +2142,12 @@ def team_list(request):
 
 
 @login_required
+@require_role("admin")
 def team_invite(request):
     """Отправить приглашение."""
     if request.method != 'POST':
         return redirect('dashboard:team_list')
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -1894,7 +2241,7 @@ def invite_accept(request, token):
                 if len(password) < 6:
                     return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пароль должен быть не менее 6 символов'})
                 if UserModel.objects.filter(email=email).exists():
-                    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пользователь с таким email уже существует. Войдите в аккаунт.'})
+                    return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'error': 'Пользователь с таким email уже существует. Войдите в аккаунт.', 'show_login': True})
                 user = UserModel.objects.create_user(email=email, password=password, username=email)
             else:
                 user = authenticate(request, email=email, password=password)
@@ -1910,6 +2257,7 @@ def invite_accept(request, token):
             user=request.user,
             defaults={'role': invite.role}
         )
+        request.session['active_company_id'] = invite.company_id
         invite.accepted = True
         invite.save()
         django_messages.success(request, f'Вы присоединились к компании {invite.company.name}!')
@@ -1917,13 +2265,18 @@ def invite_accept(request, token):
 
     # GET — показать форму
     already_member = request.user.is_authenticated and CompanyMember.objects.filter(company=invite.company, user=request.user).exists()
+    # Если пользователь уже участник — автоматически принять приглашение
+    if already_member:
+        invite.accepted = True
+        invite.save()
     return render(request, 'dashboard/invite_accept.html', {'invite': invite, 'already_member': already_member})
 
 
 @login_required
+@require_role("admin")
 def team_member_remove(request, member_id):
     """Удалить участника команды."""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     target = get_object_or_404(CompanyMember, id=member_id, company=member.company)
@@ -1939,9 +2292,10 @@ def team_member_remove(request, member_id):
 
 
 @login_required
+@require_role("admin")
 def team_invite_cancel(request, invite_id):
     """Отменить приглашение."""
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     invite = get_object_or_404(CompanyInvite, id=invite_id, company=member.company, accepted=False)
@@ -1951,10 +2305,11 @@ def team_invite_cancel(request, invite_id):
 
 
 @login_required
+@require_role("admin")
 def api_settings(request):
     """Страница управления API-токеном."""
     from apps.billing.services import PLANS
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     sub = getattr(member.company, 'subscription', None)
@@ -1975,6 +2330,7 @@ def api_settings(request):
 
 
 @login_required
+@require_role("admin")
 def api_token_regenerate(request):
     """Пересоздать API-токен."""
     if request.method != 'POST':
@@ -1996,7 +2352,7 @@ def document_templates(request):
     from apps.billing.services import PLANS
     from apps.documents.models import DocumentTemplate, DOC_TYPES
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2025,7 +2381,7 @@ def document_template_upload(request, doc_type):
     from apps.billing.services import PLANS
     from apps.documents.models import DocumentTemplate
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2065,7 +2421,7 @@ def document_template_upload(request, doc_type):
 def document_template_delete(request, doc_type):
     """Удалить кастомный шаблон (вернуться к стандартному)."""
     from apps.documents.models import DocumentTemplate
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     template = get_object_or_404(DocumentTemplate, company=member.company, doc_type=doc_type)
@@ -2080,7 +2436,7 @@ def document_template_download(request, doc_type, employee_id):
     from apps.documents.models import DocumentTemplate
     from apps.documents.template_renderer import render_template_to_bytes, get_employee_context, get_company_context
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
 
@@ -2117,7 +2473,7 @@ def sfr_export(request):
     from apps.billing.services import PLANS
     from apps.employees.models import Employee
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2145,10 +2501,23 @@ def sfr_export(request):
 
     import datetime as _dt
     today = date.today()
+
+    # Determine smart default: start of the month of the earliest employee event
+    default_start = date(today.year, today.month, 1)
+    all_event_dates = []
+    for emp in employees:
+        if emp.hire_date:
+            all_event_dates.append(emp.hire_date)
+        if emp.fire_date:
+            all_event_dates.append(emp.fire_date)
+    if all_event_dates:
+        earliest = min(all_event_dates)
+        default_start = date(earliest.year, earliest.month, 1)
+
     try:
         period_start = _dt.datetime.strptime(period_start_str, '%Y-%m-%d').date()
     except (ValueError, TypeError):
-        period_start = date(today.year, today.month, 1)
+        period_start = default_start
     try:
         period_end = _dt.datetime.strptime(period_end_str, '%Y-%m-%d').date()
     except (ValueError, TypeError):
@@ -2175,12 +2544,24 @@ def sfr_export(request):
 
     events_preview.sort(key=lambda x: x['event_date'])
 
+    # Collect date hints for empty state
+    hire_dates_outside = []
+    if not events_preview:
+        for emp in employees:
+            if emp.hire_date and not (period_start <= emp.hire_date <= period_end):
+                hire_dates_outside.append({
+                    'employee': emp,
+                    'hire_date': emp.hire_date,
+                })
+
     context.update({
         'events_preview': events_preview,
         'period_start': period_start.strftime('%Y-%m-%d'),
         'period_end': period_end.strftime('%Y-%m-%d'),
         'has_sfr_reg_number': bool(company.sfr_reg_number),
         'has_okved': bool(company.okved),
+        'hire_dates_outside': hire_dates_outside,
+        'total_employees': employees.count(),
     })
 
     return render(request, 'dashboard/sfr_export.html', context)
@@ -2230,6 +2611,170 @@ def _sfr_export_generate(request, company):
     return response
 
 
+@login_required
+def sfr_efs1_11_pdf(request):
+    """GET /dashboard/sfr/efs1/1.1/pdf/?period_start=...&period_end=..."""
+    from apps.documents.sfr_generator import generate_efs1_11_pdf
+    from apps.employees.models import Employee
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+    import datetime as _dt
+
+    member = get_active_member(request)
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+    if not features.get('sfr_export'):
+        return redirect('dashboard:sfr_export')
+
+    today = date.today()
+    try:
+        period_start = _dt.datetime.strptime(request.GET.get('period_start', ''), '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        period_start = date(today.year, today.month, 1)
+    try:
+        period_end = _dt.datetime.strptime(request.GET.get('period_end', ''), '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        period_end = today
+
+    employees = Employee.objects.filter(company=company)
+    events = []
+    for emp in employees:
+        if emp.hire_date and period_start <= emp.hire_date <= period_end:
+            events.append({
+                'employee': emp,
+                'event_type': 'hire',
+                'event_date': emp.hire_date,
+                'position': emp.position or '',
+            })
+        if emp.fire_date and period_start <= emp.fire_date <= period_end:
+            events.append({
+                'employee': emp,
+                'event_type': 'dismiss',
+                'event_date': emp.fire_date,
+                'position': emp.position or '',
+            })
+    events.sort(key=lambda x: x['event_date'])
+
+    pdf_bytes = generate_efs1_11_pdf(company, events, period_start, period_end)
+    filename = 'EFS1_1.1_' + (company.inn or 'noinn') + '_' + today.strftime('%Y%m%d') + '.pdf'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename=' + filename
+    return response
+
+
+@login_required
+def sfr_efs1_12(request):
+    """GET /dashboard/sfr/efs1/1.2/ — страница подраздела 1.2 (стаж)."""
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+    from apps.employees.models import Employee
+
+    member = get_active_member(request)
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+
+    context = {
+        'has_sfr_export': features.get('sfr_export', False),
+        'company': company,
+    }
+
+    if not features.get('sfr_export'):
+        return render(request, 'dashboard/sfr_stazh.html', context)
+
+    year = request.GET.get('year', '')
+    try:
+        year = int(year)
+    except (ValueError, TypeError):
+        year = date.today().year
+
+    from apps.documents.sfr_generator import _build_stazh_records
+    records = _build_stazh_records(company, year)
+
+    current_year = date.today().year
+    year_choices = list(range(current_year, current_year - 6, -1))
+
+    context.update({
+        'year': year,
+        'year_choices': year_choices,
+        'records': records,
+        'has_sfr_reg_number': bool(company.sfr_reg_number),
+        'has_okved': bool(company.okved),
+    })
+    return render(request, 'dashboard/sfr_stazh.html', context)
+
+
+@login_required
+def sfr_efs1_12_xml(request):
+    """GET /dashboard/sfr/efs1/1.2/xml/?year=2024"""
+    from apps.documents.sfr_generator import generate_efs1_12_xml
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+
+    member = get_active_member(request)
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+    if not features.get('sfr_export'):
+        return redirect('dashboard:sfr_export')
+
+    try:
+        year = int(request.GET.get('year', ''))
+    except (ValueError, TypeError):
+        year = date.today().year
+
+    xml_bytes = generate_efs1_12_xml(company, year)
+    today = date.today()
+    filename = 'EFS1_1.2_' + (company.inn or 'noinn') + '_' + str(year) + '.xml'
+    response = HttpResponse(xml_bytes, content_type='application/xml; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename=' + filename
+    return response
+
+
+@login_required
+def sfr_efs1_12_pdf(request):
+    """GET /dashboard/sfr/efs1/1.2/pdf/?year=2024"""
+    from apps.documents.sfr_generator import generate_efs1_12_pdf
+    from apps.billing.models import Subscription
+    from apps.billing.services import PLANS
+
+    member = get_active_member(request)
+    if not member:
+        return redirect('dashboard:login')
+    company = member.company
+
+    subscription = Subscription.objects.filter(company=company).order_by('-started_at').first()
+    plan = subscription.plan if subscription else 'trial'
+    features = PLANS.get(plan, PLANS['trial'])['features']
+    if not features.get('sfr_export'):
+        return redirect('dashboard:sfr_export')
+
+    try:
+        year = int(request.GET.get('year', ''))
+    except (ValueError, TypeError):
+        year = date.today().year
+
+    pdf_bytes = generate_efs1_12_pdf(company, year)
+    today = date.today()
+    filename = 'EFS1_1.2_' + (company.inn or 'noinn') + '_' + str(year) + '.pdf'
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename=' + filename
+    return response
+
+
 # ===== СОБЫТИЯ =====
 
 @login_required
@@ -2241,7 +2786,7 @@ def events_list(request):
     from django.utils import timezone
     from datetime import timedelta
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return redirect('dashboard:login')
     company = member.company
@@ -2365,7 +2910,7 @@ def events_count_api(request):
     from django.utils import timezone
     from datetime import timedelta
 
-    member = CompanyMember.objects.filter(user=request.user).first()
+    member = get_active_member(request)
     if not member:
         return JsonResponse({'count': 0})
     company = member.company
@@ -2408,3 +2953,27 @@ def events_count_api(request):
         pass
 
     return JsonResponse({'count': count})
+
+
+@login_required
+@subscription_required
+def employee_import_template(request):
+    from .employee_import import generate_employee_import_template
+    data = generate_employee_import_template()
+    response = HttpResponse(data, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = "attachment; filename=\"employee_import_template.xlsx\""
+    return response
+
+
+@login_required
+@subscription_required
+def employee_import_upload(request):
+    if request.method == "POST" and request.FILES.get("file"):
+        member = get_active_member(request)
+        role = get_active_member_role(request)
+        if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get("hr", 0):
+            return JsonResponse({"error": "Нет прав"}, status=403)
+        from .employee_import import import_employees_from_excel
+        result = import_employees_from_excel(request.FILES["file"], member.company)
+        return JsonResponse(result)
+    return JsonResponse({"error": "Файл не загружен"}, status=400)

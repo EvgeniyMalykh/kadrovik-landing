@@ -19,7 +19,7 @@ class Subscription(models.Model):
     status        = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.ACTIVE)
     started_at    = models.DateTimeField('Дата начала', null=True, blank=True)
     expires_at         = models.DateTimeField('Истекает', null=True, blank=True)
-    max_employees      = models.PositiveIntegerField('Макс. сотрудников', default=10)
+    max_employees      = models.PositiveIntegerField('Макс. сотрудников', default=200)
     # Рекуррентные платежи
     payment_method_id  = models.CharField('ИД метода оплаты (рекуррент)', max_length=255, blank=True, default='')
     auto_renew         = models.BooleanField('Автопродление', default=False)

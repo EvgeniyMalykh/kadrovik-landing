@@ -130,7 +130,7 @@ def employees_list(request):
             plan=Subscription.Plan.TRIAL,
             status=Subscription.Status.ACTIVE,
             expires_at=timezone.now() + _dt.timedelta(days=14),
-            max_employees=10,
+            max_employees=200,
         )
     # Оставшиеся дни trial
     trial_days_left = None
@@ -672,7 +672,7 @@ def verify_email_view(request, token):
         plan=Subscription.Plan.TRIAL,
         status=Subscription.Status.ACTIVE,
         expires_at=timezone.now() + datetime.timedelta(days=14),
-        max_employees=10,
+        max_employees=200,
     )
 
     # Удаляем pending запись
