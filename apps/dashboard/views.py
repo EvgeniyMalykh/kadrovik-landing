@@ -114,6 +114,9 @@ def employees_list(request):
     if member:
         company = member.company
     else:
+        # No company membership — log out to avoid redirect loop with login_view
+        from django.contrib.auth import logout as auth_logout
+        auth_logout(request)
         return redirect('dashboard:login')
 
     from datetime import date as _date
