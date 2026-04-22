@@ -115,9 +115,12 @@ def employees_list(request):
         company = member.company
     else:
         # No company membership — log out to avoid redirect loop with login_view
-        from django.contrib.auth import logout as auth_logout
-        auth_logout(request)
-        return redirect('dashboard:login')
+        # But allow superusers to stay logged in
+        if not request.user.is_superuser:
+            from django.contrib.auth import logout as auth_logout
+            auth_logout(request)
+            return redirect('dashboard:login')
+        company = None
 
     from datetime import date as _date
     from apps.billing.models import Subscription
@@ -561,7 +564,7 @@ def login_view(request):
         # Check if user has any company membership to avoid redirect loop
         # (employees_list redirects back to login when no member exists)
         member = CompanyMember.objects.filter(user=request.user).first()
-        if not member:
+        if not member and not request.user.is_superuser:
             from django.contrib.auth import logout
             logout(request)
             return render(request, "dashboard/login.html", {
