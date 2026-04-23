@@ -1047,3 +1047,237 @@ class TestWebhookIPVerification(TestCase):
         self.assertTrue(_check_yukassa_ip(request))
         request = factory.post("/", REMOTE_ADDR="127.0.0.1", HTTP_X_FORWARDED_FOR="1.2.3.4, 10.0.0.1")
         self.assertFalse(_check_yukassa_ip(request))
+
+
+# 2.12  Trial expiry warning tests
+
+class TestTrialExpiryWarnings(TestCase):
+
+    def setUp(self):
+        self.user = _create_user(email="trialwarn@example.com")
+        self.user.email = "trialwarn@example.com"
+        self.user.save()
+        self.company = _create_company_with_owner(self.user, name="TrialWarn Corp")
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="noreply@test.com",
+    )
+    def test_trial_warning_3_days_before(self):
+        from apps.billing.tasks import send_expiry_warnings
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.ACTIVE,
+            expires_at=timezone.now() + timedelta(days=3),
+            max_employees=200,
+        )
+        mail.outbox = []
+        send_expiry_warnings()
+        self.assertGreaterEqual(len(mail.outbox), 1)
+        self.assertIn("3", mail.outbox[0].subject)
+        self.assertIn("Пробный период", mail.outbox[0].subject)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="noreply@test.com",
+    )
+    def test_trial_warning_1_day_before(self):
+        from apps.billing.tasks import send_expiry_warnings
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.ACTIVE,
+            expires_at=timezone.now() + timedelta(days=1),
+            max_employees=200,
+        )
+        mail.outbox = []
+        send_expiry_warnings()
+        self.assertGreaterEqual(len(mail.outbox), 1)
+        self.assertIn("1", mail.outbox[0].subject)
+        self.assertIn("Пробный период", mail.outbox[0].subject)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="noreply@test.com",
+    )
+    def test_no_warning_for_expired_trial(self):
+        """Expired trial should not receive trial warnings (it's already expired)."""
+        from apps.billing.tasks import send_expiry_warnings
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.EXPIRED,
+            expires_at=timezone.now() - timedelta(days=1),
+            max_employees=200,
+        )
+        mail.outbox = []
+        send_expiry_warnings()
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="noreply@test.com",
+    )
+    def test_no_trial_warning_for_paid_plan(self):
+        """Paid plans should not get trial expiry warnings."""
+        from apps.billing.tasks import send_expiry_warnings
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.START,
+            status=Subscription.Status.ACTIVE,
+            expires_at=timezone.now() + timedelta(days=3),
+            max_employees=10,
+        )
+        mail.outbox = []
+        send_expiry_warnings()
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        DEFAULT_FROM_EMAIL="noreply@test.com",
+    )
+    def test_no_warning_far_from_expiry(self):
+        """Trial expiring in 6 days should not trigger any warning."""
+        from apps.billing.tasks import send_expiry_warnings
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.ACTIVE,
+            expires_at=timezone.now() + timedelta(days=6),
+            max_employees=200,
+        )
+        mail.outbox = []
+        send_expiry_warnings()
+        self.assertEqual(len(mail.outbox), 0)
+
+
+# 2.13  Middleware trial-specific tests
+
+@override_settings(ROOT_URLCONF="config.urls")
+class TestTrialMiddlewareBlocking(TestCase):
+
+    def setUp(self):
+        self.user = _create_user(email="trialmw@example.com")
+        self.user.set_password("testpass123")
+        self.user.save()
+        self.company = _create_company_with_owner(self.user, name="TrialMW Corp")
+        self.client = Client()
+        self.client.login(email="trialmw@example.com", password="testpass123")
+
+    def test_active_trial_allows_access(self):
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.ACTIVE,
+            expires_at=timezone.now() + timedelta(days=5),
+            max_employees=200,
+        )
+        resp = self.client.get("/dashboard/employees/")
+        if resp.status_code == 302:
+            self.assertNotIn("/dashboard/subscription/", resp.url)
+
+    def test_expired_trial_blocks_dashboard(self):
+        """Trial with expires_at in the past should block access even if status=active."""
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.ACTIVE,
+            expires_at=timezone.now() - timedelta(hours=1),
+            max_employees=200,
+        )
+        resp = self.client.get("/dashboard/employees/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/dashboard/subscription/", resp.url)
+
+    def test_expired_trial_status_blocks_dashboard(self):
+        """Trial with status=expired should block access."""
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.EXPIRED,
+            expires_at=timezone.now() - timedelta(days=1),
+            max_employees=200,
+        )
+        resp = self.client.get("/dashboard/employees/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/dashboard/subscription/", resp.url)
+
+    def test_expired_trial_subscription_page_accessible(self):
+        """Subscription page should be accessible even with expired trial."""
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.EXPIRED,
+            expires_at=timezone.now() - timedelta(days=1),
+            max_employees=200,
+        )
+        resp = self.client.get("/dashboard/subscription/")
+        self.assertNotEqual(resp.status_code, 302)
+
+    def test_expired_trial_checkout_accessible(self):
+        """Checkout paths should be accessible with expired trial."""
+        _create_subscription(
+            self.company,
+            plan=Subscription.Plan.TRIAL,
+            status=Subscription.Status.EXPIRED,
+            expires_at=timezone.now() - timedelta(days=1),
+            max_employees=200,
+        )
+        resp = self.client.get("/dashboard/checkout/start/")
+        # Should redirect to YooKassa or subscription, but not be blocked by middleware
+        if resp.status_code == 302:
+            self.assertNotIn("/dashboard/subscription/", resp.url)
+
+
+# 2.14  Full trial-to-paid upgrade flow
+
+class TestTrialToPaidUpgrade(TestCase):
+
+    def setUp(self):
+        self.user = _create_user(email="upgrade@example.com")
+        self.company = _create_company_with_owner(self.user, name="Upgrade Corp")
+
+    def test_trial_to_start_upgrade(self):
+        sub = create_trial_subscription(self.company)
+        self.assertEqual(sub.plan, "trial")
+        self.assertEqual(sub.max_employees, 200)
+
+        # Upgrade to start
+        sub = activate_subscription(self.company, "start")
+        self.assertEqual(sub.plan, "start")
+        self.assertEqual(sub.status, Subscription.Status.ACTIVE)
+        self.assertEqual(sub.max_employees, 10)
+        expected = timezone.now() + timedelta(days=30)
+        self.assertAlmostEqual(sub.expires_at.timestamp(), expected.timestamp(), delta=5)
+
+    def test_trial_to_business_upgrade(self):
+        sub = create_trial_subscription(self.company)
+        sub = activate_subscription(self.company, "business")
+        self.assertEqual(sub.plan, "business")
+        self.assertEqual(sub.max_employees, 50)
+
+    def test_trial_to_pro_upgrade(self):
+        sub = create_trial_subscription(self.company)
+        sub = activate_subscription(self.company, "pro")
+        self.assertEqual(sub.plan, "pro")
+        self.assertEqual(sub.max_employees, 200)
+
+    def test_expired_trial_to_paid(self):
+        """Expired trial can be upgraded to paid plan."""
+        sub = create_trial_subscription(self.company)
+        sub.status = Subscription.Status.EXPIRED
+        sub.expires_at = timezone.now() - timedelta(days=1)
+        sub.save()
+
+        sub = activate_subscription(self.company, "business")
+        self.assertEqual(sub.status, Subscription.Status.ACTIVE)
+        self.assertEqual(sub.plan, "business")
+        self.assertTrue(sub.is_active)
+
+    def test_trial_to_annual_upgrade(self):
+        sub = create_trial_subscription(self.company)
+        sub = activate_subscription(self.company, "start", billing_period="annual")
+        self.assertEqual(sub.billing_period, "annual")
+        expected = timezone.now() + timedelta(days=365)
+        self.assertAlmostEqual(sub.expires_at.timestamp(), expected.timestamp(), delta=5)

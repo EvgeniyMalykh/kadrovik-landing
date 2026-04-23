@@ -170,9 +170,9 @@ def cleanup_expired_company_data():
 @shared_task(name="billing.send_expiry_warnings")
 def send_expiry_warnings():
     """
-    Отправляет email-предупреждения об удалении данных:
-    - За 7 дней до data_deletion_scheduled_at
-    - За 1 день до data_deletion_scheduled_at
+    Отправляет email-предупреждения:
+    1. Триал: за 3 дня и за 1 день до expires_at (status=active, plan=trial)
+    2. Paid: за 7 дней и за 1 день до data_deletion_scheduled_at (status=expired)
     """
     from apps.billing.models import Subscription
     from apps.companies.models import CompanyMember
@@ -182,6 +182,81 @@ def send_expiry_warnings():
     now = timezone.now()
     sent_count = 0
 
+    def _get_owner_email(company):
+        owner_member = CompanyMember.objects.filter(
+            company=company, role='owner'
+        ).select_related('user').first()
+        if not owner_member or not owner_member.user.email:
+            logger.warning(f"[billing] Нет email владельца для company={company.id}")
+            return None, None
+        return owner_member.user.email, owner_member
+
+    def _send(email, subject, plain, html):
+        try:
+            send_mail(
+                subject=subject,
+                message=plain,
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                html_message=html,
+                fail_silently=True,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"[billing] Ошибка отправки предупреждения: email={email} error={e}")
+            return False
+
+    # ── 1. Предупреждения о скором истечении ТРИАЛА ──
+    for days_before, label in [(3, '3 дня'), (1, '1 день')]:
+        window_start = now + timedelta(days=days_before - 1, hours=12)
+        window_end = now + timedelta(days=days_before, hours=12)
+
+        trial_subs = Subscription.objects.filter(
+            status=Subscription.Status.ACTIVE,
+            plan=Subscription.Plan.TRIAL,
+            expires_at__gte=window_start,
+            expires_at__lt=window_end,
+        ).select_related('company')
+
+        for sub in trial_subs:
+            email, _ = _get_owner_email(sub.company)
+            if not email:
+                continue
+
+            expires_date = sub.expires_at.strftime('%d.%m.%Y')
+            company_name = sub.company.name
+
+            subject = f"Пробный период {company_name} истекает через {label}"
+            plain = (
+                f"Здравствуйте!\n\n"
+                f"Пробный период компании «{company_name}» истекает {expires_date}.\n"
+                f"После истечения доступ к сервису будет заблокирован.\n\n"
+                f"Выберите тариф чтобы продолжить работу:\n"
+                f"https://app.kadrovik-auto.ru/dashboard/subscription/\n\n"
+                f"С уважением,\n"
+                f"Кадровый автопилот"
+            )
+            html = (
+                f"<div style='font-family:sans-serif;max-width:600px;margin:0 auto;'>"
+                f"<h2 style='color:#f59e0b;'>&#9200; Пробный период истекает через {label}</h2>"
+                f"<p>Пробный период компании <b>{company_name}</b> истекает <b>{expires_date}</b>.</p>"
+                f"<p>После истечения доступ к сервису будет заблокирован.</p>"
+                f"<p style='margin:24px 0;'>"
+                f"<a href='https://app.kadrovik-auto.ru/dashboard/subscription/' "
+                f"style='background:#3b82f6;color:#fff;padding:12px 24px;border-radius:8px;"
+                f"text-decoration:none;font-weight:600;'>Выбрать тариф</a></p>"
+                f"<p style='color:#6b7280;font-size:14px;'>С уважением,<br>Кадровый автопилот</p>"
+                f"</div>"
+            )
+
+            if _send(email, subject, plain, html):
+                sent_count += 1
+                logger.info(
+                    f"[billing] Предупреждение триал ({label}) отправлено: "
+                    f"company={sub.company_id} email={email}"
+                )
+
+    # ── 2. Предупреждения об удалении данных (paid планы) ──
     # Предупреждение за 7 дней
     warn_7_start = now + timedelta(days=6, hours=12)
     warn_7_end = now + timedelta(days=7, hours=12)
@@ -202,19 +277,12 @@ def send_expiry_warnings():
         ).select_related('company')
 
         for sub in subs:
-            owner_member = CompanyMember.objects.filter(
-                company=sub.company, role='owner'
-            ).select_related('user').first()
-
-            if not owner_member or not owner_member.user.email:
-                logger.warning(
-                    f"[billing] Нет email владельца для company={sub.company_id}"
-                )
+            email, _ = _get_owner_email(sub.company)
+            if not email:
                 continue
 
             deletion_date = sub.data_deletion_scheduled_at.strftime('%d.%m.%Y')
             company_name = sub.company.name
-            email = owner_member.user.email
 
             subject = f"Данные компании {company_name} будут удалены через {label}"
             plain = (
@@ -241,24 +309,11 @@ def send_expiry_warnings():
                 f"</div>"
             )
 
-            try:
-                send_mail(
-                    subject=subject,
-                    message=plain,
-                    from_email=django_settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    html_message=html,
-                    fail_silently=True,
-                )
+            if _send(email, subject, plain, html):
                 sent_count += 1
                 logger.info(
                     f"[billing] Предупреждение ({label}) отправлено: "
                     f"company={sub.company_id} email={email}"
-                )
-            except Exception as e:
-                logger.error(
-                    f"[billing] Ошибка отправки предупреждения: "
-                    f"company={sub.company_id} error={e}"
                 )
 
     logger.info(f"[billing] send_expiry_warnings: отправлено {sent_count} писем")
