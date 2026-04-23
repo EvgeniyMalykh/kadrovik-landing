@@ -378,7 +378,7 @@ class CompanyProfileTests(TestCase):
             "inn": "0000000000",
             "director_name": "Новый Директор",
             "legal_address": "ул. Обновлённая",
-        })
+        }, follow=True)
         self.assertEqual(resp.status_code, 200)
         self.company.refresh_from_db()
         self.assertEqual(self.company.name, "ООО Новое Имя")
@@ -393,7 +393,7 @@ class CompanyProfileTests(TestCase):
             "director_name": self.company.director_name,
             "sfr_reg_number": "123-456-789012",
             "okved": "62.01",
-        })
+        }, follow=True)
         self.assertEqual(resp.status_code, 200)
         self.company.refresh_from_db()
         self.assertEqual(self.company.sfr_reg_number, "123-456-789012")

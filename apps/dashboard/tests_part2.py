@@ -298,7 +298,7 @@ class APITests(TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_api_non_pro_plan_403(self):
-        self.sub.plan = 'trial'
+        self.sub.plan = 'start'
         self.sub.save()
         self.api.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
         resp = self.api.get('/api/v1/employees/')
@@ -386,7 +386,7 @@ class SFRExportTests(TestCase):
         self.assertEqual(resp.status_code, 200)
 
     def test_sfr_non_pro_plan_locked(self):
-        self.sub.plan = 'trial'
+        self.sub.plan = 'start'
         self.sub.save()
         url = reverse('dashboard:sfr_export')
         resp = self.client.get(url)
@@ -460,7 +460,7 @@ class CustomTemplatesTests(TestCase):
         self.assertEqual(resp.status_code, 200)
 
     def test_templates_non_pro_locked(self):
-        self.sub.plan = 'trial'
+        self.sub.plan = 'start'
         self.sub.save()
         url = reverse('dashboard:document_templates')
         resp = self.client.get(url)

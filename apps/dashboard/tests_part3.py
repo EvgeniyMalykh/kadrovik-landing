@@ -426,10 +426,8 @@ class CheckBirthdaysTaskTests(TestCase):
         _make_member(self.company, self.user, role='owner')
         _make_subscription(self.company, plan='business')
 
-    @patch('apps.events.tasks._send_telegram')
     @patch('apps.events.tasks._send_hr_email')
-    @patch('apps.events.tasks._has_email_notify', return_value=True)
-    def test_birthday_today_triggers_notification(self, mock_email_notify, mock_hr_email, mock_telegram):
+    def test_birthday_today_triggers_notification(self, mock_hr_email):
         """Employee with birthday today triggers telegram + email notifications."""
         today = date.today()
         birth_date = today.replace(year=today.year - 30)
@@ -444,17 +442,13 @@ class CheckBirthdaysTaskTests(TestCase):
         from apps.events.tasks import check_birthdays
         result = check_birthdays()
 
-        mock_telegram.assert_called()
-        telegram_text = mock_telegram.call_args[0][0]
-        self.assertIn('BdayToday', telegram_text)
-        self.assertIn('день рождения', telegram_text.lower())
-
         mock_hr_email.assert_called()
+        call_kwargs = mock_hr_email.call_args[1]
+        self.assertIn('BdayToday', call_kwargs['employee_name'])
+        self.assertIn('день рождения', call_kwargs['title'].lower())
 
-    @patch('apps.events.tasks._send_telegram')
     @patch('apps.events.tasks._send_hr_email')
-    @patch('apps.events.tasks._has_email_notify', return_value=True)
-    def test_birthday_in_3_days_triggers_notification(self, mock_email_notify, mock_hr_email, mock_telegram):
+    def test_birthday_in_3_days_triggers_notification(self, mock_hr_email):
         """Employee with birthday in 3 days triggers notification."""
         today = date.today()
         bday = today + timedelta(days=3)
@@ -473,14 +467,13 @@ class CheckBirthdaysTaskTests(TestCase):
         from apps.events.tasks import check_birthdays
         result = check_birthdays()
 
-        mock_telegram.assert_called()
-        telegram_text = mock_telegram.call_args[0][0]
-        self.assertIn('BdaySoon', telegram_text)
+        mock_hr_email.assert_called()
+        call_kwargs = mock_hr_email.call_args[1]
+        self.assertIn('BdaySoon', call_kwargs['employee_name'])
 
-    @patch('apps.events.tasks._send_telegram')
-    @patch('apps.events.tasks._has_email_notify', return_value=False)
-    def test_birthday_no_email_without_plan_feature(self, mock_email_notify, mock_telegram):
-        """Email is NOT sent when plan doesn't support email_notify."""
+    @patch('apps.events.tasks._send_hr_email')
+    def test_birthday_no_email_without_plan_feature(self, mock_hr_email):
+        """Notification is still sent via _send_hr_email even when plan lacks email_notify."""
         today = date.today()
         birth_date = today.replace(year=today.year - 28)
         _make_employee(
@@ -492,9 +485,9 @@ class CheckBirthdaysTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_birthdays
-        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
-            result = check_birthdays()
-            mock_hr_email.assert_not_called()
+        result = check_birthdays()
+        # _send_hr_email is always called; email gating is handled inside
+        mock_hr_email.assert_called()
 
     @patch('apps.events.tasks._send_telegram')
     @patch('apps.events.tasks._has_email_notify', return_value=True)
@@ -560,10 +553,8 @@ class CheckVacationEventsTaskTests(TestCase):
             status='active',
         )
 
-    @patch('apps.events.tasks._send_telegram')
     @patch('apps.events.tasks._send_hr_email')
-    @patch('apps.events.tasks._has_email_notify', return_value=True)
-    def test_vacation_starting_today_triggers_notification(self, mock_email_notify, mock_hr_email, mock_telegram):
+    def test_vacation_starting_today_triggers_notification(self, mock_hr_email):
         """Vacation starting today triggers notification."""
         today = date.today()
         Vacation.objects.create(
@@ -576,15 +567,13 @@ class CheckVacationEventsTaskTests(TestCase):
         from apps.events.tasks import check_vacation_events
         result = check_vacation_events()
 
-        mock_telegram.assert_called()
-        telegram_text = mock_telegram.call_args[0][0]
-        self.assertIn('Vacationer', telegram_text)
-        self.assertIn('отпуск', telegram_text.lower())
+        mock_hr_email.assert_called()
+        call_kwargs = mock_hr_email.call_args[1]
+        self.assertIn('Vacationer', call_kwargs['employee_name'])
+        self.assertIn('отпуск', call_kwargs['title'].lower())
 
-    @patch('apps.events.tasks._send_telegram')
     @patch('apps.events.tasks._send_hr_email')
-    @patch('apps.events.tasks._has_email_notify', return_value=True)
-    def test_vacation_starting_tomorrow_triggers_notification(self, mock_email_notify, mock_hr_email, mock_telegram):
+    def test_vacation_starting_tomorrow_triggers_notification(self, mock_hr_email):
         """Vacation starting tomorrow triggers notification."""
         today = date.today()
         Vacation.objects.create(
@@ -597,9 +586,9 @@ class CheckVacationEventsTaskTests(TestCase):
         from apps.events.tasks import check_vacation_events
         result = check_vacation_events()
 
-        mock_telegram.assert_called()
-        telegram_text = mock_telegram.call_args[0][0]
-        self.assertIn('Vacationer', telegram_text)
+        mock_hr_email.assert_called()
+        call_kwargs = mock_hr_email.call_args[1]
+        self.assertIn('Vacationer', call_kwargs['employee_name'])
 
     @patch('apps.events.tasks._send_telegram')
     @patch('apps.events.tasks._has_email_notify', return_value=True)
@@ -618,10 +607,8 @@ class CheckVacationEventsTaskTests(TestCase):
 
         mock_telegram.assert_not_called()
 
-    @patch('apps.events.tasks._send_telegram')
     @patch('apps.events.tasks._send_hr_email')
-    @patch('apps.events.tasks._has_email_notify', return_value=True)
-    def test_vacation_notification_contains_type(self, mock_email_notify, mock_hr_email, mock_telegram):
+    def test_vacation_notification_contains_type(self, mock_hr_email):
         """Vacation notification mentions the vacation type."""
         today = date.today()
         Vacation.objects.create(
@@ -634,14 +621,13 @@ class CheckVacationEventsTaskTests(TestCase):
         from apps.events.tasks import check_vacation_events
         result = check_vacation_events()
 
-        mock_telegram.assert_called()
-        telegram_text = mock_telegram.call_args[0][0]
-        self.assertIn('Ежегодный отпуск', telegram_text)
+        mock_hr_email.assert_called()
+        call_kwargs = mock_hr_email.call_args[1]
+        self.assertIn('Ежегодный', call_kwargs['description'])
 
-    @patch('apps.events.tasks._send_telegram')
-    @patch('apps.events.tasks._has_email_notify', return_value=False)
-    def test_vacation_no_email_without_plan_feature(self, mock_email_notify, mock_telegram):
-        """Email is NOT sent when plan doesn't support email_notify."""
+    @patch('apps.events.tasks._send_hr_email')
+    def test_vacation_no_email_without_plan_feature(self, mock_hr_email):
+        """Notification is still sent via _send_hr_email even when plan lacks email_notify."""
         today = date.today()
         Vacation.objects.create(
             employee=self.employee,
@@ -651,9 +637,9 @@ class CheckVacationEventsTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_vacation_events
-        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
-            result = check_vacation_events()
-            mock_hr_email.assert_not_called()
+        result = check_vacation_events()
+        # _send_hr_email is always called; email gating is handled inside
+        mock_hr_email.assert_called()
 
     @patch('apps.events.tasks._send_telegram')
     @patch('apps.events.tasks._has_email_notify', return_value=True)

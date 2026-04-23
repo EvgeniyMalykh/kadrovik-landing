@@ -7,6 +7,7 @@ Run:
 import json
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
@@ -382,7 +383,8 @@ class WebhookSecurityTests(TestCase):
         resp = self.client.get(self.url)
         self.assertIn(resp.status_code, [405, 302])
 
-    def test_webhook_rejects_invalid_json(self):
+    @patch('apps.billing.views._check_yukassa_ip', return_value=True)
+    def test_webhook_rejects_invalid_json(self, mock_ip):
         """Invalid JSON body → 400."""
         resp = self.client.post(
             self.url,
@@ -391,7 +393,8 @@ class WebhookSecurityTests(TestCase):
         )
         self.assertIn(resp.status_code, [400, 200])
 
-    def test_webhook_unknown_event_ignored(self):
+    @patch('apps.billing.views._check_yukassa_ip', return_value=True)
+    def test_webhook_unknown_event_ignored(self, mock_ip):
         """Unknown event type is safely ignored."""
         payload = json.dumps({
             'type': 'unknown.event',

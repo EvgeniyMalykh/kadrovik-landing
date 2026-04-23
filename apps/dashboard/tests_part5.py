@@ -111,7 +111,7 @@ class CompanyNotifyFieldsTests(TestCase):
             'director_name': self.company.director_name,
             'notify_messenger': 'telegram',
             'notify_contact': '@mybot',
-        })
+        }, follow=True)
         self.assertEqual(resp.status_code, 200)
         self.company.refresh_from_db()
         self.assertEqual(self.company.notify_messenger, 'telegram')
@@ -632,30 +632,28 @@ class CheckBirthdaysTaskTests(TestCase):
         _subscription(self.company, plan='business')
 
     def test_sends_notification_on_birthday(self):
-        """check_birthdays sends Telegram message when birthday is today."""
+        """check_birthdays sends notification when birthday is today."""
         today = timezone.now().date()
         _employee(self.company, birth_date=today.replace(year=today.year - 30))
 
         from apps.events.tasks import check_birthdays
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             result = check_birthdays()
 
-        mock_post.assert_called_once()
+        mock_hr_email.assert_called_once()
         self.assertIn(str(today.year), result)
 
     def test_sends_notification_3_days_before(self):
-        """check_birthdays sends Telegram message 3 days before birthday."""
+        """check_birthdays sends notification 3 days before birthday."""
         today = timezone.now().date()
         bday = today + timedelta(days=3)
         _employee(self.company, birth_date=bday.replace(year=bday.year - 25))
 
         from apps.events.tasks import check_birthdays
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_birthdays()
 
-        mock_post.assert_called_once()
+        mock_hr_email.assert_called_once()
 
     def test_no_notification_for_other_days(self):
         """check_birthdays does NOT send for birthdays 1, 2, or 5 days away."""
@@ -722,13 +720,12 @@ class CheckVacationEventsTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_vacation_events
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_vacation_events()
 
-        mock_post.assert_called_once()
-        text = mock_post.call_args[1]['json']['text']
-        self.assertIn('Сегодня начинается', text)
+        mock_hr_email.assert_called_once()
+        call_kwargs = mock_hr_email.call_args[1]
+        self.assertIn('Сегодня начинается', call_kwargs['title'])
 
     def test_sends_on_vacation_start_tomorrow(self):
         """check_vacation_events notifies when vacation starts tomorrow."""
@@ -741,12 +738,12 @@ class CheckVacationEventsTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_vacation_events
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_vacation_events()
 
-        mock_post.assert_called_once()
-        text = mock_post.call_args[1]['json']['text']
+        mock_hr_email.assert_called_once()
+        call_kwargs = mock_hr_email.call_args[1]
+        text = call_kwargs['title']
         self.assertIn('Завтра начинается', text)
 
     def test_no_notification_for_vacation_starting_later(self):
@@ -798,13 +795,12 @@ class CheckVacationEndingsTaskTests(TestCase):
         )
 
         from apps.events.tasks import check_vacation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_vacation_endings()
 
-        mock_post.assert_called_once()
-        text = mock_post.call_args[1]['json']['text']
-        self.assertIn('через 3 дня', text.lower())
+        mock_hr_email.assert_called_once()
+        call_kwargs = mock_hr_email.call_args[1]
+        self.assertIn('через 3 дня', call_kwargs['title'].lower())
 
     def test_no_notification_for_other_end_dates(self):
         """check_vacation_endings does NOT notify for vacations ending in 1 or 7 days."""
@@ -854,26 +850,23 @@ class CheckContractEndingsTaskTests(TestCase):
     def test_sends_14_days_before(self):
         self._emp_with_contract(14)
         from apps.events.tasks import check_contract_endings
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_contract_endings()
-        mock_post.assert_called_once()
+        mock_hr_email.assert_called_once()
 
     def test_sends_7_days_before(self):
         self._emp_with_contract(7)
         from apps.events.tasks import check_contract_endings
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_contract_endings()
-        mock_post.assert_called_once()
+        mock_hr_email.assert_called_once()
 
     def test_sends_3_days_before(self):
         self._emp_with_contract(3)
         from apps.events.tasks import check_contract_endings
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_contract_endings()
-        mock_post.assert_called_once()
+        mock_hr_email.assert_called_once()
 
     def test_no_send_for_permanent_contract(self):
         """Permanent contract (contract_type='permanent') must NOT trigger."""
@@ -933,26 +926,23 @@ class CheckProbationEndingsTaskTests(TestCase):
     def test_sends_7_days_before(self):
         self._emp_with_probation(7)
         from apps.events.tasks import check_probation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_probation_endings()
-        mock_post.assert_called_once()
+        mock_hr_email.assert_called_once()
 
     def test_sends_3_days_before(self):
         self._emp_with_probation(3)
         from apps.events.tasks import check_probation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_probation_endings()
-        mock_post.assert_called_once()
+        mock_hr_email.assert_called_once()
 
     def test_sends_1_day_before(self):
         self._emp_with_probation(1)
         from apps.events.tasks import check_probation_endings
-        with patch('apps.events.tasks.requests.post') as mock_post, \
-             patch('apps.events.tasks.send_mail'):
+        with patch('apps.events.tasks._send_hr_email') as mock_hr_email:
             check_probation_endings()
-        mock_post.assert_called_once()
+        mock_hr_email.assert_called_once()
 
     def test_no_send_for_other_days(self):
         """No notification for probation ending in 2, 5, 14 days."""

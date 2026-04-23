@@ -213,9 +213,10 @@ class WebhookAnnualTests(TestCase):
     def setUp(self):
         self.user, self.company, self.member = _make_company('9')
 
+    @patch('apps.billing.views._check_yukassa_ip', return_value=True)
     @patch('apps.billing.views.activate_subscription')
     @patch('apps.billing.views.send_mail')
-    def test_webhook_activates_annual_subscription(self, mock_mail, mock_activate):
+    def test_webhook_activates_annual_subscription(self, mock_mail, mock_activate, mock_ip):
         """Webhook with billing_period=annual in metadata activates annual sub."""
         mock_sub = MagicMock()
         mock_sub.expires_at = timezone.now() + timedelta(days=365)
@@ -258,9 +259,10 @@ class WebhookAnnualTests(TestCase):
             kwargs = call_kwargs[1] if len(call_kwargs) > 1 else {}
             self.assertEqual(kwargs.get('billing_period'), 'annual')
 
+    @patch('apps.billing.views._check_yukassa_ip', return_value=True)
     @patch('apps.billing.views.activate_subscription')
     @patch('apps.billing.views.send_mail')
-    def test_webhook_defaults_to_monthly(self, mock_mail, mock_activate):
+    def test_webhook_defaults_to_monthly(self, mock_mail, mock_activate, mock_ip):
         """Webhook without billing_period in metadata defaults to monthly."""
         mock_sub = MagicMock()
         mock_sub.expires_at = timezone.now() + timedelta(days=30)
