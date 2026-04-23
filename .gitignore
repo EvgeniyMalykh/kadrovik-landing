@@ -9,3 +9,4 @@ staticfiles/
 logs/
 venv/
 venv/
+google-service-account.json
