@@ -1003,8 +1003,18 @@ def download_gph_contract(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
     from apps.documents.services import generate_gph_contract_pdf
-    pdf = generate_gph_contract_pdf(employee)
-    _save_document_record(member, employee, 'gph_contract', 'ГПХ-' + str(employee.id))
+    # Читаем данные из GET-параметров (переданы из формы)
+    form_data = {
+        'subject':    (request.GET.get('subject', '') or request.GET.get('contract_subject', '')).strip(),
+        'amount':     request.GET.get('amount', '').strip(),
+        'start_date': request.GET.get('start_date', '').strip(),
+        'end_date':   request.GET.get('end_date', '').strip(),
+        'doc_number': request.GET.get('doc_number', '').strip(),
+        'doc_date':   request.GET.get('doc_date', '').strip(),
+    }
+    pdf = generate_gph_contract_pdf(employee, form_data=form_data)
+    doc_number = form_data['doc_number'] or ('ГПХ-' + str(employee.id))
+    _save_document_record(member, employee, 'gph_contract', doc_number)
     r = HttpResponse(pdf, content_type="application/pdf")
     r["Content-Disposition"] = f"attachment; filename=\"GPH_{employee.last_name}.pdf\""
     return r

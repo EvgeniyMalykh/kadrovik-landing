@@ -1065,8 +1065,12 @@ def generate_labor_contract_pdf(employee) -> bytes:
     return buffer.getvalue()
 
 
-def generate_gph_contract_pdf(employee) -> bytes:
-    """Договор ГПХ."""
+def generate_gph_contract_pdf(employee, form_data=None) -> bytes:
+    """Договор ГПХ.
+    form_data: словарь с данными из формы (subject, amount, start_date, end_date, doc_number, doc_date).
+    """
+    if form_data is None:
+        form_data = {}
     font_name = _register_fonts()
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
@@ -1083,12 +1087,43 @@ def generate_gph_contract_pdf(employee) -> bytes:
     inn_co = co["inn"]
     address_co = co["legal_address"]
     full_name = (employee.last_name + " " + employee.first_name + " " + employee.middle_name).strip()
-    hire = employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else today_str
-    position = employee.position or "-"
-    salary = str(employee.salary) if employee.salary else "-"
     inn = employee.inn or "-"
+
+    # Данные из формы (приоритет) или из карточки сотрудника (фоллбэк)
+    subject    = form_data.get('subject', '').strip() or (employee.position or "-")
+    amount     = form_data.get('amount', '').strip() or (str(employee.salary) if employee.salary else "-")
+    start_date = form_data.get('start_date', '').strip()
+    end_date   = form_data.get('end_date', '').strip()
+    doc_number = form_data.get('doc_number', '').strip() or ('ГПХ-' + str(employee.id))
+    doc_date   = form_data.get('doc_date', '').strip() or today_str
+
+    # Преобразуем даты из ISO (YYYY-MM-DD) в русский формат
+    def _fmt_date(s):
+        if not s:
+            return ''
+        for fmt in ('%Y-%m-%d', '%d.%m.%Y', '%d/%m/%Y'):
+            try:
+                from datetime import datetime as _dt
+                return _dt.strptime(s, fmt).strftime('%d.%m.%Y')
+            except ValueError:
+                pass
+        return s
+
+    start_date_fmt = _fmt_date(start_date)
+    end_date_fmt   = _fmt_date(end_date)
+    doc_date_fmt   = _fmt_date(doc_date) or today_str
+
+    # Срок оказания услуг
+    if start_date_fmt and end_date_fmt:
+        period_str = f"с {start_date_fmt} по {end_date_fmt} г."
+    elif start_date_fmt:
+        period_str = f"с {start_date_fmt} г."
+    else:
+        hire = employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else today_str
+        period_str = f"с {hire} г."
+
     story.append(Paragraph("ДОГОВОР ОКАЗАНИЯ УСЛУГ (ГПХ)", title))
-    story.append(Paragraph("N ГПХ-" + str(employee.id) + " от " + hire + " г.", title))
+    story.append(Paragraph("N " + doc_number + " от " + doc_date_fmt + " г.", title))
     story.append(Spacer(1, 5*mm))
     story.append(Paragraph(
         "<b>" + company_name + "</b> (далее — Заказчик), с одной стороны, и "
@@ -1096,11 +1131,11 @@ def generate_gph_contract_pdf(employee) -> bytes:
     story.append(Spacer(1, 3*mm))
     sections = [
         ("1. ПРЕДМЕТ ДОГОВОРА", [
-            "1.1. Исполнитель обязуется оказывать услуги по направлению: <b>" + position + "</b>.",
-            "1.2. Срок оказания услуг: с " + hire + " г.",
+            "1.1. Исполнитель обязуется оказывать услуги по направлению: <b>" + subject + "</b>.",
+            "1.2. Срок оказания услуг: " + period_str,
         ]),
         ("2. СТОИМОСТЬ И ПОРЯДОК ОПЛАТЫ", [
-            "2.1. Стоимость услуг составляет <b>" + salary + " руб.</b> в месяц.",
+            "2.1. Стоимость услуг составляет <b>" + amount + " руб.</b>",
             "2.2. Оплата производится на основании подписанного акта выполненных работ.",
         ]),
         ("3. ПРАВА И ОБЯЗАННОСТИ СТОРОН", [
@@ -1133,7 +1168,7 @@ def generate_gph_contract_pdf(employee) -> bytes:
         [zakazchik_details, full_name],
         ["", "ИНН: " + inn],
         ["Подпись: ________________", "Подпись: ________________"],
-        ["Дата: " + today_str, "Дата: " + today_str],
+        ["Дата: " + doc_date_fmt, "Дата: " + doc_date_fmt],
     ]
     st = Table(sig, colWidths=[85*mm, 85*mm])
     st.setStyle(TableStyle([

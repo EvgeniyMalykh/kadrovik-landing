@@ -436,9 +436,19 @@
       var vtype = document.querySelector('[name="vacation_type"]') ? document.querySelector('[name="vacation_type"]').value : "";
       url = "/dashboard/employees/" + empId + "/t6/?start=" + start + "&end=" + end + "&order=" + encodeURIComponent(order) + "&vtype=" + encodeURIComponent(vtype);
     } else if (docType === "gph_contract") {
-      url = "/dashboard/employees/" + empId + "/gph-contract/";
+      var gphSubject = document.querySelector('[name="contract_subject"]') ? document.querySelector('[name="contract_subject"]').value : "";
+      var gphAmount  = document.querySelector('[name="amount"]') ? document.querySelector('[name="amount"]').value : "";
+      var gphStart   = document.querySelector('[name="start_date"]') ? document.querySelector('[name="start_date"]').value : "";
+      var gphEnd     = document.querySelector('[name="end_date"]') ? document.querySelector('[name="end_date"]').value : "";
+      var gphNum     = document.querySelector('[name="doc_number"]') ? document.querySelector('[name="doc_number"]').value : "";
+      var gphDate    = document.querySelector('[name="doc_date"]') ? document.querySelector('[name="doc_date"]').value : "";
+      url = "/dashboard/employees/" + empId + "/gph-contract/?subject=" + encodeURIComponent(gphSubject) + "&amount=" + encodeURIComponent(gphAmount) + "&start_date=" + encodeURIComponent(gphStart) + "&end_date=" + encodeURIComponent(gphEnd) + "&doc_number=" + encodeURIComponent(gphNum) + "&doc_date=" + encodeURIComponent(gphDate);
     } else if (docType === "gph_act") {
-      url = "/dashboard/employees/" + empId + "/gph-act/";
+      var actSubject = document.querySelector('[name="contract_subject"]') ? document.querySelector('[name="contract_subject"]').value : "";
+      var actAmount  = document.querySelector('[name="amount"]') ? document.querySelector('[name="amount"]').value : "";
+      var actNum     = document.querySelector('[name="doc_number"]') ? document.querySelector('[name="doc_number"]').value : "";
+      var actDate    = document.querySelector('[name="doc_date"]') ? document.querySelector('[name="doc_date"]').value : "";
+      url = "/dashboard/employees/" + empId + "/gph-act/?subject=" + encodeURIComponent(actSubject) + "&amount=" + encodeURIComponent(actAmount) + "&doc_number=" + encodeURIComponent(actNum) + "&doc_date=" + encodeURIComponent(actDate);
     } else if (docType === "reference") {
       url = "/dashboard/employees/" + empId + "/certificate/";
     } else if (docType === "salary_change") {
