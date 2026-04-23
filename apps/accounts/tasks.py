@@ -10,16 +10,36 @@ logger = logging.getLogger(__name__)
 
 
 def _send_telegram(text):
-    """Отправляет уведомление через Green API Telegram (api.telegram.org заблокирован на VPS)."""
+    """Отправляет уведомление через Telegram Bot API (прямой вызов).
+    Fallback: Green API если api.telegram.org недоступен.
+    """
     import re as _re
-    instance_id = getattr(settings, "GREEN_API_TG_INSTANCE_ID", "")
-    tg_token    = getattr(settings, "GREEN_API_TG_TOKEN", "")
-    chat_id     = str(getattr(settings, "TELEGRAM_CHAT_ID", "") or "").strip()
+    chat_id = str(getattr(settings, "TELEGRAM_CHAT_ID", "") or "").strip()
     if not chat_id:
         return
     plain_text = _re.sub(r"<[^>]+>", "", str(text)).strip()
+
+    # Основной канал: прямой Telegram Bot API
+    token = getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+    if token:
+        try:
+            resp = requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": int(chat_id), "text": plain_text},
+                timeout=10,
+            )
+            if resp.ok:
+                logger.info(f"Telegram Bot API: message sent to {chat_id}")
+                return
+            else:
+                logger.warning(f"Telegram Bot API failed: {resp.status_code} {resp.text[:200]}")
+        except Exception as e:
+            logger.warning(f"Telegram Bot API error: {e}")
+
+    # Fallback: Green API
+    instance_id = getattr(settings, "GREEN_API_TG_INSTANCE_ID", "")
+    tg_token    = getattr(settings, "GREEN_API_TG_TOKEN", "")
     if instance_id and tg_token:
-        # Green API требует chatId в формате: номер@c.us (для Telegram) или LID
         tg_chat_id = chat_id if "@" in chat_id else f"{chat_id}@c.us"
         try:
             resp = requests.post(
@@ -27,21 +47,11 @@ def _send_telegram(text):
                 json={"chatId": tg_chat_id, "message": plain_text},
                 timeout=10,
             )
-            logger.info(f"Green API TG response: {resp.status_code} {resp.text[:200]}")
+            logger.info(f"Green API TG fallback: {resp.status_code} {resp.text[:100]}")
         except Exception as e:
             logger.error(f"Green API TG error: {e}")
     else:
-        token = getattr(settings, "TELEGRAM_BOT_TOKEN", "")
-        if not token:
-            return
-        try:
-            requests.post(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": chat_id, "text": plain_text},
-                timeout=10,
-            )
-        except Exception:
-            pass
+        logger.error("Telegram: ни Bot API, ни Green API не настроены")
 
 
 def _send_google_sheets(email, company_name, registered_at, display_name='', telegram='', employee_count=0):
