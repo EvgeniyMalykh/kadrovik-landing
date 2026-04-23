@@ -75,3 +75,7 @@ REPLY_TO_EMAIL = "evgeniymalykh@gmail.com"
 # ЮKassa
 YUKASSA_SHOP_ID  = '1332087'
 YUKASSA_SECRET_KEY = 'live_OmueBYSyeOrmeDFAq6FSnp3sD7h_ZDJrLeXAxPkpshg'
+
+# Google Sheets (Service Account через gspread)
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON', '')
+GOOGLE_SHEET_ID = os.environ.get('GOOGLE_SHEET_ID', '1JS9iTtGaBCC2ElW-BaGRiLZh10-T8F8NJF6_ZLMdewg')

@@ -14,3 +14,7 @@ requests==2.32.3
 yookassa==3.10.0
 openpyxl
 docxtpl>=0.16.8
+
+# Google Sheets (Service Account)
+gspread>=6.0.0
+google-auth>=2.0.0

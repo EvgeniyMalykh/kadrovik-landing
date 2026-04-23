@@ -1,9 +1,12 @@
+import logging
 import requests
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+
+logger = logging.getLogger(__name__)
 
 
 def _send_telegram(text):
@@ -16,14 +19,17 @@ def _send_telegram(text):
         return
     plain_text = _re.sub(r"<[^>]+>", "", str(text)).strip()
     if instance_id and tg_token:
+        # Green API требует chatId в формате: номер@c.us (для Telegram) или LID
+        tg_chat_id = chat_id if "@" in chat_id else f"{chat_id}@c.us"
         try:
-            requests.post(
+            resp = requests.post(
                 f"https://api.green-api.com/waInstance{instance_id}/sendMessage/{tg_token}",
-                json={"chatId": chat_id, "message": plain_text},
+                json={"chatId": tg_chat_id, "message": plain_text},
                 timeout=10,
             )
-        except Exception:
-            pass
+            logger.info(f"Green API TG response: {resp.status_code} {resp.text[:200]}")
+        except Exception as e:
+            logger.error(f"Green API TG error: {e}")
     else:
         token = getattr(settings, "TELEGRAM_BOT_TOKEN", "")
         if not token:
@@ -37,12 +43,52 @@ def _send_telegram(text):
         except Exception:
             pass
 
+
 def _send_google_sheets(email, company_name, registered_at, display_name='', telegram='', employee_count=0):
+    """Записывает данные в Google Sheets.
+    
+    Приоритет:
+    1. gspread (Service Account) — надёжно, не зависит от VPS IP
+    2. GAS webhook — fallback, работает если Google не блокирует IP
+    """
+    # Попытка через gspread (Service Account)
+    gs_creds_json = getattr(settings, 'GOOGLE_SERVICE_ACCOUNT_JSON', '')
+    gs_sheet_id   = getattr(settings, 'GOOGLE_SHEET_ID', '1JS9iTtGaBCC2ElW-BaGRiLZh10-T8F8NJF6_ZLMdewg')
+    if gs_creds_json:
+        try:
+            import json
+            import gspread
+            from google.oauth2.service_account import Credentials
+            scopes = [
+                'https://www.googleapis.com/auth/spreadsheets',
+                'https://www.googleapis.com/auth/drive',
+            ]
+            creds_dict = json.loads(gs_creds_json)
+            creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+            gc = gspread.authorize(creds)
+            sh = gc.open_by_key(gs_sheet_id)
+            worksheet = sh.worksheet('Лист1')
+            worksheet.append_row([
+                registered_at,
+                display_name or company_name,
+                email,
+                telegram or '',
+                str(employee_count) if employee_count else '',
+                'Регистрация',
+            ])
+            logger.info(f"gspread: записан пользователь {email}")
+            return
+        except ImportError:
+            logger.warning("gspread не установлен, пробуем GAS")
+        except Exception as e:
+            logger.error(f"gspread error: {e}")
+
+    # Fallback: GAS webhook
     gas_url = getattr(settings, 'GAS_URL', '')
     if not gas_url:
         return
     try:
-        requests.post(
+        resp = requests.post(
             gas_url,
             json={
                 "action": "new_user",
@@ -55,9 +101,11 @@ def _send_google_sheets(email, company_name, registered_at, display_name='', tel
                 "source": "Регистрация",
             },
             timeout=15,
+            allow_redirects=True,
         )
-    except Exception:
-        pass
+        logger.info(f"GAS response: {resp.status_code} {resp.text[:200]}")
+    except Exception as e:
+        logger.error(f"GAS error: {e}")
 
 
 @shared_task(name="accounts.send_verification_email")
@@ -86,17 +134,19 @@ def send_verification_email(user_id, verify_url):
             fail_silently=False,
         )
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Email send failed for {user.email}: {e}")
+        logger.error(f"Email send failed for {user.email}: {e}")
 
 
 @shared_task(name="accounts.notify_new_registration")
 def notify_new_registration(email, company_name, registered_at, display_name='', telegram='', employee_count=0):
     """Telegram + Google Sheets при новой регистрации."""
     text = (
-        f"🎉 <b>Новая регистрация!</b>\n"
-        f"📧 Email: <code>{email}</code>\n"
+        f"🎉 Новая регистрация!\n"
+        f"📧 Email: {email}\n"
+        f"👤 Имя: {display_name or company_name}\n"
         f"🏢 Компания: {company_name}\n"
+        f"💬 Telegram: {telegram or '—'}\n"
+        f"👥 Сотрудников: {employee_count or '—'}\n"
         f"🕐 Дата: {registered_at}"
     )
     _send_telegram(text)
@@ -125,14 +175,12 @@ def send_verification_email_pending(email, verify_url):
         msg.attach_alternative(html_message, "text/html")
         msg.send(fail_silently=False)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Email send failed for {email}: {e}")
+        logger.error(f"Email send failed for {email}: {e}")
 
 
 @shared_task(name="accounts.send_password_reset_email")
 def send_password_reset_email(email, reset_url):
     """Отправляет письмо со ссылкой сброса пароля."""
-    import json
     subject = "Сброс пароля — Кадровый автопилот"
     html_message = f"""<!DOCTYPE html>
 <html lang="ru"><head><meta charset="UTF-8"></head>
@@ -162,8 +210,6 @@ def send_password_reset_email(email, reset_url):
     plain_message = f"Сброс пароля — Кадровый автопилот\n\nПерейдите по ссылке для смены пароля (действительна 1 час):\n{reset_url}\n\nЕсли вы не запрашивали смену пароля — проигнорируйте это письмо."
 
     try:
-        from django.core.mail import send_mail
-        from django.conf import settings
         reply_to = getattr(settings, "REPLY_TO_EMAIL", None)
         from django.core.mail import EmailMultiAlternatives
         msg = EmailMultiAlternatives(
@@ -176,5 +222,4 @@ def send_password_reset_email(email, reset_url):
         msg.attach_alternative(html_message, "text/html")
         msg.send(fail_silently=False)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Password reset email failed for {email}: {e}")
+        logger.error(f"Password reset email failed for {email}: {e}")
