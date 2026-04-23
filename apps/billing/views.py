@@ -64,6 +64,7 @@ def checkout(request, plan_key):
     recent_pending = Payment.objects.filter(
         company=member.company,
         status=Payment.Status.PENDING,
+        plan=plan_key,
         created_at__gte=timezone.now() - timedelta(minutes=10),
     ).exclude(yukassa_payment_id='').order_by('-created_at').first()
     if recent_pending and recent_pending.yukassa_payment_id:
