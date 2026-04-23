@@ -464,10 +464,6 @@ def employee_delete(request, employee_id):
     })
 
 
-@login_required
-@subscription_required
-
-
 def _auto_create_hire_document(member, employee):
     """Auto-create T-1 (hire order) document when a new employee is added."""
     import logging
@@ -526,6 +522,8 @@ def _save_document_record(member, employee, doc_type, order_number, extra_data=N
     return doc
 
 
+@login_required
+@subscription_required
 def download_t1(request, employee_id):
     member = get_active_member(request)
     employee = get_object_or_404(Employee, id=employee_id, company=member.company)
@@ -676,17 +674,20 @@ def register_view(request):
 
         import redis as _redis
         from django.conf import settings
-        r = _redis.from_url(getattr(settings, "REDIS_RELAY_URL", "redis://redis:6379/2"))
         import json as _json
-        pending_key = f"pending_registration:{token}"
-        r.setex(pending_key, 86400, _json.dumps({
-            "email": email,
-            "password_hash": password_hash,
-            "company_name": company_name,
-            "telegram": telegram,
-            "employee_count": employee_count,
-            "expires_at": expires_at,
-        }, ensure_ascii=False))
+        try:
+            r = _redis.from_url(getattr(settings, "REDIS_RELAY_URL", "redis://redis:6379/2"))
+            pending_key = f"pending_registration:{token}"
+            r.setex(pending_key, 86400, _json.dumps({
+                "email": email,
+                "password_hash": password_hash,
+                "company_name": company_name,
+                "telegram": telegram,
+                "employee_count": employee_count,
+                "expires_at": expires_at,
+            }, ensure_ascii=False))
+        except _redis.exceptions.ConnectionError:
+            return render(request, "dashboard/register.html", {"error": "Сервис временно недоступен, попробуйте позже"})
 
         verify_url = request.build_absolute_uri(f"/dashboard/verify-email/{token}/")
 
@@ -702,11 +703,17 @@ def verify_email_view(request, token):
     import redis as _redis, json as _json
     from django.utils import timezone
     from django.conf import settings
+    from django.db import transaction, IntegrityError
     import datetime
 
     r = _redis.from_url(getattr(settings, "REDIS_RELAY_URL", "redis://redis:6379/2"))
     pending_key = f"pending_registration:{token}"
-    data_raw = r.get(pending_key)
+
+    # Атомарно забираем и удаляем данные из Redis (защита от race condition)
+    pipe = r.pipeline()
+    pipe.get(pending_key)
+    pipe.delete(pending_key)
+    data_raw, _ = pipe.execute()
 
     if not data_raw:
         return render(request, "dashboard/register.html", {"error": "Ссылка недействительна или устарела"})
@@ -720,30 +727,30 @@ def verify_email_view(request, token):
 
     # Проверяем — вдруг успели зарегистрироваться с тем же email
     if User.objects.filter(email=email).exists():
-        r.delete(pending_key)
         return render(request, "dashboard/register.html", {"error": "Email уже зарегистрирован"})
 
-    # Создаём пользователя, компанию, подписку — только сейчас
+    # Создаём пользователя, компанию, подписку в транзакции
     from apps.billing.models import Subscription
 
-    user = User(username=email, email=email, email_verified=True, is_active=True)
-    user.password = password_hash
-    if telegram:
-        user.phone = telegram
-    user.save()
+    try:
+        with transaction.atomic():
+            user = User(username=email, email=email, email_verified=True, is_active=True)
+            user.password = password_hash
+            if telegram:
+                user.phone = telegram
+            user.save()
 
-    company = Company.objects.create(name=company_name, owner=user)
-    CompanyMember.objects.create(user=user, company=company, role="owner")
-    Subscription.objects.create(
-        company=company,
-        plan=Subscription.Plan.TRIAL,
-        status=Subscription.Status.ACTIVE,
-        expires_at=timezone.now() + datetime.timedelta(days=7),
-        max_employees=200,
-    )
-
-    # Удаляем pending запись
-    r.delete(pending_key)
+            company = Company.objects.create(name=company_name, owner=user, inn='', legal_address='')
+            CompanyMember.objects.create(user=user, company=company, role="owner")
+            Subscription.objects.create(
+                company=company,
+                plan=Subscription.Plan.TRIAL,
+                status=Subscription.Status.ACTIVE,
+                expires_at=timezone.now() + datetime.timedelta(days=7),
+                max_employees=200,
+            )
+    except IntegrityError:
+        return render(request, "dashboard/register.html", {"error": "Email уже зарегистрирован"})
 
     # Уведомления — Telegram + Google Sheets (только после реальной регистрации)
     from apps.accounts.tasks import notify_new_registration
