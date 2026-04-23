@@ -647,11 +647,15 @@ def register_view(request):
     if request.user.is_authenticated:
         return redirect("dashboard:employees")
     if request.method == "POST":
-        email        = request.POST.get("email", "").strip().lower()
-        password     = request.POST.get("password")
-        password2    = request.POST.get("password2")
-        company_name = request.POST.get("company_name", "").strip()
-        telegram     = request.POST.get("telegram", "").strip()
+        email          = request.POST.get("email", "").strip().lower()
+        password       = request.POST.get("password")
+        password2      = request.POST.get("password2")
+        company_name   = request.POST.get("company_name", "").strip()
+        telegram       = request.POST.get("telegram", "").strip()
+        try:
+            employee_count = int(request.POST.get("employee_count", 0) or 0)
+        except (ValueError, TypeError):
+            employee_count = 0
 
         if not email or not password or not company_name:
             return render(request, "dashboard/register.html", {"error": "Заполните все поля"})
@@ -680,6 +684,7 @@ def register_view(request):
             "password_hash": password_hash,
             "company_name": company_name,
             "telegram": telegram,
+            "employee_count": employee_count,
             "expires_at": expires_at,
         }, ensure_ascii=False))
 
@@ -710,7 +715,8 @@ def verify_email_view(request, token):
     email        = data["email"]
     password_hash = data["password_hash"]
     company_name  = data["company_name"]
-    telegram      = data.get("telegram", "")
+    telegram       = data.get("telegram", "")
+    employee_count = int(data.get("employee_count", 0) or 0)
 
     # Проверяем — вдруг успели зарегистрироваться с тем же email
     if User.objects.filter(email=email).exists():
@@ -742,7 +748,8 @@ def verify_email_view(request, token):
     # Уведомления — Telegram + Google Sheets (только после реальной регистрации)
     from apps.accounts.tasks import notify_new_registration
     from apps.employees.models import Employee
-    employee_count = Employee.objects.filter(company=company, status='active').count()
+    # Берём из формы регистрации (в момент регистрации сотрудников ещё нет в БД)
+    # employee_count уже получен из pending_registration выше
     owner_name = company.director_name or ''
     display_name = f"{company_name} / {owner_name}".strip(' /') if owner_name else company_name
     notify_new_registration.delay(
