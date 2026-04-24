@@ -1848,6 +1848,7 @@ def chat_support(request):
 
     # Отправляем email администратору
     try:
+        reply_url = f'https://app.kadrovik-auto.ru/dashboard/chat-reply/?session={session_id}'
         subject = f'Чат поддержки [{session_id}] — {user_email}'
         body = (
             f'Сообщение из чата поддержки\n'
@@ -1855,7 +1856,7 @@ def chat_support(request):
             f'Пользователь: {user_email}\n\n'
             f'{text}\n\n'
             f'---\n'
-            f'Ответьте на это письмо или напишите пользователю напрямую.'
+            f'Ответить в чат: {reply_url}'
         )
         send_mail(
             subject=subject,
@@ -1981,6 +1982,50 @@ def chat_webhook(request):
 
     return JsonResponse({'ok': True})
 
+
+
+def chat_reply(request):
+    """Страница для оператора — ответить в чат по session_id (из ссылки в email)."""
+    from django.http import JsonResponse, HttpResponse
+    import json as _json, time as _t
+
+    session_id = request.GET.get('session', '') or request.POST.get('session', '')
+    if not session_id or len(session_id) != 8:
+        return HttpResponse('Неверный session_id', status=400)
+
+    r = _chat_redis()
+    hist_key = f'chat_hist:{session_id}'
+    raw_list = r.lrange(hist_key, 0, -1)
+    history = []
+    for raw in raw_list:
+        try:
+            history.append(_json.loads(raw))
+        except Exception:
+            pass
+
+    if request.method == 'POST':
+        try:
+            data = _json.loads(request.body)
+            reply_text = data.get('text', '').strip()
+        except Exception:
+            reply_text = request.POST.get('text', '').strip()
+
+        if reply_text:
+            # Сохраняем в историю и в очередь polling
+            _save_msg(session_id, 'bot', reply_text)
+            r.rpush(f'chat_replies:{session_id}',
+                    _json.dumps({'text': reply_text, 'ts': int(_t.time())}, ensure_ascii=False))
+            r.expire(f'chat_replies:{session_id}', 86400)
+            if request.content_type == 'application/json':
+                return JsonResponse({'ok': True})
+            return HttpResponse(f'<script>window.location.href=window.location.href</script>')
+
+    # GET — рендерим страницу ответа
+    from django.shortcuts import render as _render
+    return _render(request, 'dashboard/chat_reply.html', {
+        'session_id': session_id,
+        'history': history,
+    })
 
 def chat_poll(request):
     """Клиент опрашивает новые сообщения от оператора (только новые, не история)."""

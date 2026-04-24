@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ответ в чат [{{ session_id }}]</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f6fa; margin: 0; padding: 20px; }
+  .container { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,.1); overflow: hidden; }
+  .header { background: #1d4ed8; color: #fff; padding: 16px 20px; font-size: 1rem; font-weight: 600; }
+  .header small { display: block; font-weight: 400; opacity: .8; font-size: .8rem; margin-top: 2px; }
+  .history { padding: 16px 20px; max-height: 300px; overflow-y: auto; border-bottom: 1px solid #e5e7eb; }
+  .msg { margin-bottom: 10px; }
+  .msg .role { font-size: .72rem; color: #6b7280; margin-bottom: 2px; }
+  .msg.user .bubble { background: #eff6ff; border-radius: 8px; padding: 8px 12px; display: inline-block; max-width: 100%; }
+  .msg.bot .bubble { background: #f0fdf4; border-radius: 8px; padding: 8px 12px; display: inline-block; max-width: 100%; }
+  .form-area { padding: 16px 20px; }
+  textarea { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 12px; font-size: .95rem; resize: vertical; min-height: 80px; font-family: inherit; }
+  textarea:focus { outline: none; border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29,78,216,.15); }
+  button { margin-top: 10px; background: #1d4ed8; color: #fff; border: none; border-radius: 8px; padding: 10px 24px; font-size: .95rem; font-weight: 600; cursor: pointer; }
+  button:hover { background: #1e40af; }
+  .success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; border-radius: 8px; padding: 12px 16px; margin-top: 10px; display: none; font-size: .9rem; }
+  .empty { color: #9ca3af; font-size: .9rem; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    Чат поддержки
+    <small>Сессия: {{ session_id }}</small>
+  </div>
+  <div class="history">
+    {% if history %}
+      {% for m in history %}
+        <div class="msg {{ m.role }}">
+          <div class="role">{% if m.role == 'user' %}Клиент{% else %}Оператор{% endif %}</div>
+          <div class="bubble">{{ m.text }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">История пуста или уже очищена</div>
+    {% endif %}
+  </div>
+  <div class="form-area">
+    <textarea id="replyText" placeholder="Введите ответ клиенту..."></textarea>
+    <br>
+    <button onclick="sendReply()">Отправить в чат</button>
+    <div class="success" id="successMsg">Ответ отправлен — клиент увидит его в течение 3 секунд.</div>
+  </div>
+</div>
+<script>
+function getCsrf(){
+  var m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+function sendReply(){
+  var t = document.getElementById('replyText').value.trim();
+  if(!t) return;
+  fetch(window.location.href, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    body: JSON.stringify({text: t, session: '{{ session_id }}'})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok){
+      document.getElementById('replyText').value = '';
+      document.getElementById('successMsg').style.display = 'block';
+      setTimeout(function(){ document.getElementById('successMsg').style.display = 'none'; }, 4000);
+      // Добавляем в историю
+      var hist = document.querySelector('.history');
+      var div = document.createElement('div');
+      div.className = 'msg bot';
+      div.innerHTML = '<div class="role">Оператор</div><div class="bubble">' + t + '</div>';
+      hist.appendChild(div);
+      hist.scrollTop = hist.scrollHeight;
+    }
+  }).catch(function(e){ alert('Ошибка: ' + e); });
+}
+</script>
+</body>
+</html>

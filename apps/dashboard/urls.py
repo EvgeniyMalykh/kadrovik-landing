@@ -8,6 +8,7 @@ urlpatterns = [
     path("chat-history/",  views.chat_history,  name="chat_history"),
     path("chat-webhook/",  views.chat_webhook,  name="chat_webhook"),
     path("chat-poll/",     views.chat_poll,     name="chat_poll"),
+    path("chat-reply/",  views.chat_reply,  name="chat_reply"),
 
 
     path("", views.dashboard_home, name="home"),
