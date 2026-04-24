@@ -1825,9 +1825,11 @@ def _save_msg(session_id, role, text, email=''):
 
 @require_POST
 def chat_support(request):
-    """Принимает сообщение клиента, сохраняет в историю, шлёт в Telegram."""
+    """Принимает сообщение клиента, сохраняет в историю, шлёт email администратору."""
     from django.http import JsonResponse
-    import json as _json, requests as _req
+    from django.core.mail import send_mail
+    from django.conf import settings as _settings
+    import json as _json
 
     try:
         data = _json.loads(request.body)
@@ -1844,23 +1846,29 @@ def chat_support(request):
     # Сохраняем сообщение клиента в историю
     _save_msg(session_id, 'user', text, email=user_email)
 
-    tg_text = (
-        f'\U0001f4ac Чат поддержки [{session_id}]\n'
-        f'\U0001f464 {user_email}\n'
-        f'\U0001f4dd {text}\n\n'
-        f'<i>Reply на это сообщение чтобы ответить клиенту</i>'
-    )
-
+    # Отправляем email администратору
     try:
-        resp = _req.post(
-            f'https://api.telegram.org/bot{_BOT_TOKEN}/sendMessage',
-            json={'chat_id': _ADMIN_CHAT, 'text': tg_text, 'parse_mode': 'HTML'},
-            timeout=10,
+        subject = f'Чат поддержки [{session_id}] — {user_email}'
+        body = (
+            f'Сообщение из чата поддержки\n'
+            f'Сессия: {session_id}\n'
+            f'Пользователь: {user_email}\n\n'
+            f'{text}\n\n'
+            f'---\n'
+            f'Ответьте на это письмо или напишите пользователю напрямую.'
         )
-        result = resp.json()
-        return JsonResponse({'ok': result.get('ok', False), 'session': session_id})
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=_settings.DEFAULT_FROM_EMAIL,
+            recipient_list=['evgeniymalykh@gmail.com'],
+            fail_silently=False,
+        )
+        return JsonResponse({'ok': True, 'session': session_id})
     except Exception as e:
-        return JsonResponse({'ok': False, 'error': str(e)})
+        logger.error(f'chat_support email error: {e}')
+        # Даже если email не ушёл — сообщение сохранено в Redis, возвращаем ok
+        return JsonResponse({'ok': True, 'session': session_id})
 
 
 def chat_history(request):
