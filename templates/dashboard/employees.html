@@ -10,10 +10,17 @@
     <p style="color:var(--text-secondary);margin:0 0 20px;font-size:13px;line-height:1.5;">
       Ваш пробный период истёк. Выберите тариф чтобы продолжить работу с кадровыми документами.
     </p>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+    <p style="color:var(--text-secondary);font-size:12px;margin:0 0 8px;">Ежемесячно</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;">
       <a href="{% url 'billing:checkout' 'start' %}" class="btn-primary" style="text-decoration:none;">Старт — 790 &#8381;/мес</a>
       <a href="{% url 'billing:checkout' 'business' %}" class="btn-primary" style="text-decoration:none;">Бизнес — 1 990 &#8381;/мес</a>
       <a href="{% url 'billing:checkout' 'pro' %}" class="btn-primary" style="text-decoration:none;">Корпоратив — 4 900 &#8381;/мес</a>
+    </div>
+    <p style="color:var(--text-secondary);font-size:12px;margin:0 0 8px;">Ежегодно — скидка 25%</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <a href="{% url 'billing:checkout' 'start_annual' %}" class="btn-primary" style="text-decoration:none;background:var(--accent-secondary,#6366f1);">Старт — 7 110 &#8381;/год</a>
+      <a href="{% url 'billing:checkout' 'business_annual' %}" class="btn-primary" style="text-decoration:none;background:var(--accent-secondary,#6366f1);">Бизнес — 17 910 &#8381;/год</a>
+      <a href="{% url 'billing:checkout' 'pro_annual' %}" class="btn-primary" style="text-decoration:none;background:var(--accent-secondary,#6366f1);">Корпоратив — 44 100 &#8381;/год</a>
     </div>
   </div>
 </div>
