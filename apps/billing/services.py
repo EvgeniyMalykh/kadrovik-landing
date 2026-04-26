@@ -119,7 +119,7 @@ def get_subscription_context(company):
     plan_data = PLANS.get(plan_key, PLANS["start"])
     # Берём max_employees из БД (sub) если подписка есть, иначе из PLANS
     max_emp = sub.max_employees if sub else plan_data["max_employees"]
-    emp_count = Employee.objects.filter(company=company).count() if company else 0
+    emp_count = Employee.objects.filter(company=company).exclude(status="fired").count() if company else 0
     return {
         "sub": sub,
         "plan_key": plan_key,

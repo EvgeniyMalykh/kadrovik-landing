@@ -21,17 +21,19 @@ def _create_user(email="test@example.com", password="TestPass123!"):
 
 
 # ===========================================================================
-# 1. _send_telegram
+# 1. _send_telegram  (Green API primary, Bot API fallback)
 # ===========================================================================
 
 @override_settings(
     TELEGRAM_BOT_TOKEN="fake-bot-token",
     TELEGRAM_CHAT_ID="123456",
+    GREEN_API_TG_INSTANCE_ID="inst123",
+    GREEN_API_TG_TOKEN="tok456",
 )
 class SendTelegramTests(TestCase):
 
-    def test_bot_api_success(self):
-        """Bot API returns 200 → message sent, no fallback."""
+    def test_green_api_success_no_fallback(self):
+        """Green API returns 200 -> message sent, no Bot API fallback."""
         from apps.accounts.tasks import _send_telegram
         with patch("apps.accounts.tasks.requests.post") as mock_post:
             mock_resp = MagicMock()
@@ -40,50 +42,40 @@ class SendTelegramTests(TestCase):
             _send_telegram("Hello test")
             mock_post.assert_called_once()
             args, kwargs = mock_post.call_args
-            self.assertIn("api.telegram.org", args[0])
-            self.assertEqual(kwargs["json"]["chat_id"], 123456)
-            self.assertEqual(kwargs["json"]["text"], "Hello test")
+            self.assertIn("green-api.com", args[0])
 
-    def test_bot_api_failure_falls_back_to_green_api(self):
-        """Bot API returns non-200 → falls back to Green API."""
+    def test_green_api_failure_falls_back_to_bot_api(self):
+        """Green API returns non-200 -> falls back to Bot API."""
+        from apps.accounts.tasks import _send_telegram
+        with patch("apps.accounts.tasks.requests.post") as mock_post:
+            green_resp = MagicMock()
+            green_resp.ok = False
+            green_resp.status_code = 500
+            green_resp.text = "Internal error"
+            bot_resp = MagicMock()
+            bot_resp.ok = True
+            mock_post.side_effect = [green_resp, bot_resp]
+
+            _send_telegram("Fallback test")
+            self.assertEqual(mock_post.call_count, 2)
+            second_call = mock_post.call_args_list[1]
+            self.assertIn("api.telegram.org", second_call[0][0])
+
+    def test_green_api_exception_falls_back_to_bot_api(self):
+        """Green API raises exception -> falls back to Bot API."""
         from apps.accounts.tasks import _send_telegram
         with patch("apps.accounts.tasks.requests.post") as mock_post:
             bot_resp = MagicMock()
-            bot_resp.ok = False
-            bot_resp.status_code = 500
-            bot_resp.text = "Internal error"
-            green_resp = MagicMock()
-            green_resp.status_code = 200
-            green_resp.text = "OK"
-            mock_post.side_effect = [bot_resp, green_resp]
+            bot_resp.ok = True
+            mock_post.side_effect = [Exception("connection error"), bot_resp]
 
-            with self.settings(
-                GREEN_API_TG_INSTANCE_ID="inst123",
-                GREEN_API_TG_TOKEN="tok456",
-            ):
-                _send_telegram("Fallback test")
-                self.assertEqual(mock_post.call_count, 2)
-                second_call = mock_post.call_args_list[1]
-                self.assertIn("green-api.com", second_call[0][0])
-
-    def test_bot_api_exception_falls_back(self):
-        """Bot API raises exception → falls back to Green API."""
-        from apps.accounts.tasks import _send_telegram
-        with patch("apps.accounts.tasks.requests.post") as mock_post:
-            green_resp = MagicMock()
-            green_resp.status_code = 200
-            green_resp.text = "OK"
-            mock_post.side_effect = [Exception("connection error"), green_resp]
-
-            with self.settings(
-                GREEN_API_TG_INSTANCE_ID="inst123",
-                GREEN_API_TG_TOKEN="tok456",
-            ):
-                _send_telegram("Exception test")
-                self.assertEqual(mock_post.call_count, 2)
+            _send_telegram("Exception test")
+            self.assertEqual(mock_post.call_count, 2)
+            second_call = mock_post.call_args_list[1]
+            self.assertIn("api.telegram.org", second_call[0][0])
 
     def test_empty_chat_id_does_nothing(self):
-        """Empty chat_id → no HTTP calls."""
+        """Empty chat_id -> no HTTP calls."""
         from apps.accounts.tasks import _send_telegram
         with self.settings(TELEGRAM_CHAT_ID=""):
             with patch("apps.accounts.tasks.requests.post") as mock_post:
@@ -99,7 +91,25 @@ class SendTelegramTests(TestCase):
             mock_post.return_value = mock_resp
             _send_telegram("<b>Bold</b> and <i>italic</i>")
             _, kwargs = mock_post.call_args
-            self.assertEqual(kwargs["json"]["text"], "Bold and italic")
+            # Green API uses 'message' key, not 'text'
+            sent_text = kwargs["json"].get("message", kwargs["json"].get("text", ""))
+            self.assertEqual(sent_text, "Bold and italic")
+
+    @override_settings(
+        GREEN_API_TG_INSTANCE_ID="",
+        GREEN_API_TG_TOKEN="",
+    )
+    def test_no_green_api_creds_uses_bot_api(self):
+        """No Green API credentials -> uses Bot API directly."""
+        from apps.accounts.tasks import _send_telegram
+        with patch("apps.accounts.tasks.requests.post") as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.ok = True
+            mock_post.return_value = mock_resp
+            _send_telegram("Bot only")
+            mock_post.assert_called_once()
+            args, _ = mock_post.call_args
+            self.assertIn("api.telegram.org", args[0])
 
 
 # ===========================================================================
@@ -138,7 +148,7 @@ class SendGoogleSheetsTests(TestCase):
 
     @override_settings(GOOGLE_SERVICE_ACCOUNT_JSON="", GAS_URL="https://example.com/gas")
     def test_no_gspread_creds_falls_back_to_gas(self):
-        """No gspread credentials → GAS webhook is called."""
+        """No gspread credentials -> GAS webhook is called."""
         from apps.accounts.tasks import _send_google_sheets
         with patch("apps.accounts.tasks.requests.post") as mock_post:
             mock_resp = MagicMock()
@@ -157,7 +167,7 @@ class SendGoogleSheetsTests(TestCase):
         GAS_URL="https://example.com/gas",
     )
     def test_gspread_exception_falls_back_to_gas(self):
-        """gspread raises exception → falls back to GAS."""
+        """gspread raises exception -> falls back to GAS."""
         from apps.accounts.tasks import _send_google_sheets
         with patch("gspread.authorize", side_effect=Exception("auth failed")):
             with patch("apps.accounts.tasks.requests.post") as mock_post:
@@ -269,3 +279,73 @@ class SendVerificationEmailPendingTests(TestCase):
             send_verification_email_pending("new@example.com", "http://example.com/verify/123/")
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["new@example.com"])
+
+
+# ===========================================================================
+# 7. User model tests
+# ===========================================================================
+
+class UserModelTests(TestCase):
+
+    def test_create_user(self):
+        """User created with correct fields."""
+        user = _create_user(email="model@test.com")
+        self.assertEqual(user.email, "model@test.com")
+        self.assertFalse(user.email_verified)
+        self.assertTrue(user.check_password("TestPass123!"))
+
+    def test_email_unique(self):
+        """Duplicate email raises IntegrityError."""
+        from django.db import IntegrityError
+        _create_user(email="dup@test.com")
+        with self.assertRaises(IntegrityError):
+            _create_user(email="dup@test.com")
+
+    def test_str_returns_email(self):
+        user = _create_user(email="str@test.com")
+        self.assertEqual(str(user), "str@test.com")
+
+    def test_username_field_is_email(self):
+        self.assertEqual(User.USERNAME_FIELD, "email")
+
+    def test_email_verified_default_false(self):
+        user = _create_user(email="unverified@test.com")
+        self.assertFalse(user.email_verified)
+
+    def test_set_email_verified(self):
+        user = _create_user(email="verify@test.com")
+        user.email_verified = True
+        user.save()
+        user.refresh_from_db()
+        self.assertTrue(user.email_verified)
+
+
+# ===========================================================================
+# 8. EmailVerification model tests
+# ===========================================================================
+
+class EmailVerificationModelTests(TestCase):
+
+    def test_create_verification(self):
+        """EmailVerification creates with UUID token."""
+        from apps.accounts.models import EmailVerification
+        from django.utils import timezone
+        from datetime import timedelta
+        user = _create_user(email="ev@test.com")
+        ev = EmailVerification.objects.create(
+            user=user,
+            expires_at=timezone.now() + timedelta(hours=24),
+        )
+        self.assertIsNotNone(ev.token)
+        self.assertEqual(str(ev), f"EmailVerification(ev@test.com)")
+
+    def test_verification_token_is_unique(self):
+        """Two verifications get different tokens."""
+        from apps.accounts.models import EmailVerification
+        from django.utils import timezone
+        from datetime import timedelta
+        u1 = _create_user(email="ev1@test.com")
+        u2 = _create_user(email="ev2@test.com")
+        ev1 = EmailVerification.objects.create(user=u1, expires_at=timezone.now() + timedelta(hours=24))
+        ev2 = EmailVerification.objects.create(user=u2, expires_at=timezone.now() + timedelta(hours=24))
+        self.assertNotEqual(ev1.token, ev2.token)
