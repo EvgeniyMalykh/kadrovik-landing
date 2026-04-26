@@ -18,9 +18,9 @@
     </div>
     <p style="color:var(--text-secondary);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;">Ежегодно <span style="background:#22c55e;color:#fff;border-radius:4px;padding:1px 6px;font-size:10px;">−25%</span></p>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <a href="{% url 'billing:checkout' 'start_annual' %}" class="btn-primary" style="text-decoration:none;display:block;background:#6366f1;">Старт — 7 110 &#8381;/год</a>
-      <a href="{% url 'billing:checkout' 'business_annual' %}" class="btn-primary" style="text-decoration:none;display:block;background:#6366f1;">Бизнес — 17 910 &#8381;/год</a>
-      <a href="{% url 'billing:checkout' 'pro_annual' %}" class="btn-primary" style="text-decoration:none;display:block;background:#6366f1;">Корпоратив — 44 100 &#8381;/год</a>
+      <a href="{% url 'billing:checkout' 'start' %}?period=annual" class="btn-primary" style="text-decoration:none;display:block;background:#6366f1;">Старт — 7 110 &#8381;/год</a>
+      <a href="{% url 'billing:checkout' 'business' %}?period=annual" class="btn-primary" style="text-decoration:none;display:block;background:#6366f1;">Бизнес — 17 910 &#8381;/год</a>
+      <a href="{% url 'billing:checkout' 'pro' %}?period=annual" class="btn-primary" style="text-decoration:none;display:block;background:#6366f1;">Корпоратив — 44 100 &#8381;/год</a>
     </div>
   </div>
 </div>
