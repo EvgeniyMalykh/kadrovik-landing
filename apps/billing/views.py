@@ -61,10 +61,17 @@ def checkout(request, plan_key):
     # Защита от дублей: если есть pending-платёж младше 10 минут — перенаправляем на него
     from django.utils import timezone
     from datetime import timedelta
+    # Определяем ожидаемую сумму для текущего периода
+    from apps.billing.services import PLAN_PRICES
+    if billing_period == 'annual' and plan_key in PLAN_PRICES:
+        expected_amount = PLAN_PRICES[plan_key]['annual']
+    else:
+        expected_amount = PLANS[plan_key]['price']
     recent_pending = Payment.objects.filter(
         company=member.company,
         status=Payment.Status.PENDING,
         plan=plan_key,
+        amount=expected_amount,
         created_at__gte=timezone.now() - timedelta(minutes=10),
     ).exclude(yukassa_payment_id='').order_by('-created_at').first()
     if recent_pending and recent_pending.yukassa_payment_id:
