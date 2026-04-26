@@ -1,3 +1,4 @@
+from django.views.decorators.cache import never_cache
 import os
 import re
 from django.shortcuts import render, redirect, get_object_or_404
@@ -581,6 +582,7 @@ def download_t6(request, employee_id):
 
 
 @login_required
+@never_cache
 def subscription(request):
     member = get_active_member(request)
     sub = None
