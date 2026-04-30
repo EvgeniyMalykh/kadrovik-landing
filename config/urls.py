@@ -13,6 +13,11 @@ urlpatterns = [
     path("dashboard/",                  include("apps.dashboard.urls", namespace="dashboard")),
     path("dashboard/",                  include("apps.billing.urls")),
     path("dashboard/vacations/",  include("apps.vacations.urls", namespace="vacations")),
+
+    # Legacy redirects: /vacations/ → /dashboard/vacations/
+    path("vacations/", RedirectView.as_view(url="/dashboard/vacations/", permanent=True)),
+    path("vacations/schedule/", RedirectView.as_view(url="/dashboard/vacations/schedule/", permanent=True)),
+    path("vacations/request/<int:company_id>/", RedirectView.as_view(url="/dashboard/vacations/request/%(company_id)s/", permanent=False)),
 ]
 
 if settings.DEBUG:
