@@ -3706,6 +3706,7 @@ def vacation_balances(request):
     company = member.company
     from apps.vacations.models import Vacation
     from datetime import date as _date
+    from django.db.models import Sum
     from math import floor
 
     today = _date.today()
@@ -3722,7 +3723,7 @@ def vacation_balances(request):
         used = Vacation.objects.filter(
             employee=emp,
             vacation_type__in=['annual', 'additional'],
-        ).aggregate(total=models.Sum('days_count'))['total'] or 0
+        ).aggregate(total=Sum('days_count'))['total'] or 0
         remaining = entitled - used
         rows.append({
             'employee': emp,
@@ -3747,6 +3748,7 @@ def vacation_balances_excel(request):
         return HttpResponse("Нет компании", status=400)
     company = member.company
     from apps.vacations.models import Vacation
+    from django.db.models import Sum
     from datetime import date as _date
     from math import floor
     import io
@@ -3771,7 +3773,7 @@ def vacation_balances_excel(request):
             continue
         months_worked = (today.year - emp.hire_date.year) * 12 + (today.month - emp.hire_date.month)
         entitled = floor(max(0, months_worked) * 2.33)
-        used = Vacation.objects.filter(employee=emp, vacation_type__in=['annual', 'additional']).aggregate(total=models.Sum('days_count'))['total'] or 0
+        used = Vacation.objects.filter(employee=emp, vacation_type__in=['annual', 'additional']).aggregate(total=Sum('days_count'))['total'] or 0
         remaining = entitled - used
         ws.cell(row=row_num, column=1, value=emp.full_name)
         ws.cell(row=row_num, column=2, value=emp.position)
