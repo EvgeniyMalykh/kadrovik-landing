@@ -9,4 +9,5 @@ app.autodiscover_tasks([
     "apps.events",
     "apps.accounts",
     "apps.billing",
+    "apps.vacations",
 ])

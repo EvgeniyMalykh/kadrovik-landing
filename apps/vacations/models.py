@@ -107,7 +107,8 @@ class VacationScheduleEntry(models.Model):
     extra_end = models.DateField(null=True, blank=True, verbose_name='Доп. отпуск конец')
 
     @property
-    def days_used(self):
+    def days_planned(self):
+        """Запланировано — сумма дней по всем периодам в графике."""
         total = 0
         for (s, e) in [
             (self.period1_start, self.period1_end),
@@ -121,12 +122,42 @@ class VacationScheduleEntry(models.Model):
         return total
 
     @property
+    def days_used(self):
+        """
+        Использованные дни отпуска за год графика.
+        - Отпуска завершённые (end_date <= today): берём days_count целиком
+        - Отпуск текущий (start_date <= today < end_date): дни с start_date по today
+          (с учётом ProductionCalendar — не считаем праздники)
+        - Будущие отпуска (start_date > today): не считаем
+        """
+        from datetime import date
+        today = date.today()
+        year = self.schedule.year
+
+        vacations = Vacation.objects.filter(
+            employee=self.employee,
+            vacation_type__in=['annual', 'additional'],
+            start_date__year=year,
+        )
+
+        used = 0
+        for v in vacations:
+            if v.end_date <= today:
+                # Завершённый отпуск — берём полный days_count
+                used += v.days_count
+            elif v.start_date <= today:
+                # Текущий отпуск — считаем дни с start_date по today
+                used += _count_vacation_days(v.start_date, today)
+        return used
+
+    @property
     def days_total_all(self):
         return self.days_total + self.days_north + self.days_extra
 
     @property
     def days_remaining(self):
-        return self.days_total_all - self.days_used
+        """Остаток = Запланировано − Использовано (минимум 0)."""
+        return max(0, self.days_planned - self.days_used)
 
     class Meta:
         verbose_name = 'Запись графика отпусков'

@@ -3704,13 +3704,22 @@ def vacation_balances(request):
     if not member:
         return redirect("dashboard:employees")
     company = member.company
-    from apps.vacations.models import Vacation
+    from apps.vacations.models import Vacation, VacationSchedule, VacationScheduleEntry
+    from apps.vacations.models import _count_vacation_days
     from datetime import date as _date
     from django.db.models import Sum
     from math import floor
 
     today = _date.today()
+    year = today.year
     employees = Employee.objects.filter(company=company, status='active').select_related('department').order_by('last_name')
+
+    # Получаем записи графика отпусков для текущего года
+    schedule = VacationSchedule.objects.filter(company=company, year=year).first()
+    schedule_map = {}
+    if schedule:
+        for entry in VacationScheduleEntry.objects.filter(schedule=schedule).select_related('employee'):
+            schedule_map[entry.employee_id] = entry
 
     rows = []
     for emp in employees:
@@ -3719,12 +3728,28 @@ def vacation_balances(request):
         months_worked = (today.year - emp.hire_date.year) * 12 + (today.month - emp.hire_date.month)
         if months_worked < 0:
             months_worked = 0
-        entitled = floor(months_worked * 2.33)
-        used = Vacation.objects.filter(
+
+        # Запланировано: из графика отпусков или 28 по умолчанию
+        entry = schedule_map.get(emp.id)
+        if entry:
+            entitled = entry.days_planned or entry.days_total_all
+        else:
+            entitled = 28
+
+        # Использовано: реальные отпуска за текущий год
+        used = 0
+        vacations = Vacation.objects.filter(
             employee=emp,
             vacation_type__in=['annual', 'additional'],
-        ).aggregate(total=Sum('days_count'))['total'] or 0
-        remaining = entitled - used
+            start_date__year=year,
+        )
+        for v in vacations:
+            if v.end_date <= today:
+                used += v.days_count
+            elif v.start_date <= today:
+                used += _count_vacation_days(v.start_date, today)
+
+        remaining = max(0, entitled - used)
         rows.append({
             'employee': emp,
             'months_worked': months_worked,
@@ -3747,8 +3772,8 @@ def vacation_balances_excel(request):
     if not member:
         return HttpResponse("Нет компании", status=400)
     company = member.company
-    from apps.vacations.models import Vacation
-    from django.db.models import Sum
+    from apps.vacations.models import Vacation, VacationSchedule, VacationScheduleEntry
+    from apps.vacations.models import _count_vacation_days
     from datetime import date as _date
     from math import floor
     import io
@@ -3758,12 +3783,20 @@ def vacation_balances_excel(request):
         return HttpResponse("openpyxl не установлен", status=500)
 
     today = _date.today()
+    year = today.year
     employees = Employee.objects.filter(company=company, status='active').order_by('last_name')
+
+    # Получаем записи графика отпусков для текущего года
+    schedule = VacationSchedule.objects.filter(company=company, year=year).first()
+    schedule_map = {}
+    if schedule:
+        for entry in VacationScheduleEntry.objects.filter(schedule=schedule).select_related('employee'):
+            schedule_map[entry.employee_id] = entry
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Остатки отпусков"
-    headers = ['ФИО', 'Должность', 'Дата приёма', 'Стаж (мес)', 'Положено', 'Использовано', 'Остаток']
+    headers = ['ФИО', 'Должность', 'Дата приёма', 'Стаж (мес)', 'Запланировано', 'Использовано', 'Остаток']
     for col, h in enumerate(headers, 1):
         ws.cell(row=1, column=col, value=h)
 
@@ -3772,9 +3805,28 @@ def vacation_balances_excel(request):
         if not emp.hire_date:
             continue
         months_worked = (today.year - emp.hire_date.year) * 12 + (today.month - emp.hire_date.month)
-        entitled = floor(max(0, months_worked) * 2.33)
-        used = Vacation.objects.filter(employee=emp, vacation_type__in=['annual', 'additional']).aggregate(total=Sum('days_count'))['total'] or 0
-        remaining = entitled - used
+        if months_worked < 0:
+            months_worked = 0
+
+        entry = schedule_map.get(emp.id)
+        if entry:
+            entitled = entry.days_planned or entry.days_total_all
+        else:
+            entitled = 28
+
+        used = 0
+        vacations = Vacation.objects.filter(
+            employee=emp,
+            vacation_type__in=['annual', 'additional'],
+            start_date__year=year,
+        )
+        for v in vacations:
+            if v.end_date <= today:
+                used += v.days_count
+            elif v.start_date <= today:
+                used += _count_vacation_days(v.start_date, today)
+
+        remaining = max(0, entitled - used)
         ws.cell(row=row_num, column=1, value=emp.full_name)
         ws.cell(row=row_num, column=2, value=emp.position)
         ws.cell(row=row_num, column=3, value=emp.hire_date.strftime('%d.%m.%Y'))

@@ -41,6 +41,7 @@
 .lbl-extra { color:#93c5fd; font-size:0.65rem; font-weight:600; }
 .lbl-main  { color:#94a3b8; font-size:0.65rem; }
 
+.vs-planned { color:var(--text-primary); font-weight:700; text-align:center; }
 .vs-used   { color:var(--accent); font-weight:700; text-align:center; }
 .vs-remain { color:#22c55e; font-weight:700; text-align:center; }
 .vs-remain.neg { color:#ef4444; }
@@ -78,7 +79,8 @@
       <th style="width:46px;">Сев.<br>дн.</th>
       <th style="width:46px;">Доп.<br>дн.</th>
       <th style="min-width:320px;text-align:left;">Периоды отпуска</th>
-      <th style="width:50px;">Зап.</th>
+      <th style="width:50px;">Запл.</th>
+      <th style="width:50px;">Исп.</th>
       <th style="width:50px;">Ост.</th>
     </tr>
   </thead>
@@ -155,12 +157,13 @@
           <button class="btn-add-period" onclick="addPeriod(this,'extra')" style="color:#93c5fd;border-color:#3b82f6;">+ Доп</button>
         </div>
       </td>
+      <td class="vs-planned">{{ entry.days_planned }}</td>
       <td class="vs-used">{{ entry.days_used }}</td>
       <td class="vs-remain {% if entry.days_remaining < 0 %}neg{% endif %}">{{ entry.days_remaining }}</td>
     </tr>
     {% empty %}
     <tr>
-      <td colspan="9" style="text-align:center;padding:30px;color:var(--text-secondary);">
+      <td colspan="10" style="text-align:center;padding:30px;color:var(--text-secondary);">
         Нет сотрудников. Добавьте сотрудников на странице "Сотрудники".
       </td>
     </tr>
@@ -175,19 +178,13 @@
 <script>
 var YEAR = {{ year }};
 
-// Счётчик периодов для уникальных data-field при динамическом добавлении
-// Используем extra_* поля для дополнительных периодов основного отпуска через data-attr
-// Логика: period1/2/3 для основного, north, extra для остальных
-
 function addPeriod(btn, type) {
   var row = btn.closest('tr');
   var container = row.querySelector('.periods-' + type);
   var existing = container.querySelectorAll('.period-row').length;
 
-  // Определяем тег и стиль
   var tagHtml, fieldPrefix, borderStyle;
   if (type === 'main') {
-    // Для основного — ищем свободный слот period1/2/3
     var slots = ['period1','period2','period3'];
     var usedSlots = [];
     row.querySelectorAll('.periods-main .period-row').forEach(function(r) {
@@ -224,17 +221,15 @@ function addPeriod(btn, type) {
 
 function delPeriod(btn) {
   var row = btn.closest('.period-row');
-  // Очистить значения перед удалением (чтобы при сохранении не попали)
   row.querySelectorAll('input').forEach(function(i){ i.value=''; });
   calcRowByTr(btn.closest('tr'));
   row.remove();
 }
 
-// Праздничные дни из производственного календаря (передаются из Django)
+// Праздничные дни из производственного календаря
 var HOLIDAYS = new Set({{ holidays_js|safe }});
 
 function countVacationDays(startStr, endStr) {
-  // Считает дни отпуска по ТК РФ: календарные дни минус будние праздники
   if (!startStr || !endStr) return 0;
   var s = new Date(startStr), e = new Date(endStr);
   if (e < s) return 0;
@@ -243,7 +238,6 @@ function countVacationDays(startStr, endStr) {
   var cur = new Date(s);
   while (cur <= e) {
     var iso = cur.toISOString().slice(0, 10);
-    var dow = cur.getDay(); // 0=вс, 6=сб
     if (HOLIDAYS.has(iso)) {
       holidayCount++;
     }
@@ -253,22 +247,27 @@ function countVacationDays(startStr, endStr) {
 }
 
 function calcRowByTr(tr) {
-  var used = 0;
+  // Запланировано — сумма дней по периодам в таблице
+  var planned = 0;
   tr.querySelectorAll('.period-row').forEach(function(pr) {
     var inputs = pr.querySelectorAll('input[type="date"]');
     if (inputs.length >= 2) {
       var s = inputs[0].value, e = inputs[1].value;
-      if (s && e) { var d = countVacationDays(s, e); if (d > 0) used += d; }
+      if (s && e) { var d = countVacationDays(s, e); if (d > 0) planned += d; }
     }
   });
-  var dM = parseInt(tr.querySelector('[data-field="days_total"]').value) || 0;
-  var dN = parseInt(tr.querySelector('[data-field="days_north"]').value) || 0;
-  var dE = parseInt(tr.querySelector('[data-field="days_extra"]').value) || 0;
-  var total = dM + dN + dE;
-  tr.querySelector('.vs-used').textContent = used;
+
+  tr.querySelector('.vs-planned').textContent = planned;
+
+  // Использовано — берём серверное значение (не пересчитываем на клиенте)
+  var usedEl = tr.querySelector('.vs-used');
+  var used = parseInt(usedEl.textContent) || 0;
+
+  // Остаток = Запланировано - Использовано (минимум 0)
+  var remain = Math.max(0, planned - used);
   var rc = tr.querySelector('.vs-remain');
-  rc.textContent = total - used;
-  rc.classList.toggle('neg', (total - used) < 0);
+  rc.textContent = remain;
+  rc.classList.toggle('neg', remain < 0);
 }
 
 document.getElementById('schedule-table').addEventListener('input', function(e) {
@@ -279,12 +278,10 @@ function saveSchedule() {
   var rows = [];
   document.querySelectorAll('#schedule-table tbody tr[data-entry]').forEach(function(tr) {
     var obj = { entry_id: parseInt(tr.dataset.entry) };
-    // Собрать фиксированные числовые поля
     ['days_total','days_north','days_extra'].forEach(function(f) {
       var el = tr.querySelector('[data-field="' + f + '"]');
       obj[f] = el ? (el.value || '0') : '0';
     });
-    // Собрать периоды — взять значения из полей по data-field
     ['period1_start','period1_end','period2_start','period2_end','period3_start','period3_end',
      'north_start','north_end','extra_start','extra_end'].forEach(function(f) {
       var el = tr.querySelector('[data-field="' + f + '"]');

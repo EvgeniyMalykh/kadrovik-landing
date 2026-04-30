@@ -112,6 +112,15 @@ CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://redis:6379/0')
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 CELERY_TIMEZONE = 'Europe/Moscow'
 
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    'recalculate-vacation-balances-daily': {
+        'task': 'apps.vacations.tasks.recalculate_vacation_balances',
+        'schedule': crontab(hour=0, minute=5),  # каждый день в 00:05 MSK
+    },
+}
+
 # Telegram
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', default='')
