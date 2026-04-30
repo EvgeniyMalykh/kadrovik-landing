@@ -875,17 +875,17 @@ body {
 .btn-doc {
   display: inline-block;
   padding: 2px 6px;
-  background: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 2px;
-  color: var(--text-primary);
-  font-size: 11px;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  color: #555;
+  font-size: 0.72rem;
   font-weight: 600;
   text-decoration: none;
   margin: 1px;
-  transition: background 0.1s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.btn-doc:hover { background: #e0e0e0; color: var(--text-primary); }
+.btn-doc:hover { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; }
 .docs-cell { white-space: nowrap; }
 .actions-cell { white-space: nowrap; text-align: right; }
 .btn-icon {
@@ -908,25 +908,25 @@ body {
 .btn-doc-wrap .btn-doc {
   display: inline-block;
   padding: 2px 6px;
-  background: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 2px;
-  color: var(--text-primary);
-  font-size: 11px;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  color: #555;
+  font-size: 0.72rem;
   font-weight: 600;
   text-decoration: none;
-  transition: background 0.1s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.btn-doc-wrap:hover .btn-doc { background: #e0e0e0; }
+.btn-doc-wrap:hover .btn-doc { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; }
 .btn-doc-label {
-  font-size: 9px;
+  font-size: 0.6rem;
   color: #999 !important;
   text-decoration: none !important;
   margin-top: 1px;
   text-align: center;
   white-space: nowrap;
 }
-.btn-doc-wrap:hover .btn-doc-label { color: var(--text-primary) !important; }
+.btn-doc-wrap:hover .btn-doc-label { color: #1a73e8 !important; }
 
 /* ================================================================
    CREATE DOCUMENT BUTTONS — Uniform neutral 1C style
@@ -2087,19 +2087,34 @@ body {
 }
 [data-theme="dark"] .onboarding-step .form-group input::placeholder { color: #888; }
 
+
+/* Add Employee button — always orange accent */
+.page-header .btn-primary {
+  background-color: #e8a000;
+  border-color: #e8a000;
+  color: #fff;
+}
+.page-header .btn-primary:hover {
+  background-color: #d09000;
+  border-color: #d09000;
+  color: #fff;
+}
+
 /* btn-doc dark */
 [data-theme="dark"] .btn-doc {
-  background: #444;
-  border-color: #666;
-  color: #ddd;
+  background: #3a3a3a;
+  border-color: #555;
+  color: #bbb;
 }
 [data-theme="dark"] .btn-doc:hover {
-  background: #555;
-  color: #fff;
+  background: #2a3f5f;
+  border-color: #5BA3D9;
+  color: #5BA3D9;
 }
 [data-theme="dark"] .btn-doc-wrap:hover .btn-doc {
-  background: #555;
-  color: #fff;
+  background: #2a3f5f;
+  border-color: #5BA3D9;
+  color: #5BA3D9;
 }
 [data-theme="dark"] .btn-doc-label {
   color: #888 !important;

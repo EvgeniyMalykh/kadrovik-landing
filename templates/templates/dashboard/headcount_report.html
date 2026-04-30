@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Отчёт о численности — Кадровый автопилот{% endblock %}
+{% block nav_headcount %}active{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <h2 style="font-size:20px;font-weight:600;margin:0;">Отчёт о численности</h2>
+    <p style="color:var(--text-secondary, #6b7280);font-size:13px;margin:4px 0 0;">на {{ today|date:"d.m.Y" }}</p>
+</div>
+
+<!-- Total -->
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);margin-bottom:20px;text-align:center;">
+    <div style="font-size:48px;font-weight:700;color:var(--accent, #0d6efd);">{{ total_count }}</div>
+    <div style="font-size:14px;color:var(--text-secondary, #6b7280);">Списочная численность</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:24px;">
+    <!-- By department -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <h3 style="font-size:14px;font-weight:600;margin:0 0 12px;">По подразделениям</h3>
+        {% for d in dept_breakdown %}
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border, #f3f4f6);font-size:13px;">
+            <span>{{ d.department__name|default:"Не указано" }}</span>
+            <span style="font-weight:600;">{{ d.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- By contract type -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <h3 style="font-size:14px;font-weight:600;margin:0 0 12px;">По типу договора</h3>
+        {% for c in contract_breakdown %}
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border, #f3f4f6);font-size:13px;">
+            <span>{% if c.contract_type == 'permanent' %}Бессрочный{% elif c.contract_type == 'fixed' %}Срочный{% elif c.contract_type == 'gph' %}ГПХ{% else %}{{ c.contract_type }}{% endif %}</span>
+            <span style="font-weight:600;">{{ c.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- By gender -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <h3 style="font-size:14px;font-weight:600;margin:0 0 12px;">По полу</h3>
+        {% for g in gender_breakdown %}
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border, #f3f4f6);font-size:13px;">
+            <span>{% if g.gender == 'M' %}Мужчины{% elif g.gender == 'F' %}Женщины{% else %}Не указано{% endif %}</span>
+            <span style="font-weight:600;">{{ g.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Dynamics chart -->
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    <h3 style="font-size:14px;font-weight:600;margin:0 0 16px;">Динамика приёмов/увольнений (12 месяцев)</h3>
+    <canvas id="dynamicsChart" height="100"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+(function(){
+    var ctx = document.getElementById('dynamicsChart');
+    if (!ctx) return;
+    var labels = [{% for m in months_data %}"{{ m.label }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    var hired = [{% for m in months_data %}{{ m.hired }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    var fired = [{% for m in months_data %}{{ m.fired }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Принято', data: hired, backgroundColor: '#22c55e' },
+                { label: 'Уволено', data: fired, backgroundColor: '#ef4444' }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+})();
+</script>
+{% endblock %}

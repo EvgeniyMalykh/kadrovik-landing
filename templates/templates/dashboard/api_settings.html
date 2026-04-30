@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}API доступ — Кадровый автопилот{% endblock %}
+
+{% block nav_api %}active{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto;">
+    <h2 style="color:#1e3a5f;margin-bottom:0.5rem;">API доступ</h2>
+    <p style="color:#6b7280;font-size:0.9rem;margin-bottom:1.5rem;">Интеграция с внешними системами через REST API</p>
+
+    {% if not has_api %}
+    <!-- Блокировка для тарифов ниже pro -->
+    <div style="background:#f8fafc;border:2px dashed #cbd5e1;border-radius:12px;padding:2.5rem;text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:1rem;">&#128274;</div>
+        <h3 style="color:#1e3a5f;margin-bottom:0.5rem;">API доступен на тарифе Корпоратив</h3>
+        <p style="color:#6b7280;margin-bottom:1.5rem;max-width:500px;margin-left:auto;margin-right:auto;">
+            REST API позволяет интегрировать данные о сотрудниках, документах и событиях с вашими внутренними системами.
+        </p>
+        <a href="{% url 'dashboard:subscription' %}" style="display:inline-block;background:#1e3a5f;color:#fff;padding:10px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:0.95rem;">
+            Перейти на Корпоратив
+        </a>
+    </div>
+    {% else %}
+    <!-- Токен -->
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+        <h4 style="color:#1e3a5f;margin-bottom:1rem;">Ваш API-токен</h4>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="api-token" value="{{ token.key }}" readonly
+                   style="flex:1;min-width:250px;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;font-family:monospace;font-size:0.9rem;background:#f9fafb;color:#374151;">
+            <button onclick="copyToken()" style="background:#1e3a5f;color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.9rem;white-space:nowrap;">
+                Скопировать
+            </button>
+        </div>
+        <form method="post" action="{% url 'dashboard:api_token_regenerate' %}" style="margin-top:1rem;">
+            {% csrf_token %}
+            <button type="submit" onclick="return confirm('Старый токен перестанет работать. Продолжить?')"
+                    style="background:none;border:1px solid #dc2626;color:#dc2626;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:0.85rem;">
+                Пересоздать токен
+            </button>
+        </form>
+    </div>
+
+    <!-- Документация -->
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;">
+        <h4 style="color:#1e3a5f;margin-bottom:1rem;">Документация API</h4>
+        <p style="color:#6b7280;font-size:0.85rem;margin-bottom:1rem;">Базовый URL: <code style="background:#f1f5f9;padding:2px 8px;border-radius:4px;">{{ api_base_url }}</code></p>
+
+        <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.88rem;">
+            <thead>
+                <tr style="background:#f8fafc;">
+                    <th style="text-align:left;padding:10px 12px;border-bottom:2px solid #e5e7eb;color:#1e3a5f;">Метод</th>
+                    <th style="text-align:left;padding:10px 12px;border-bottom:2px solid #e5e7eb;color:#1e3a5f;">Endpoint</th>
+                    <th style="text-align:left;padding:10px 12px;border-bottom:2px solid #e5e7eb;color:#1e3a5f;">Описание</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:600;">GET</span></td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:0.82rem;">/api/v1/employees/</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#6b7280;">Список сотрудников</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:600;">GET</span></td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:0.82rem;">/api/v1/departments/</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#6b7280;">Список отделов</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:600;">GET</span></td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:0.82rem;">/api/v1/events/</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#6b7280;">HR-события (дни рождения, отпуска, истечение договоров)</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:600;">GET</span></td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:0.82rem;">/api/v1/documents/</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#6b7280;">Кадровые документы</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:600;">GET</span></td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:0.82rem;">/api/v1/company/</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#6b7280;">Данные компании</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;"><span style="background:#f59e0b;color:#fff;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:600;">POST</span></td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-family:monospace;font-size:0.82rem;">/api/v1/auth/token/</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#6b7280;">Получить токен (username + password)</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <!-- Примеры -->
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem;">
+        <h4 style="color:#1e3a5f;margin-bottom:1rem;">Примеры использования</h4>
+
+        <p style="color:#374151;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;">Получить список сотрудников:</p>
+        <pre style="background:#1e293b;color:#e2e8f0;padding:14px 18px;border-radius:8px;overflow-x:auto;font-size:0.82rem;margin-bottom:1rem;"><code>curl -H "Authorization: Token {{ token.key }}" \
+     {{ api_base_url }}employees/</code></pre>
+
+        <p style="color:#374151;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;">Получить токен по логину и паролю:</p>
+        <pre style="background:#1e293b;color:#e2e8f0;padding:14px 18px;border-radius:8px;overflow-x:auto;font-size:0.82rem;margin-bottom:1rem;"><code>curl -X POST {{ api_base_url }}auth/token/ \
+     -d "username=your@email.com" \
+     -d "password=your_password"</code></pre>
+
+        <p style="color:#374151;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;">Python:</p>
+        <pre style="background:#1e293b;color:#e2e8f0;padding:14px 18px;border-radius:8px;overflow-x:auto;font-size:0.82rem;"><code>import requests
+
+headers = {"Authorization": "Token {{ token.key }}"}
+response = requests.get("{{ api_base_url }}employees/", headers=headers)
+employees = response.json()</code></pre>
+    </div>
+    {% endif %}
+</div>
+
+<div id="copy-toast" style="display:none;position:fixed;bottom:24px;right:24px;background:#22c55e;color:#fff;padding:12px 24px;border-radius:10px;font-size:0.95rem;font-weight:600;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    Токен скопирован
+</div>
+
+<script>
+function copyToken() {
+    var inp = document.getElementById('api-token');
+    inp.select();
+    inp.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(inp.value).then(function() {
+        var toast = document.getElementById('copy-toast');
+        toast.style.display = 'block';
+        setTimeout(function() { toast.style.display = 'none'; }, 2000);
+    });
+}
+</script>
+{% endblock %}

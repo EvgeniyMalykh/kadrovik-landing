@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+{% block title %}{{ emp.full_name }} — Кадровый автопилот{% endblock %}
+{% block nav_employees %}active{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+    <a href="{% url 'dashboard:employees' %}" style="color:var(--accent, #0d6efd);text-decoration:none;font-size:13px;">&larr; К списку сотрудников</a>
+</div>
+
+<!-- Header -->
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    {% if emp.photo %}
+    <img src="{{ emp.photo.url }}" alt="Фото" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--border, #e5e7eb);">
+    {% else %}
+    <div style="width:72px;height:72px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#1d4ed8;flex-shrink:0;">
+        {{ emp.last_name|first }}{{ emp.first_name|first }}
+    </div>
+    {% endif %}
+    <div style="flex:1;">
+        <h2 style="font-size:20px;font-weight:600;margin:0;">{{ emp.full_name }}</h2>
+        <div style="color:var(--text-secondary, #6b7280);font-size:13px;margin-top:2px;">
+            {{ emp.position }}{% if emp.department %} &middot; {{ emp.department.name }}{% endif %}
+            {% if emp.personnel_number %} &middot; Таб. № {{ emp.personnel_number }}{% endif %}
+        </div>
+        <div style="margin-top:4px;">
+            <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;
+            {% if emp.status == 'active' %}background:#d1fae5;color:#065f46;
+            {% elif emp.status == 'fired' %}background:#fee2e2;color:#991b1b;
+            {% elif emp.status == 'on_leave' %}background:#fef3c7;color:#92400e;
+            {% elif emp.status == 'on_sick' %}background:#fce7f3;color:#9d174d;
+            {% endif %}">
+                {{ emp.get_status_display }}
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div style="border-bottom:2px solid var(--border, #e5e7eb);margin-bottom:20px;display:flex;gap:0;overflow-x:auto;">
+    {% with tabs="main:Основное,contract:Трудовой договор,passport:Паспорт,education:Образование,family:Семья,vacations:Отпуска" %}
+    {% for pair in tabs.split %}
+    {% with key=pair|cut:","|truncatechars:20 %}
+    {% endwith %}
+    {% endfor %}
+    {% endwith %}
+    <a href="?tab=main" style="padding:10px 16px;font-size:13px;font-weight:500;text-decoration:none;border-bottom:2px solid {% if active_tab == 'main' %}#0d6efd{% else %}transparent{% endif %};color:{% if active_tab == 'main' %}#0d6efd{% else %}var(--text-secondary, #6b7280){% endif %};margin-bottom:-2px;white-space:nowrap;">Основное</a>
+    <a href="?tab=contract" style="padding:10px 16px;font-size:13px;font-weight:500;text-decoration:none;border-bottom:2px solid {% if active_tab == 'contract' %}#0d6efd{% else %}transparent{% endif %};color:{% if active_tab == 'contract' %}#0d6efd{% else %}var(--text-secondary, #6b7280){% endif %};margin-bottom:-2px;white-space:nowrap;">Трудовой договор</a>
+    <a href="?tab=passport" style="padding:10px 16px;font-size:13px;font-weight:500;text-decoration:none;border-bottom:2px solid {% if active_tab == 'passport' %}#0d6efd{% else %}transparent{% endif %};color:{% if active_tab == 'passport' %}#0d6efd{% else %}var(--text-secondary, #6b7280){% endif %};margin-bottom:-2px;white-space:nowrap;">Паспорт</a>
+    <a href="?tab=education" style="padding:10px 16px;font-size:13px;font-weight:500;text-decoration:none;border-bottom:2px solid {% if active_tab == 'education' %}#0d6efd{% else %}transparent{% endif %};color:{% if active_tab == 'education' %}#0d6efd{% else %}var(--text-secondary, #6b7280){% endif %};margin-bottom:-2px;white-space:nowrap;">Образование</a>
+    <a href="?tab=family" style="padding:10px 16px;font-size:13px;font-weight:500;text-decoration:none;border-bottom:2px solid {% if active_tab == 'family' %}#0d6efd{% else %}transparent{% endif %};color:{% if active_tab == 'family' %}#0d6efd{% else %}var(--text-secondary, #6b7280){% endif %};margin-bottom:-2px;white-space:nowrap;">Семья</a>
+    <a href="?tab=vacations" style="padding:10px 16px;font-size:13px;font-weight:500;text-decoration:none;border-bottom:2px solid {% if active_tab == 'vacations' %}#0d6efd{% else %}transparent{% endif %};color:{% if active_tab == 'vacations' %}#0d6efd{% else %}var(--text-secondary, #6b7280){% endif %};margin-bottom:-2px;white-space:nowrap;">Отпуска</a>
+</div>
+
+<div id="tab-save-result"></div>
+
+<!-- TAB: Основное -->
+{% if active_tab == 'main' %}
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    <form hx-post="{% url 'dashboard:employee_detail_save' emp.id %}" hx-target="#tab-save-result" hx-swap="innerHTML" enctype="multipart/form-data" hx-encoding="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="main">
+
+        <!-- Photo -->
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+            {% if emp.photo %}
+            <img src="{{ emp.photo.url }}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;">
+            {% else %}
+            <div style="width:64px;height:64px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;color:#1d4ed8;">{{ emp.last_name|first }}{{ emp.first_name|first }}</div>
+            {% endif %}
+            <div>
+                <label style="font-size:12px;color:var(--text-secondary, #6b7280);">Фото сотрудника</label>
+                <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" style="font-size:12px;margin-top:4px;">
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Фамилия *</label>
+                <input type="text" name="last_name" value="{{ emp.last_name }}" required style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Имя *</label>
+                <input type="text" name="first_name" value="{{ emp.first_name }}" required style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Отчество</label>
+                <input type="text" name="middle_name" value="{{ emp.middle_name }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Пол</label>
+                <select name="gender" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                    <option value="">—</option>
+                    <option value="M" {% if emp.gender == 'M' %}selected{% endif %}>Мужской</option>
+                    <option value="F" {% if emp.gender == 'F' %}selected{% endif %}>Женский</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Дата рождения</label>
+                <input type="text" name="birth_date" class="date-input" placeholder="ДД.ММ.ГГГГ" value="{{ birth_date_str }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Место рождения</label>
+                <input type="text" name="birth_place" value="{{ emp.birth_place }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Гражданство</label>
+                <input type="text" name="citizenship" value="{{ emp.citizenship|default:'Российская Федерация' }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Семейное положение</label>
+                <select name="marital_status" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                    <option value="">—</option>
+                    <option value="single" {% if emp.marital_status == 'single' %}selected{% endif %}>Не женат / Не замужем</option>
+                    <option value="married" {% if emp.marital_status == 'married' %}selected{% endif %}>Женат / Замужем</option>
+                    <option value="divorced" {% if emp.marital_status == 'divorced' %}selected{% endif %}>Разведён / Разведена</option>
+                    <option value="widowed" {% if emp.marital_status == 'widowed' %}selected{% endif %}>Вдовец / Вдова</option>
+                    <option value="cohabiting" {% if emp.marital_status == 'cohabiting' %}selected{% endif %}>Гражданский брак</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">ИНН</label>
+                <input type="text" name="inn" value="{{ emp.inn }}" maxlength="12" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">СНИЛС</label>
+                <input type="text" name="snils" value="{{ emp.snils }}" maxlength="14" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Телефон</label>
+                <input type="text" name="phone" value="{{ emp.phone }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Email</label>
+                <input type="email" name="email" value="{{ emp.email }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+        </div>
+        <div style="margin-top:16px;">
+            <button type="submit" style="padding:8px 20px;background:#0d6efd;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;">Сохранить</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- TAB: Трудовой договор -->
+{% if active_tab == 'contract' %}
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    <form hx-post="{% url 'dashboard:employee_detail_save' emp.id %}" hx-target="#tab-save-result" hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="contract">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Табельный номер</label>
+                <input type="text" name="personnel_number" value="{{ emp.personnel_number }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Должность *</label>
+                <input type="text" name="position" value="{{ emp.position }}" required style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Подразделение</label>
+                <select name="department_id" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                    <option value="">— не указано —</option>
+                    {% for d in departments %}
+                    <option value="{{ d.id }}" {% if emp.department and emp.department.id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Тип договора</label>
+                <select name="contract_type" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                    <option value="permanent" {% if emp.contract_type == 'permanent' %}selected{% endif %}>Бессрочный</option>
+                    <option value="fixed" {% if emp.contract_type == 'fixed' %}selected{% endif %}>Срочный</option>
+                    <option value="gph" {% if emp.contract_type == 'gph' %}selected{% endif %}>ГПХ</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Дата приёма *</label>
+                <input type="text" name="hire_date" class="date-input" value="{{ hire_date_str }}" placeholder="ДД.ММ.ГГГГ" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Дата окончания договора</label>
+                <input type="text" name="contract_end_date" class="date-input" value="{{ contract_end_str }}" placeholder="ДД.ММ.ГГГГ" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Испытательный срок до</label>
+                <input type="text" name="probation_end_date" class="date-input" value="{{ probation_end_str }}" placeholder="ДД.ММ.ГГГГ" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Статус</label>
+                <select name="status" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                    <option value="active" {% if emp.status == 'active' %}selected{% endif %}>Работает</option>
+                    <option value="on_leave" {% if emp.status == 'on_leave' %}selected{% endif %}>В отпуске</option>
+                    <option value="on_sick" {% if emp.status == 'on_sick' %}selected{% endif %}>На больничном</option>
+                    <option value="fired" {% if emp.status == 'fired' %}selected{% endif %}>Уволен</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Дата увольнения</label>
+                <input type="text" name="fire_date" class="date-input" value="{{ fire_date_str }}" placeholder="ДД.ММ.ГГГГ" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Оклад (руб.)</label>
+                <input type="number" step="0.01" name="salary" value="{{ salary_str }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Вид занятости</label>
+                <select name="employment_type" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                    <option value="main" {% if emp.employment_type == 'main' %}selected{% endif %}>Основное место работы</option>
+                    <option value="external" {% if emp.employment_type == 'external' %}selected{% endif %}>Внешнее совместительство</option>
+                    <option value="internal" {% if emp.employment_type == 'internal' %}selected{% endif %}>Внутреннее совместительство</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border, #e5e7eb);">
+            <h4 style="font-size:14px;font-weight:600;margin:0 0 12px;">Банковские реквизиты</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Банк</label>
+                    <input type="text" name="bank_name" value="{{ emp.bank_name }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Расчётный счёт</label>
+                    <input type="text" name="bank_account" value="{{ emp.bank_account }}" maxlength="20" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">БИК</label>
+                    <input type="text" name="bank_bik" value="{{ emp.bank_bik }}" maxlength="9" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:16px;">
+            <button type="submit" style="padding:8px 20px;background:#0d6efd;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;">Сохранить</button>
+        </div>
+    </form>
+
+    <!-- Salary history -->
+    {% if salary_history %}
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border, #e5e7eb);">
+        <h4 style="font-size:14px;font-weight:600;margin:0 0 12px;">История изменений оклада</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="background:var(--bg-secondary, #f9fafb);">
+                <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Дата</th>
+                <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Оклад</th>
+            </tr></thead>
+            <tbody>
+            {% for sh in salary_history %}
+            <tr><td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ sh.effective_date|date:"d.m.Y" }}</td>
+            <td style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ sh.salary }} &#8381;</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- TAB: Паспорт -->
+{% if active_tab == 'passport' %}
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    <form hx-post="{% url 'dashboard:employee_detail_save' emp.id %}" hx-target="#tab-save-result" hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="passport">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Серия</label>
+                <input type="text" name="passport_series" value="{{ emp.passport_series }}" maxlength="4" placeholder="0000" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Номер</label>
+                <input type="text" name="passport_number" value="{{ emp.passport_number }}" maxlength="6" placeholder="000000" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Дата выдачи</label>
+                <input type="text" name="passport_issued_date" class="date-input" value="{{ passport_issued_date_str }}" placeholder="ДД.ММ.ГГГГ" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Кем выдан</label>
+            <input type="text" name="passport_issued_by" value="{{ emp.passport_issued_by }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Адрес регистрации</label>
+            <input type="text" name="passport_registration" value="{{ emp.passport_registration }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+            <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Адрес проживания (если отличается)</label>
+            <input type="text" name="residence_address" value="{{ emp.residence_address }}" style="width:100%;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+        </div>
+        <div style="margin-top:16px;">
+            <button type="submit" style="padding:8px 20px;background:#0d6efd;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;">Сохранить</button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- TAB: Образование -->
+{% if active_tab == 'education' %}
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    <form hx-post="{% url 'dashboard:employee_detail_save' emp.id %}" hx-target="#tab-save-result" hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="education">
+        <div class="form-group">
+            <label style="font-size:12px;font-weight:500;color:var(--text-secondary, #6b7280);display:block;margin-bottom:4px;">Уровень образования</label>
+            <select name="education" style="width:100%;max-width:300px;padding:8px 10px;border:1px solid var(--border, #d1d5db);border-radius:6px;font-size:13px;">
+                <option value="">—</option>
+                <option value="secondary" {% if emp.education == "secondary" %}selected{% endif %}>Среднее</option>
+                <option value="secondary_special" {% if emp.education == "secondary_special" %}selected{% endif %}>Среднее специальное</option>
+                <option value="incomplete_higher" {% if emp.education == "incomplete_higher" %}selected{% endif %}>Неполное высшее</option>
+                <option value="higher" {% if emp.education == "higher" %}selected{% endif %}>Высшее</option>
+                <option value="two_higher" {% if emp.education == "two_higher" %}selected{% endif %}>Два высших</option>
+                <option value="postgraduate" {% if emp.education == "postgraduate" %}selected{% endif %}>Аспирантура / учёная степень</option>
+            </select>
+        </div>
+        <div style="margin-top:12px;">
+            <button type="submit" style="padding:8px 20px;background:#0d6efd;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;">Сохранить</button>
+        </div>
+    </form>
+
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border, #e5e7eb);">
+        <h4 style="font-size:14px;font-weight:600;margin:0 0 12px;">Записи об образовании</h4>
+        <div id="education-table">
+            {% include "dashboard/partials/education_table.html" %}
+        </div>
+        <form hx-post="{% url 'dashboard:education_record_add' emp.id %}" hx-target="#education-table" hx-swap="innerHTML" style="margin-top:16px;padding:16px;background:var(--bg-secondary, #f9fafb);border-radius:8px;">
+            {% csrf_token %}
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;align-items:end;">
+                <div>
+                    <label style="font-size:11px;color:var(--text-secondary, #6b7280);">Учебное заведение</label>
+                    <input type="text" name="institution" required placeholder="Название" style="width:100%;padding:6px 8px;border:1px solid var(--border, #d1d5db);border-radius:4px;font-size:12px;">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--text-secondary, #6b7280);">Специальность</label>
+                    <input type="text" name="specialty" placeholder="Спец." style="width:100%;padding:6px 8px;border:1px solid var(--border, #d1d5db);border-radius:4px;font-size:12px;">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--text-secondary, #6b7280);">Год оконч.</label>
+                    <input type="number" name="graduation_year" placeholder="2020" min="1950" max="2030" style="width:100%;padding:6px 8px;border:1px solid var(--border, #d1d5db);border-radius:4px;font-size:12px;">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--text-secondary, #6b7280);">№ диплома</label>
+                    <input type="text" name="diploma_number" placeholder="№" style="width:100%;padding:6px 8px;border:1px solid var(--border, #d1d5db);border-radius:4px;font-size:12px;">
+                </div>
+                <div>
+                    <button type="submit" style="padding:6px 12px;background:#0d6efd;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;">Добавить</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- TAB: Семья -->
+{% if active_tab == 'family' %}
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    <h4 style="font-size:14px;font-weight:600;margin:0 0 12px;">Члены семьи</h4>
+    <div id="family-table">
+        {% include "dashboard/partials/family_table.html" %}
+    </div>
+    <form hx-post="{% url 'dashboard:family_member_add' emp.id %}" hx-target="#family-table" hx-swap="innerHTML" style="margin-top:16px;padding:16px;background:var(--bg-secondary, #f9fafb);border-radius:8px;">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end;">
+            <div>
+                <label style="font-size:11px;color:var(--text-secondary, #6b7280);">ФИО</label>
+                <input type="text" name="full_name" required placeholder="Фамилия Имя Отчество" style="width:100%;padding:6px 8px;border:1px solid var(--border, #d1d5db);border-radius:4px;font-size:12px;">
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-secondary, #6b7280);">Родство</label>
+                <select name="relation" style="width:100%;padding:6px 8px;border:1px solid var(--border, #d1d5db);border-radius:4px;font-size:12px;">
+                    <option value="spouse">Супруг(а)</option>
+                    <option value="child">Ребёнок</option>
+                    <option value="parent">Родитель</option>
+                    <option value="sibling">Брат/сестра</option>
+                    <option value="other">Иное</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:11px;color:var(--text-secondary, #6b7280);">Дата рождения</label>
+                <input type="text" name="birth_date" class="date-input" placeholder="ДД.ММ.ГГГГ" style="width:100%;padding:6px 8px;border:1px solid var(--border, #d1d5db);border-radius:4px;font-size:12px;">
+            </div>
+            <div>
+                <button type="submit" style="padding:6px 12px;background:#0d6efd;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;">Добавить</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- TAB: Отпуска -->
+{% if active_tab == 'vacations' %}
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    <!-- Balance -->
+    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;margin-bottom:20px;">
+        <div style="padding:16px;background:var(--bg-secondary, #f9fafb);border-radius:8px;text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:var(--text-primary, #1f2937);">{{ entitled_days }}</div>
+            <div style="font-size:12px;color:var(--text-secondary, #6b7280);">Положено дней</div>
+            <div style="font-size:11px;color:var(--text-secondary, #9ca3af);">стаж {{ months_worked }} мес.</div>
+        </div>
+        <div style="padding:16px;background:var(--bg-secondary, #f9fafb);border-radius:8px;text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:#dc2626;">{{ used_days }}</div>
+            <div style="font-size:12px;color:var(--text-secondary, #6b7280);">Использовано</div>
+        </div>
+        <div style="padding:16px;background:{% if remaining_days > 56 %}#fee2e2{% elif remaining_days > 28 %}#fef3c7{% else %}#d1fae5{% endif %};border-radius:8px;text-align:center;">
+            <div style="font-size:24px;font-weight:700;color:{% if remaining_days > 56 %}#dc2626{% elif remaining_days > 28 %}#d97706{% else %}#059669{% endif %};">{{ remaining_days }}</div>
+            <div style="font-size:12px;color:var(--text-secondary, #6b7280);">Остаток</div>
+        </div>
+    </div>
+
+    <!-- Vacation history -->
+    <h4 style="font-size:14px;font-weight:600;margin:0 0 12px;">История отпусков</h4>
+    {% if vacations %}
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:var(--bg-secondary, #f9fafb);">
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Тип</th>
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Начало</th>
+            <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Окончание</th>
+            <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Дней</th>
+            <th style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Согласован</th>
+        </tr></thead>
+        <tbody>
+        {% for v in vacations %}
+        <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ v.get_vacation_type_display }}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ v.start_date|date:"d.m.Y" }}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ v.end_date|date:"d.m.Y" }}</td>
+            <td style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ v.days_count }}</td>
+            <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{% if v.approved %}✅{% else %}⏳{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-secondary, #9ca3af);font-size:13px;">Нет записей об отпусках</p>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

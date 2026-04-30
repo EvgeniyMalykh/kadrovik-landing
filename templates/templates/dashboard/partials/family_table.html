@@ -1,0 +1,24 @@
+{% if family_members %}
+<table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead><tr style="background:var(--bg-secondary, #f9fafb);">
+        <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">ФИО</th>
+        <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Родство</th>
+        <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Дата рождения</th>
+        <th style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);width:60px;"></th>
+    </tr></thead>
+    <tbody>
+    {% for fm in family_members %}
+    <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ fm.full_name }}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ fm.get_relation_display }}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{% if fm.birth_date %}{{ fm.birth_date|date:"d.m.Y" }}{% endif %}</td>
+        <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">
+            <button hx-post="{% url 'dashboard:family_member_delete' emp.id fm.id %}" hx-target="#family-table" hx-swap="innerHTML" hx-confirm="Удалить члена семьи?" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;">✕</button>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="color:var(--text-secondary, #9ca3af);font-size:13px;">Нет записей</p>
+{% endif %}

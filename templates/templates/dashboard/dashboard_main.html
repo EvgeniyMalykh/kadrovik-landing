@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Дашборд — Кадровый автопилот{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:24px;">
+    <h2 style="font-size:20px;font-weight:600;margin:0 0 4px;">Дашборд</h2>
+    <p style="color:var(--text-secondary, #6b7280);font-size:13px;margin:0;">{{ today|date:"d E Y" }}, обзор компании</p>
+</div>
+
+<!-- Widgets row -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:24px;">
+    <!-- Active employees -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:20px;">👥</div>
+            <div>
+                <div style="font-size:28px;font-weight:700;color:var(--text-primary, #1f2937);line-height:1;">{{ active_count }}</div>
+                <div style="font-size:12px;color:var(--text-secondary, #6b7280);margin-top:2px;">Сотрудников</div>
+            </div>
+        </div>
+    </div>
+    <!-- At work -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;border-radius:10px;background:#d1fae5;display:flex;align-items:center;justify-content:center;font-size:20px;">✅</div>
+            <div>
+                <div style="font-size:28px;font-weight:700;color:var(--text-primary, #1f2937);line-height:1;">{{ at_work }}</div>
+                <div style="font-size:12px;color:var(--text-secondary, #6b7280);margin-top:2px;">На работе</div>
+            </div>
+        </div>
+    </div>
+    <!-- On vacation -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;border-radius:10px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:20px;">🏖</div>
+            <div>
+                <div style="font-size:28px;font-weight:700;color:var(--text-primary, #1f2937);line-height:1;">{{ on_vacation }}</div>
+                <div style="font-size:12px;color:var(--text-secondary, #6b7280);margin-top:2px;">В отпуске</div>
+            </div>
+        </div>
+    </div>
+    <!-- On sick -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:44px;height:44px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:20px;">🏥</div>
+            <div>
+                <div style="font-size:28px;font-weight:700;color:var(--text-primary, #1f2937);line-height:1;">{{ on_sick }}</div>
+                <div style="font-size:12px;color:var(--text-secondary, #6b7280);margin-top:2px;">На больничном</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+    <!-- Upcoming events -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <h3 style="font-size:15px;font-weight:600;margin:0 0 12px;">Ближайшие события (14 дней)</h3>
+        {% if events %}
+        <div style="max-height:300px;overflow-y:auto;">
+            {% for e in events %}
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border, #f3f4f6);font-size:13px;">
+                <span style="font-size:18px;">{{ e.icon }}</span>
+                <div style="flex:1;">
+                    <div>{{ e.text }}</div>
+                    <div style="color:var(--text-secondary, #9ca3af);font-size:11px;">{{ e.date|date:"d.m.Y" }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-secondary, #9ca3af);font-size:13px;">Нет событий в ближайшие 14 дней</p>
+        {% endif %}
+    </div>
+
+    <!-- Current vacations -->
+    <div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+        <h3 style="font-size:15px;font-weight:600;margin:0 0 12px;">Сейчас в отпуске</h3>
+        {% if current_vacations %}
+        <div style="max-height:300px;overflow-y:auto;">
+            {% for v in current_vacations %}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border, #f3f4f6);font-size:13px;">
+                <div>
+                    <a href="{% url 'dashboard:employee_detail' v.employee.id %}" style="color:var(--accent, #0d6efd);text-decoration:none;font-weight:500;">{{ v.employee.short_name }}</a>
+                    <div style="color:var(--text-secondary, #9ca3af);font-size:11px;">{{ v.get_vacation_type_display }}</div>
+                </div>
+                <div style="text-align:right;font-size:12px;color:var(--text-secondary, #6b7280);">
+                    до {{ v.end_date|date:"d.m.Y" }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-secondary, #9ca3af);font-size:13px;">Сейчас никто не в отпуске</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick actions -->
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);margin-bottom:24px;">
+    <h3 style="font-size:15px;font-weight:600;margin:0 0 12px;">Быстрые действия</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <a href="{% url 'dashboard:employees' %}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#0d6efd;color:#fff;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;">
+            👤 Добавить сотрудника
+        </a>
+        <a href="{% url 'dashboard:forms_list' %}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--bg-secondary, #f3f4f6);color:var(--text-primary, #374151);border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;border:1px solid var(--border, #e5e7eb);">
+            📋 Создать приказ
+        </a>
+        <a href="/vacations/" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--bg-secondary, #f3f4f6);color:var(--text-primary, #374151);border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;border:1px solid var(--border, #e5e7eb);">
+            🏖 Оформить отпуск
+        </a>
+        <a href="{% url 'dashboard:timesheet_edit' %}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--bg-secondary, #f3f4f6);color:var(--text-primary, #374151);border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;border:1px solid var(--border, #e5e7eb);">
+            📊 Табель
+        </a>
+    </div>
+</div>
+
+<!-- Department breakdown -->
+{% if dept_stats %}
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    <h3 style="font-size:15px;font-weight:600;margin:0 0 12px;">По подразделениям</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+            <tr style="background:var(--bg-secondary, #f9fafb);">
+                <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Подразделение</th>
+                <th style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Сотрудников</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in dept_stats %}
+            <tr>
+                <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ d.department__name|default:"Без подразделения" }}</td>
+                <td style="text-align:right;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);font-weight:600;">{{ d.count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}
