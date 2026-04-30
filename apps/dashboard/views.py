@@ -3287,9 +3287,19 @@ def dashboard_main(request):
     active_employees = Employee.objects.filter(company=company, status='active')
     active_count = active_employees.count()
 
-    # Today's timesheet stats
-    on_vacation = Employee.objects.filter(company=company, status='on_leave').count()
-    on_sick = Employee.objects.filter(company=company, status='on_sick').count()
+    # Today's timesheet stats — count from actual Vacation / TimeRecord data
+    on_vacation = Vacation.objects.filter(
+        employee__company=company,
+        start_date__lte=today,
+        end_date__gte=today,
+    ).values('employee_id').distinct().count()
+
+    on_sick = TimeRecord.objects.filter(
+        employee__company=company,
+        date=today,
+        code='Б',
+    ).values('employee_id').distinct().count()
+
     at_work = active_count - on_vacation - on_sick
 
     # Current vacations with return dates
