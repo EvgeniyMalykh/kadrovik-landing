@@ -12,7 +12,7 @@ urlpatterns = [
     path("documents/t1/<int:employee_id>/", download_t1, name="document-t1"),
     path("dashboard/",                  include("apps.dashboard.urls", namespace="dashboard")),
     path("dashboard/",                  include("apps.billing.urls")),
-    path("vacations/",                  include("apps.vacations.urls", namespace="vacations")),
+    path("dashboard/vacations/",  include("apps.vacations.urls", namespace="vacations")),
 ]
 
 if settings.DEBUG:

@@ -48,7 +48,7 @@
             <div class="topbar-1c__menu">
                 <a href="{% url 'dashboard:employees' %}" class="nav-section-link" data-section="kadry">Кадры</a>
                 <a href="{% url 'dashboard:forms_list' %}" class="nav-section-link" data-section="dokumenty">Документы</a>
-                <a href="/vacations/" class="nav-section-link" data-section="otpuska">Отпуска</a>
+                <a href="/dashboard/vacations/" class="nav-section-link" data-section="otpuska">Отпуска</a>
                 <a href="{% url 'dashboard:headcount_report' %}" class="nav-section-link" data-section="otchety">Отчёты</a>
                 {% if member_role == 'owner' or member_role == 'admin' %}
                 <a href="{% url 'dashboard:company' %}" class="nav-section-link" data-section="nastrojki">Настройки</a>
@@ -146,11 +146,11 @@
 
             <!-- ОТПУСКА -->
             <div class="sidebar-section" data-section="otpuska">
-            <a href="/vacations/" class="nav-item {% block nav_vacations %}{% endblock %}" onclick="closeSidebar()">
+            <a href="/dashboard/vacations/" class="nav-item {% block nav_vacations %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#127958;&#65039;</span>
                 <span>Заявления</span>
             </a>
-            <a href="/vacations/schedule/" class="nav-item {% block nav_vacation_schedule %}{% endblock %}" onclick="closeSidebar()">
+            <a href="/dashboard/vacations/schedule/" class="nav-item {% block nav_vacation_schedule %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#128197;</span>
                 <span>График отпусков (Т-7)</span>
             </a>
@@ -345,7 +345,7 @@
           var activeSection = 'kadry'; // default
           if (url.includes('/forms')) {
             activeSection = 'dokumenty';
-          } else if (url.includes('/vacation') || url === '/vacations/' || url.startsWith('/vacations/')) {
+          } else if (url.includes('/vacation') || url === '/dashboard/vacations/' || url.startsWith('/dashboard/vacations/')) {
             activeSection = 'otpuska';
           } else if (url.includes('/headcount') || url.includes('/sfr')) {
             activeSection = 'otchety';

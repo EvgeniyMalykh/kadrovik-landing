@@ -297,7 +297,7 @@ class RolePermissionsTests(TestCase):
     def test_accountant_cannot_add_vacation(self):
         """Accountant cannot access vacation add."""
         self._login('acc3@example.com')
-        resp = self.client.get('/vacations/add/')
+        resp = self.client.get('/dashboard/vacations/add/')
         # vacation_add checks role inline: returns 403 JSON
         self.assertIn(resp.status_code, [302, 403])
 
@@ -328,7 +328,7 @@ class RolePermissionsTests(TestCase):
     def test_hr_can_add_vacation(self):
         """HR can access vacation add."""
         self._login('hr3@example.com')
-        resp = self.client.get('/vacations/add/')
+        resp = self.client.get('/dashboard/vacations/add/')
         self.assertEqual(resp.status_code, 200)
 
     # --- Admin CAN ---
@@ -354,7 +354,7 @@ class RolePermissionsTests(TestCase):
     def test_admin_can_add_vacation(self):
         """Admin can add vacation (admin > hr)."""
         self._login('admin3@example.com')
-        resp = self.client.get('/vacations/add/')
+        resp = self.client.get('/dashboard/vacations/add/')
         self.assertEqual(resp.status_code, 200)
 
     # --- Owner CAN everything ---

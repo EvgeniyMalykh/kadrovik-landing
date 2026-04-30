@@ -1335,7 +1335,7 @@ class VacationAdditionalPdfTests(TestCase):
         """vacation_additional_pdf returns application/pdf."""
         with patch('apps.documents.services.generate_additional_vacation_application',
                    return_value=b'%PDF-fake') as mock_gen:
-            resp = self.client.get(f'/vacations/{self.vacation.id}/additional-pdf/')
+            resp = self.client.get(f'/dashboard/vacations/{self.vacation.id}/additional-pdf/')
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp['Content-Type'], 'application/pdf')
         self.assertIn(b'%PDF', resp.content)
@@ -1343,7 +1343,7 @@ class VacationAdditionalPdfTests(TestCase):
     def test_unauthenticated_redirects(self):
         """Unauthenticated access to additional-pdf redirects to login."""
         self.client.logout()
-        resp = self.client.get(f'/vacations/{self.vacation.id}/additional-pdf/')
+        resp = self.client.get(f'/dashboard/vacations/{self.vacation.id}/additional-pdf/')
         self.assertEqual(resp.status_code, 302)
         self.assertIn('/login/', resp.url)
 
@@ -1351,7 +1351,7 @@ class VacationAdditionalPdfTests(TestCase):
         """Content-Disposition filename contains the employee's last name."""
         with patch('apps.documents.services.generate_additional_vacation_application',
                    return_value=b'%PDF-fake'):
-            resp = self.client.get(f'/vacations/{self.vacation.id}/additional-pdf/')
+            resp = self.client.get(f'/dashboard/vacations/{self.vacation.id}/additional-pdf/')
         # Content-Disposition may be RFC 2047 encoded for non-ASCII chars
         import base64
         cd = resp['Content-Disposition']

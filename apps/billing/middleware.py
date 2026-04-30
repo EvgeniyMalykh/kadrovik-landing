@@ -2,7 +2,7 @@ import math
 from django.shortcuts import redirect
 from django.utils import timezone
 
-PROTECTED_PREFIXES = ['/dashboard/', '/vacations/']
+PROTECTED_PREFIXES = ['/dashboard/']
 
 EXEMPT_PATHS = [
     '/dashboard/login/',
@@ -16,7 +16,7 @@ EXEMPT_PATHS = [
     '/dashboard/payment/',
     '/dashboard/webhook/',
     '/dashboard/invite/',
-    '/vacations/request/',
+    '/dashboard/vacations/request/',
     '/billing/',
     '/static/',
     '/media/',

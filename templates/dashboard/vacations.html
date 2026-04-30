@@ -21,7 +21,7 @@
 
 <script>
 function openVacationDrawer() {
-    fetch('/vacations/add/', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+    fetch('/dashboard/vacations/add/', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
         .then(r => r.text())
         .then(html => {
             var container = document.getElementById('modal-content');

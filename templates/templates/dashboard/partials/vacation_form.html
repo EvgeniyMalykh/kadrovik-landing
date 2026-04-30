@@ -143,7 +143,7 @@ function submitVacationForm(e) {
     var csrf = document.cookie.match('(^|;) ?csrftoken=([^;]*)(;|$)');
     csrf = csrf ? csrf[2] : '';
 
-    fetch('/vacations/add/', {
+    fetch('/dashboard/vacations/add/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrf,
@@ -158,11 +158,11 @@ function submitVacationForm(e) {
     .then(function(data) {
         if (data.success) {
             // Show success block with print link
-            document.getElementById('vac-print-link').href = '/vacations/' + data.vacation_id + '/print/';
+            document.getElementById('vac-print-link').href = '/dashboard/vacations/' + data.vacation_id + '/print/';
             document.getElementById('vac-success-block').style.display = 'block';
             document.getElementById('vac-footer').style.display = 'none';
             // Reload vacations table in background
-            fetch('/vacations/', { headers: {'X-Requested-With': 'XMLHttpRequest'} })
+            fetch('/dashboard/vacations/', { headers: {'X-Requested-With': 'XMLHttpRequest'} })
                 .then(r => r.text())
                 .then(function(html) {
                     // Parse the vacations-table div from the response

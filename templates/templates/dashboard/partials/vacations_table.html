@@ -96,7 +96,7 @@ function getCookieV(name) {
 }
 function deleteVacation(id, btn) {
     if (!confirm('Удалить заявление об отпуске?')) return;
-    fetch('/vacations/' + id + '/delete/', {
+    fetch('/dashboard/vacations/' + id + '/delete/', {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCookieV('csrftoken'),
