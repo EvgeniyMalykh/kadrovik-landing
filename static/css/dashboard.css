@@ -2225,38 +2225,7 @@ body {
 [data-theme="dark"] .nav-section-label { color: #888; border-top-color: var(--border); }
 
 /* ============================================================
-   FIX 1 — Light-theme cell-menu (timesheet code picker, 1C style)
-   ============================================================ */
-[data-theme="light"] .cell-menu {
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  scrollbar-color: #bbb #fff;
-}
-[data-theme="light"] .cell-menu::-webkit-scrollbar-track {
-  background: #fff;
-}
-[data-theme="light"] .cell-menu::-webkit-scrollbar-thumb {
-  background: #bbb;
-}
-[data-theme="light"] .cell-menu::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-[data-theme="light"] .cell-menu-item {
-  color: #333;
-  font-size: 0.85rem;
-  padding: 6px 12px;
-}
-[data-theme="light"] .cell-menu-item:hover {
-  background: #f0f0f0;
-}
-[data-theme="light"] .cell-menu-separator {
-  background: #e0e0e0;
-}
-
-/* ============================================================
-   FIX 2 — Dark-theme btn-secondary (Excel buttons visibility)
+   Dark-theme btn-secondary (Excel buttons visibility)
    ============================================================ */
 [data-theme="dark"] .btn-secondary {
   background: #3a3a3a;

@@ -140,14 +140,14 @@
 
 .ts-legend { font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
 
-/* Меню выбора кода */
+/* Меню выбора кода — светлая тема по умолчанию */
 .cell-menu {
   position: fixed;
   z-index: 9999;
-  background: #1e2230;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   padding: 4px 0;
   min-width: 200px;
   max-height: 320px;
@@ -155,21 +155,21 @@
   overflow-x: hidden;
   display: none;
   scrollbar-width: thin;
-  scrollbar-color: #475569 #1e2230;
+  scrollbar-color: #bbb #fff;
 }
 .cell-menu::-webkit-scrollbar {
   width: 5px;
 }
 .cell-menu::-webkit-scrollbar-track {
-  background: #1e2230;
+  background: #fff;
   border-radius: 0 8px 8px 0;
 }
 .cell-menu::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #bbb;
   border-radius: 4px;
 }
 .cell-menu::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #999;
 }
 .cell-menu.active { display: block; }
 .cell-menu-item {
@@ -179,10 +179,10 @@
   padding: 7px 14px;
   cursor: pointer;
   font-size: 13px;
-  color: #e2e8f0;
+  color: #333;
   transition: background 0.15s;
 }
-.cell-menu-item:hover { background: #2d3748; }
+.cell-menu-item:hover { background: #f0f0f0; }
 .cell-menu-badge {
   display: inline-block;
   width: 32px;
@@ -194,9 +194,23 @@
 }
 .cell-menu-separator {
   height: 1px;
-  background: #334155;
+  background: #e0e0e0;
   margin: 3px 0;
 }
+/* Меню — тёмная тема */
+[data-theme="dark"] .cell-menu {
+  background: #1e2230;
+  border-color: #334155;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  scrollbar-color: #475569 #1e2230;
+}
+[data-theme="dark"] .cell-menu::-webkit-scrollbar-track { background: #1e2230; }
+[data-theme="dark"] .cell-menu::-webkit-scrollbar-thumb { background: #475569; }
+[data-theme="dark"] .cell-menu::-webkit-scrollbar-thumb:hover { background: #64748b; }
+[data-theme="dark"] .cell-menu-item { color: #e2e8f0; }
+[data-theme="dark"] .cell-menu-item:hover { background: #2d3748; }
+[data-theme="dark"] .cell-menu-separator { background: #334155; }
 
 /* Контекстное меню */
 #ctx-menu { position: fixed; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; z-index: 9999; min-width: 160px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
