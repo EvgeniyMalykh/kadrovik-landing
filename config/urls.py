@@ -2,9 +2,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
 from apps.documents.views import download_t1
 
 urlpatterns = [
+    path("",                            RedirectView.as_view(url="/dashboard/", permanent=False)),
     path("admin/",                      admin.site.urls),
     path("api/v1/",                     include("apps.employees.urls")),
     path("documents/t1/<int:employee_id>/", download_t1, name="document-t1"),
