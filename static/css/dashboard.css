@@ -160,6 +160,42 @@ body {
   background: var(--accent);
   border-radius: 1px;
 }
+
+/* ================================================================
+   NAV SECTION LINKS (1C topbar sections)
+   ================================================================ */
+.nav-section-link {
+  padding: 0 12px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--text-secondary);
+  border-bottom: 3px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 37px;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-section-link:hover {
+  background: #f5f5f5;
+  color: var(--text-primary);
+}
+.nav-section-link.active {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Sidebar sections */
+.sidebar-section {
+  padding-top: 4px;
+}
+.sidebar-section + .sidebar-section {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
 .topbar-1c__right {
   display: flex;
   align-items: center;
@@ -1147,6 +1183,12 @@ body {
   .hamburger-btn { display: flex; }
   .mobile-topbar { display: block; }
   .topbar-1c__menu { display: none; }
+  .sidebar-section { display: block !important; }
+  .sidebar-section + .sidebar-section {
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    padding-top: 4px;
+  }
 
   .sidebar {
     transform: translateX(-100%);
@@ -2020,6 +2062,10 @@ body {
 [data-theme="dark"] .topbar-1c__brand { color: var(--text-primary); }
 [data-theme="dark"] .topbar-1c__menu-item { color: var(--text-secondary); }
 [data-theme="dark"] .topbar-1c__menu-item:hover { background: #444; color: var(--text-primary); }
+[data-theme="dark"] .nav-section-link { color: var(--text-secondary); }
+[data-theme="dark"] .nav-section-link:hover { background: #444; color: var(--text-primary); }
+[data-theme="dark"] .nav-section-link.active { color: var(--accent); border-bottom-color: var(--accent); }
+[data-theme="dark"] .sidebar-section + .sidebar-section { border-top-color: var(--border); }
 [data-theme="dark"] .topbar-1c__right { color: var(--text-secondary); }
 [data-theme="dark"] .topbar-1c__user { color: var(--text-secondary); }
 [data-theme="dark"] .topbar-1c__logout { color: var(--text-secondary); border-color: var(--border); }
