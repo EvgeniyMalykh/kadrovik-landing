@@ -1450,21 +1450,39 @@ def change_password_view(request):
 @login_required
 @subscription_required
 def forms_list(request):
-    """Журнал всех документов компании с фильтром по типу"""
+    """Журнал всех документов компании с фильтром по типу, дате, подразделению"""
     member = get_active_member(request)
     if not member:
         return redirect("dashboard:employees")
     company = member.company
     from apps.documents.models import Document
     doc_type = request.GET.get('type', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    dept_filter = request.GET.get('department', '')
     documents = Document.objects.filter(company=company).select_related('employee').order_by('-created_at')
     if doc_type:
         documents = documents.filter(doc_type=doc_type)
+    if date_from:
+        parsed = _parse_date_flexible(date_from)
+        if parsed:
+            documents = documents.filter(date__gte=parsed)
+    if date_to:
+        parsed = _parse_date_flexible(date_to)
+        if parsed:
+            documents = documents.filter(date__lte=parsed)
+    if dept_filter:
+        documents = documents.filter(employee__department_id=dept_filter)
     employees = Employee.objects.filter(company=company, status='active').order_by('last_name')
+    departments = Department.objects.filter(company=company).order_by('name')
     return render(request, 'dashboard/forms_list.html', {
         'documents': documents,
         'employees': employees,
         'active_type': doc_type,
+        'date_from': date_from,
+        'date_to': date_to,
+        'dept_filter': dept_filter,
+        'departments': departments,
     })
 
 
@@ -3246,3 +3264,609 @@ def employee_import_upload(request):
         result = import_employees_from_excel(request.FILES["file"], member.company)
         return JsonResponse(result)
     return JsonResponse({"error": "Файл не загружен"}, status=400)
+
+# ===== NEW VIEWS: Dashboard, Employee Detail, Staff Schedule, Vacation Balances, Headcount Report =====
+# These views will be appended to the existing views.py
+
+@login_required
+def dashboard_main(request):
+    """Главная страница — дашборд с виджетами в стиле 1С."""
+    member = get_active_member(request)
+    if not member:
+        return redirect("dashboard:login")
+    company = member.company
+    from datetime import date as _date, timedelta as _td
+    from django.db.models import Q, Count
+    from apps.vacations.models import Vacation
+    from apps.employees.models import TimeRecord
+
+    today = _date.today()
+    in_14_days = today + _td(days=14)
+
+    # Active employees count
+    active_employees = Employee.objects.filter(company=company, status='active')
+    active_count = active_employees.count()
+
+    # Today's timesheet stats
+    on_vacation = Employee.objects.filter(company=company, status='on_leave').count()
+    on_sick = Employee.objects.filter(company=company, status='on_sick').count()
+    at_work = active_count - on_vacation - on_sick
+
+    # Current vacations with return dates
+    current_vacations = Vacation.objects.filter(
+        employee__company=company,
+        start_date__lte=today,
+        end_date__gte=today,
+    ).select_related('employee').order_by('end_date')[:10]
+
+    # Upcoming events (14 days)
+    events = []
+
+    # Birthdays
+    for emp in active_employees:
+        if emp.birth_date:
+            bday_this_year = emp.birth_date.replace(year=today.year)
+            if today <= bday_this_year <= in_14_days:
+                age = today.year - emp.birth_date.year
+                events.append({
+                    'date': bday_this_year,
+                    'type': 'birthday',
+                    'icon': '🎂',
+                    'text': f'{emp.short_name} — день рождения ({age} лет)',
+                    'employee': emp,
+                })
+
+    # Probation end
+    for emp in active_employees.filter(probation_end_date__gte=today, probation_end_date__lte=in_14_days):
+        events.append({
+            'date': emp.probation_end_date,
+            'type': 'probation',
+            'icon': '⏰',
+            'text': f'{emp.short_name} — окончание испытательного срока',
+            'employee': emp,
+        })
+
+    # Contract end (fixed-term)
+    for emp in active_employees.filter(contract_type='fixed', contract_end_date__gte=today, contract_end_date__lte=in_14_days):
+        events.append({
+            'date': emp.contract_end_date,
+            'type': 'contract_end',
+            'icon': '📋',
+            'text': f'{emp.short_name} — окончание срочного договора',
+            'employee': emp,
+        })
+
+    events.sort(key=lambda e: e['date'])
+
+    # Department stats
+    dept_stats = active_employees.values('department__name').annotate(count=Count('id')).order_by('-count')
+
+    return render(request, "dashboard/dashboard_main.html", {
+        "active_count": active_count,
+        "at_work": at_work,
+        "on_vacation": on_vacation,
+        "on_sick": on_sick,
+        "current_vacations": current_vacations,
+        "events": events[:15],
+        "dept_stats": dept_stats,
+        "today": today,
+    })
+
+
+@login_required
+@subscription_required
+def employee_detail(request, employee_id):
+    """Полноценная страница сотрудника с вкладками в стиле 1С."""
+    member = get_active_member(request)
+    if not member:
+        return redirect("dashboard:employees")
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.employees.models import SalaryHistory, FamilyMember, EducationRecord
+    from apps.vacations.models import Vacation
+    from apps.documents.models import Document
+    from datetime import date as _date
+    from math import floor
+
+    # Salary history
+    salary_history = SalaryHistory.objects.filter(employee=employee)
+
+    # Family members
+    family_members = FamilyMember.objects.filter(employee=employee)
+
+    # Education records
+    education_records = EducationRecord.objects.filter(employee=employee)
+
+    # Vacations
+    vacations = Vacation.objects.filter(employee=employee).order_by('-start_date')
+
+    # Vacation balance calculation
+    today = _date.today()
+    if employee.hire_date and employee.status != 'fired':
+        months_worked = (today.year - employee.hire_date.year) * 12 + (today.month - employee.hire_date.month)
+        if months_worked < 0:
+            months_worked = 0
+        entitled_days = floor(months_worked * 2.33)
+        used_days = sum(v.days_count for v in vacations if v.vacation_type in ('annual', 'additional'))
+        remaining_days = entitled_days - used_days
+    else:
+        months_worked = 0
+        entitled_days = 0
+        used_days = 0
+        remaining_days = 0
+
+    # Documents
+    documents = Document.objects.filter(employee=employee).order_by('-date')[:20]
+
+    # Departments for edit
+    from apps.employees.models import Department as _Dept
+    departments = list(_Dept.objects.filter(company=member.company).values('id', 'name'))
+
+    # Salary string
+    salary_val = employee.salary
+    salary_str = ''
+    if salary_val is not None:
+        s = str(salary_val)
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        salary_str = s
+
+    tab = request.GET.get('tab', 'main')
+
+    return render(request, "dashboard/employee_detail.html", {
+        "emp": employee,
+        "salary_str": salary_str,
+        "salary_history": salary_history,
+        "family_members": family_members,
+        "education_records": education_records,
+        "vacations": vacations,
+        "documents": documents,
+        "departments": departments,
+        "months_worked": months_worked,
+        "entitled_days": entitled_days,
+        "used_days": used_days,
+        "remaining_days": remaining_days,
+        "active_tab": tab,
+        "birth_date_str": employee.birth_date.strftime("%d.%m.%Y") if employee.birth_date else "",
+        "hire_date_str": employee.hire_date.strftime("%d.%m.%Y") if employee.hire_date else "",
+        "probation_end_str": employee.probation_end_date.strftime("%d.%m.%Y") if employee.probation_end_date else "",
+        "contract_end_str": employee.contract_end_date.strftime("%d.%m.%Y") if employee.contract_end_date else "",
+        "fire_date_str": employee.fire_date.strftime("%d.%m.%Y") if employee.fire_date else "",
+        "passport_issued_date_str": employee.passport_issued_date.strftime("%d.%m.%Y") if employee.passport_issued_date else "",
+    })
+
+
+@login_required
+@subscription_required
+@require_POST
+def employee_detail_save(request, employee_id):
+    """Сохранение данных из вкладок карточки сотрудника."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    role = get_active_member_role(request)
+    if not role or ROLE_RANK.get(role, 0) < ROLE_RANK.get('hr', 0):
+        return HttpResponse('<div class="alert alert-danger">Недостаточно прав</div>', status=403)
+
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    tab = request.POST.get('tab', 'main')
+
+    if tab == 'main':
+        employee.last_name = request.POST.get('last_name', employee.last_name)
+        employee.first_name = request.POST.get('first_name', employee.first_name)
+        employee.middle_name = request.POST.get('middle_name', '')
+        employee.gender = request.POST.get('gender', '')
+        employee.birth_date = _parse_date_flexible(request.POST.get('birth_date')) or employee.birth_date
+        employee.birth_place = request.POST.get('birth_place', '')
+        employee.citizenship = request.POST.get('citizenship', '') or 'Российская Федерация'
+        employee.inn = request.POST.get('inn', '')
+        employee.snils = request.POST.get('snils', '')
+        employee.phone = request.POST.get('phone', '')
+        employee.email = request.POST.get('email', '')
+        employee.marital_status = request.POST.get('marital_status', '')
+        employee.save()
+        _save_employee_photo(request, employee)
+
+    elif tab == 'contract':
+        employee.personnel_number = request.POST.get('personnel_number', '')
+        employee.position = request.POST.get('position', employee.position)
+        # Department
+        dept_id = request.POST.get('department_id')
+        dept_name_new = request.POST.get('department_new', '').strip()
+        if dept_name_new:
+            from apps.employees.models import Department as _Dept
+            dept, _ = _Dept.objects.get_or_create(company=member.company, name=dept_name_new)
+            employee.department = dept
+        elif dept_id:
+            from apps.employees.models import Department as _Dept
+            try:
+                employee.department = _Dept.objects.get(id=int(dept_id))
+            except (_Dept.DoesNotExist, ValueError):
+                pass
+        else:
+            employee.department = None
+
+        employee.contract_type = request.POST.get('contract_type', 'permanent')
+        employee.hire_date = _parse_date_flexible(request.POST.get('hire_date')) or employee.hire_date
+        employee.contract_end_date = _parse_date_flexible(request.POST.get('contract_end_date'))
+        employee.probation_end_date = _parse_date_flexible(request.POST.get('probation_end_date'))
+        employee.fire_date = _parse_date_flexible(request.POST.get('fire_date'))
+        employee.status = request.POST.get('status', 'active')
+        employee.employment_type = request.POST.get('employment_type', 'main')
+
+        salary_raw = request.POST.get('salary')
+        if salary_raw not in (None, ''):
+            try:
+                employee.salary = Decimal(salary_raw)
+            except (InvalidOperation, ValueError):
+                pass
+
+        employee.bank_name = request.POST.get('bank_name', '')
+        employee.bank_account = request.POST.get('bank_account', '')
+        employee.bank_bik = request.POST.get('bank_bik', '')
+        employee.save()
+
+    elif tab == 'passport':
+        employee.passport_series = request.POST.get('passport_series', '')
+        employee.passport_number = request.POST.get('passport_number', '')
+        employee.passport_issued_by = request.POST.get('passport_issued_by', '')
+        employee.passport_issued_date = _parse_date_flexible(request.POST.get('passport_issued_date'))
+        employee.passport_registration = request.POST.get('passport_registration', '')
+        employee.residence_address = request.POST.get('residence_address', '')
+        employee.save()
+
+    elif tab == 'education':
+        employee.education = request.POST.get('education', '')
+        employee.save()
+
+    return HttpResponse('<div class="alert alert-success" style="padding:8px 16px;border-radius:6px;background:#d1fae5;color:#065f46;margin:8px 0;">✓ Сохранено</div>')
+
+
+@login_required
+@subscription_required
+@require_POST
+def family_member_add(request, employee_id):
+    """Добавление члена семьи."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.employees.models import FamilyMember
+    FamilyMember.objects.create(
+        employee=employee,
+        full_name=request.POST.get('full_name', ''),
+        relation=request.POST.get('relation', 'other'),
+        birth_date=_parse_date_flexible(request.POST.get('birth_date')),
+    )
+    family_members = FamilyMember.objects.filter(employee=employee)
+    return render(request, "dashboard/partials/family_table.html", {"family_members": family_members, "emp": employee})
+
+
+@login_required
+@subscription_required
+@require_POST
+def family_member_delete(request, employee_id, member_id):
+    """Удаление члена семьи."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.employees.models import FamilyMember
+    FamilyMember.objects.filter(id=member_id, employee=employee).delete()
+    family_members = FamilyMember.objects.filter(employee=employee)
+    return render(request, "dashboard/partials/family_table.html", {"family_members": family_members, "emp": employee})
+
+
+@login_required
+@subscription_required
+@require_POST
+def education_record_add(request, employee_id):
+    """Добавление записи об образовании."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.employees.models import EducationRecord
+    year = request.POST.get('graduation_year')
+    EducationRecord.objects.create(
+        employee=employee,
+        institution=request.POST.get('institution', ''),
+        specialty=request.POST.get('specialty', ''),
+        graduation_year=int(year) if year else None,
+        diploma_series=request.POST.get('diploma_series', ''),
+        diploma_number=request.POST.get('diploma_number', ''),
+    )
+    education_records = EducationRecord.objects.filter(employee=employee)
+    return render(request, "dashboard/partials/education_table.html", {"education_records": education_records, "emp": employee})
+
+
+@login_required
+@subscription_required
+@require_POST
+def education_record_delete(request, employee_id, record_id):
+    """Удаление записи об образовании."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    employee = get_object_or_404(Employee, id=employee_id, company=member.company)
+    from apps.employees.models import EducationRecord
+    EducationRecord.objects.filter(id=record_id, employee=employee).delete()
+    education_records = EducationRecord.objects.filter(employee=employee)
+    return render(request, "dashboard/partials/education_table.html", {"education_records": education_records, "emp": employee})
+
+
+@login_required
+@subscription_required
+def staff_schedule(request):
+    """Штатное расписание (Т-3)."""
+    member = get_active_member(request)
+    if not member:
+        return redirect("dashboard:employees")
+    company = member.company
+    from apps.employees.models import StaffPosition, Department as _Dept
+    from django.db.models import Sum, F, Value, DecimalField
+    from decimal import Decimal as _Dec
+
+    positions = StaffPosition.objects.filter(company=company).select_related('department').order_by('department__name', 'order_number', 'position_name')
+
+    # Group by department
+    departments_map = {}
+    no_dept = []
+    total_count = _Dec('0')
+    total_salary = _Dec('0')
+
+    for p in positions:
+        dept_name = p.department.name if p.department else None
+        entry = {
+            'id': p.id,
+            'position_name': p.position_name,
+            'count': p.count,
+            'salary': p.salary,
+            'bonus_percent': p.bonus_percent,
+            'bonus_amount': p.bonus_amount,
+            'total': p.total_salary,
+            'notes': p.notes,
+        }
+        total_count += p.count
+        total_salary += p.total_salary
+
+        if dept_name:
+            if dept_name not in departments_map:
+                departments_map[dept_name] = []
+            departments_map[dept_name].append(entry)
+        else:
+            no_dept.append(entry)
+
+    departments = list(_Dept.objects.filter(company=company).order_by('name'))
+
+    return render(request, "dashboard/staff_schedule.html", {
+        "departments_map": departments_map,
+        "no_dept": no_dept,
+        "total_count": total_count,
+        "total_salary": total_salary,
+        "departments": departments,
+    })
+
+
+@login_required
+@subscription_required
+@require_POST
+def staff_position_add(request):
+    """Добавить позицию в штатное расписание."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    from apps.employees.models import StaffPosition
+    dept_id = request.POST.get('department_id')
+    salary_raw = request.POST.get('salary', '0')
+    count_raw = request.POST.get('count', '1')
+    bonus_pct = request.POST.get('bonus_percent', '') or None
+    bonus_amt = request.POST.get('bonus_amount', '') or None
+    try:
+        salary = Decimal(salary_raw)
+    except (InvalidOperation, ValueError):
+        salary = Decimal('0')
+    try:
+        count = Decimal(count_raw)
+    except (InvalidOperation, ValueError):
+        count = Decimal('1')
+
+    StaffPosition.objects.create(
+        company=member.company,
+        department_id=int(dept_id) if dept_id else None,
+        position_name=request.POST.get('position_name', ''),
+        count=count,
+        salary=salary,
+        bonus_percent=Decimal(bonus_pct) if bonus_pct else None,
+        bonus_amount=Decimal(bonus_amt) if bonus_amt else None,
+        notes=request.POST.get('notes', ''),
+    )
+    return redirect('dashboard:staff_schedule')
+
+
+@login_required
+@subscription_required
+@require_POST
+def staff_position_delete(request, position_id):
+    """Удалить позицию из штатного расписания."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    from apps.employees.models import StaffPosition
+    StaffPosition.objects.filter(id=position_id, company=member.company).delete()
+    return redirect('dashboard:staff_schedule')
+
+
+@login_required
+@subscription_required
+def vacation_balances(request):
+    """Остатки отпусков."""
+    member = get_active_member(request)
+    if not member:
+        return redirect("dashboard:employees")
+    company = member.company
+    from apps.vacations.models import Vacation
+    from datetime import date as _date
+    from math import floor
+
+    today = _date.today()
+    employees = Employee.objects.filter(company=company, status='active').select_related('department').order_by('last_name')
+
+    rows = []
+    for emp in employees:
+        if not emp.hire_date:
+            continue
+        months_worked = (today.year - emp.hire_date.year) * 12 + (today.month - emp.hire_date.month)
+        if months_worked < 0:
+            months_worked = 0
+        entitled = floor(months_worked * 2.33)
+        used = Vacation.objects.filter(
+            employee=emp,
+            vacation_type__in=['annual', 'additional'],
+        ).aggregate(total=models.Sum('days_count'))['total'] or 0
+        remaining = entitled - used
+        rows.append({
+            'employee': emp,
+            'months_worked': months_worked,
+            'entitled': entitled,
+            'used': used,
+            'remaining': remaining,
+        })
+
+    return render(request, "dashboard/vacation_balances.html", {
+        "rows": rows,
+        "today": today,
+    })
+
+
+@login_required
+@subscription_required
+def vacation_balances_excel(request):
+    """Экспорт остатков отпусков в Excel."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    company = member.company
+    from apps.vacations.models import Vacation
+    from datetime import date as _date
+    from math import floor
+    import io
+    try:
+        import openpyxl
+    except ImportError:
+        return HttpResponse("openpyxl не установлен", status=500)
+
+    today = _date.today()
+    employees = Employee.objects.filter(company=company, status='active').order_by('last_name')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Остатки отпусков"
+    headers = ['ФИО', 'Должность', 'Дата приёма', 'Стаж (мес)', 'Положено', 'Использовано', 'Остаток']
+    for col, h in enumerate(headers, 1):
+        ws.cell(row=1, column=col, value=h)
+
+    row_num = 2
+    for emp in employees:
+        if not emp.hire_date:
+            continue
+        months_worked = (today.year - emp.hire_date.year) * 12 + (today.month - emp.hire_date.month)
+        entitled = floor(max(0, months_worked) * 2.33)
+        used = Vacation.objects.filter(employee=emp, vacation_type__in=['annual', 'additional']).aggregate(total=models.Sum('days_count'))['total'] or 0
+        remaining = entitled - used
+        ws.cell(row=row_num, column=1, value=emp.full_name)
+        ws.cell(row=row_num, column=2, value=emp.position)
+        ws.cell(row=row_num, column=3, value=emp.hire_date.strftime('%d.%m.%Y'))
+        ws.cell(row=row_num, column=4, value=months_worked)
+        ws.cell(row=row_num, column=5, value=entitled)
+        ws.cell(row=row_num, column=6, value=used)
+        ws.cell(row=row_num, column=7, value=remaining)
+        row_num += 1
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    response = HttpResponse(buf.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="vacation_balances.xlsx"'
+    return response
+
+
+@login_required
+@subscription_required
+def headcount_report(request):
+    """Отчёт о численности."""
+    member = get_active_member(request)
+    if not member:
+        return redirect("dashboard:employees")
+    company = member.company
+    from django.db.models import Count, Q
+    from datetime import date as _date
+    from dateutil.relativedelta import relativedelta
+
+    today = _date.today()
+    active_employees = Employee.objects.filter(company=company).exclude(status='fired')
+    total_count = active_employees.count()
+
+    # By department
+    dept_breakdown = active_employees.values('department__name').annotate(count=Count('id')).order_by('-count')
+
+    # By contract type
+    contract_breakdown = active_employees.values('contract_type').annotate(count=Count('id')).order_by('-count')
+
+    # By gender
+    gender_breakdown = active_employees.values('gender').annotate(count=Count('id')).order_by('-count')
+
+    # Monthly dynamics (hires/fires last 12 months)
+    months_data = []
+    for i in range(11, -1, -1):
+        month_start = (today - relativedelta(months=i)).replace(day=1)
+        if i > 0:
+            month_end = (today - relativedelta(months=i-1)).replace(day=1) - timedelta(days=1)
+        else:
+            month_end = today
+
+        hired = Employee.objects.filter(company=company, hire_date__gte=month_start, hire_date__lte=month_end).count()
+        fired = Employee.objects.filter(company=company, fire_date__gte=month_start, fire_date__lte=month_end).count()
+        months_data.append({
+            'label': month_start.strftime('%b %Y'),
+            'hired': hired,
+            'fired': fired,
+        })
+
+    return render(request, "dashboard/headcount_report.html", {
+        "total_count": total_count,
+        "dept_breakdown": dept_breakdown,
+        "contract_breakdown": contract_breakdown,
+        "gender_breakdown": gender_breakdown,
+        "months_data": months_data,
+        "today": today,
+    })
+
+
+@login_required
+@subscription_required
+@require_POST
+def document_post(request, doc_id):
+    """Провести документ."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    from apps.documents.models import Document
+    doc = get_object_or_404(Document, id=doc_id, company=member.company)
+    doc.doc_status = 'posted'
+    doc.save(update_fields=['doc_status'])
+    return redirect('dashboard:forms_list')
+
+
+@login_required
+@subscription_required
+@require_POST
+def document_unpost(request, doc_id):
+    """Отменить проведение документа."""
+    member = get_active_member(request)
+    if not member:
+        return HttpResponse("Нет компании", status=400)
+    from apps.documents.models import Document
+    doc = get_object_or_404(Document, id=doc_id, company=member.company)
+    doc.doc_status = 'draft'
+    doc.save(update_fields=['doc_status'])
+    return redirect('dashboard:forms_list')

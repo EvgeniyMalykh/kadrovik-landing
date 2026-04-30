@@ -26,6 +26,15 @@ class Employee(models.Model):
         FIXED = 'fixed', 'Срочный'
         GPH = 'gph', 'ГПХ'
 
+    class Gender(models.TextChoices):
+        MALE = 'M', 'Мужской'
+        FEMALE = 'F', 'Женский'
+
+    class EmploymentType(models.TextChoices):
+        MAIN = 'main', 'Основное место работы'
+        EXTERNAL = 'external', 'Внешнее совместительство'
+        INTERNAL = 'internal', 'Внутреннее совместительство'
+
     # Основное
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='employees', verbose_name='Компания')
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Отдел')
@@ -34,6 +43,10 @@ class Employee(models.Model):
     middle_name = models.CharField('Отчество', max_length=100, blank=True)
     position = models.CharField('Должность', max_length=255)
     status = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.ACTIVE)
+
+    # Новые поля
+    gender = models.CharField('Пол', max_length=1, choices=Gender.choices, blank=True, default='')
+    employment_type = models.CharField('Вид занятости', max_length=10, choices=EmploymentType.choices, default=EmploymentType.MAIN)
 
     # Трудовой договор
     hire_date = models.DateField('Дата приёма')
@@ -44,12 +57,18 @@ class Employee(models.Model):
     salary = models.DecimalField('Оклад', max_digits=12, decimal_places=2, null=True, blank=True, default=0)
     personnel_number = models.CharField('Табельный номер', max_length=20, blank=True)
 
+    # Банковские реквизиты
+    bank_name = models.CharField('Название банка', max_length=255, blank=True, default='')
+    bank_account = models.CharField('Расчётный счёт', max_length=20, blank=True, default='')
+    bank_bik = models.CharField('БИК', max_length=9, blank=True, default='')
+
     # Паспортные данные
     passport_series = models.CharField('Серия паспорта', max_length=4, blank=True)
     passport_number = models.CharField('Номер паспорта', max_length=6, blank=True)
     passport_issued_by = models.TextField('Кем выдан', blank=True)
     passport_issued_date = models.DateField('Дата выдачи', null=True, blank=True)
     passport_registration = models.TextField('Адрес регистрации', blank=True)
+    residence_address = models.TextField('Адрес проживания', blank=True, default='')
 
     # ИНН / СНИЛС
     inn = models.CharField('ИНН', max_length=12, blank=True)
@@ -195,3 +214,75 @@ class ProductionCalendar(models.Model):
 
     def __str__(self):
         return f'{self.date} — {self.get_day_type_display()}'
+
+
+class FamilyMember(models.Model):
+    """Член семьи сотрудника."""
+    class Relation(models.TextChoices):
+        SPOUSE = 'spouse', 'Супруг(а)'
+        CHILD = 'child', 'Ребёнок'
+        PARENT = 'parent', 'Родитель'
+        SIBLING = 'sibling', 'Брат/сестра'
+        OTHER = 'other', 'Иное'
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='family_members', verbose_name='Сотрудник')
+    full_name = models.CharField('ФИО', max_length=255)
+    relation = models.CharField('Степень родства', max_length=20, choices=Relation.choices)
+    birth_date = models.DateField('Дата рождения', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Член семьи'
+        verbose_name_plural = 'Члены семьи'
+        ordering = ['full_name']
+
+    def __str__(self):
+        return f'{self.full_name} ({self.get_relation_display()})'
+
+
+class EducationRecord(models.Model):
+    """Запись об образовании сотрудника."""
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='education_records', verbose_name='Сотрудник')
+    institution = models.CharField('Учебное заведение', max_length=500)
+    specialty = models.CharField('Специальность', max_length=500, blank=True, default='')
+    graduation_year = models.PositiveIntegerField('Год окончания', null=True, blank=True)
+    diploma_series = models.CharField('Серия диплома', max_length=20, blank=True, default='')
+    diploma_number = models.CharField('Номер диплома', max_length=50, blank=True, default='')
+
+    class Meta:
+        verbose_name = 'Образование'
+        verbose_name_plural = 'Образование'
+        ordering = ['-graduation_year']
+
+    def __str__(self):
+        return f'{self.institution} ({self.graduation_year})'
+
+
+class StaffPosition(models.Model):
+    """Штатная единица для штатного расписания Т-3."""
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='staff_positions', verbose_name='Компания')
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Подразделение')
+    position_name = models.CharField('Название должности', max_length=255)
+    count = models.DecimalField('Штатных единиц', max_digits=5, decimal_places=1, default=1)
+    salary = models.DecimalField('Оклад / тарифная ставка', max_digits=12, decimal_places=2, default=0)
+    bonus_percent = models.DecimalField('Надбавка %', max_digits=5, decimal_places=2, null=True, blank=True)
+    bonus_amount = models.DecimalField('Надбавка сумма', max_digits=12, decimal_places=2, null=True, blank=True)
+    notes = models.TextField('Примечания', blank=True, default='')
+    order_number = models.PositiveIntegerField('Порядок сортировки', default=0)
+
+    class Meta:
+        verbose_name = 'Штатная единица'
+        verbose_name_plural = 'Штатное расписание'
+        ordering = ['order_number', 'position_name']
+
+    def __str__(self):
+        return f'{self.position_name} ({self.count} ед.)'
+
+    @property
+    def total_salary(self):
+        base = self.salary * self.count
+        bonus = 0
+        if self.bonus_percent:
+            bonus += self.salary * self.count * self.bonus_percent / 100
+        if self.bonus_amount:
+            bonus += self.bonus_amount * self.count
+        return base + bonus

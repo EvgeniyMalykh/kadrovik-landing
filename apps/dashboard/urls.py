@@ -11,10 +11,16 @@ urlpatterns = [
     path("chat-reply/",  views.chat_reply,  name="chat_reply"),
 
 
-    path("", views.dashboard_home, name="home"),
+    path("", views.dashboard_main, name="home"),
     path("employees/", views.employees_list, name="employees"),
     path("employees/add/", views.employee_add, name="employee_add"),
     path("employees/<int:employee_id>/edit/", views.employee_edit, name="employee_edit"),
+    path("employees/<int:employee_id>/", views.employee_detail, name="employee_detail"),
+    path("employees/<int:employee_id>/save/", views.employee_detail_save, name="employee_detail_save"),
+    path("employees/<int:employee_id>/family/add/", views.family_member_add, name="family_member_add"),
+    path("employees/<int:employee_id>/family/<int:member_id>/delete/", views.family_member_delete, name="family_member_delete"),
+    path("employees/<int:employee_id>/education/add/", views.education_record_add, name="education_record_add"),
+    path("employees/<int:employee_id>/education/<int:record_id>/delete/", views.education_record_delete, name="education_record_delete"),
     path("documents/<int:doc_id>/delete/", views.delete_document, name="delete_document"),
     path("employees/<int:employee_id>/delete/", views.employee_delete, name="employee_delete"),
     # Кадровые приказы
@@ -42,12 +48,22 @@ urlpatterns = [
     path("timesheet/", views.timesheet_edit, name="timesheet_edit"),
     path("timesheet/save/", views.timesheet_save, name="timesheet_save"),
     # Формы и документы
-    path("documents/<int:doc_id>/delete/", views.delete_document, name="delete_document"),
+    path("documents/<int:doc_id>/post/", views.document_post, name="document_post"),
+    path("documents/<int:doc_id>/unpost/", views.document_unpost, name="document_unpost"),
     path("documents/sync/", views.sync_documents_journal, name="sync_documents_journal"),
     path("forms/", views.forms_list, name="forms_list"),
     path("forms/api/employee/<int:employee_id>/", views.employee_data_api, name="employee_data_api"),
     path("forms/<str:doc_type>/save/", views.form_save, name="form_save"),
     path("forms/<str:doc_type>/", views.form_editor, name="form_editor"),
+    # Штатное расписание
+    path("staff-schedule/", views.staff_schedule, name="staff_schedule"),
+    path("staff-schedule/add/", views.staff_position_add, name="staff_position_add"),
+    path("staff-schedule/<int:position_id>/delete/", views.staff_position_delete, name="staff_position_delete"),
+    # Остатки отпусков
+    path("vacation-balances/", views.vacation_balances, name="vacation_balances"),
+    path("vacation-balances/excel/", views.vacation_balances_excel, name="vacation_balances_excel"),
+    # Отчёт о численности
+    path("headcount-report/", views.headcount_report, name="headcount_report"),
     # Подписка и auth
     path("company/", views.company_profile, name="company"),
     path("settings/notifications/", views.notification_settings, name="notification_settings"),

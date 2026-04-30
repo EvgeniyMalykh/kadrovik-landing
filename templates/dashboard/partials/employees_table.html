@@ -82,7 +82,7 @@ function openEditEmployee(empId) {
                 </div>
                 {% endif %}
             </td>
-            <td><strong>{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</strong></td>
+            <td><a href="{% url 'dashboard:employee_detail' emp.id %}" style="color:var(--accent, #0d6efd);text-decoration:none;font-weight:600;">{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</a></td>
             <td>{{ emp.position|default:"—" }}</td>
             <td>{{ emp.hire_date|date:"d.m.Y"|default:"—" }}</td>
             <td>{% if emp.probation_end_date %}{{ emp.probation_end_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
@@ -162,7 +162,7 @@ function openEditEmployee(empId) {
                 {{ emp.last_name|first }}{{ emp.first_name|first }}
             </div>
             {% endif %}
-            <div class="emp-card__name">{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</div>
+            <a href="{% url 'dashboard:employee_detail' emp.id %}" class="emp-card__name" style="color:var(--accent, #0d6efd);text-decoration:none;">{{ emp.last_name }} {{ emp.first_name }} {{ emp.middle_name }}</a>
         </div>
         <div class="emp-card__position">{{ emp.position|default:"Должность не указана" }}</div>
         <div class="emp-card__row">

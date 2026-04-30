@@ -82,6 +82,32 @@
   </div>
 </div>
 
+<!-- Фильтры -->
+<div class="card" style="margin-bottom:1rem;padding:1rem 1.5rem;">
+  <form method="get" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+    {% if active_type %}<input type="hidden" name="type" value="{{ active_type }}">{% endif %}
+    <div>
+      <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Период с</label>
+      <input type="text" name="date_from" value="{{ date_from }}" class="date-input form-control" placeholder="ДД.ММ.ГГГГ" style="padding:6px 10px;font-size:13px;width:130px;">
+    </div>
+    <div>
+      <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">по</label>
+      <input type="text" name="date_to" value="{{ date_to }}" class="date-input form-control" placeholder="ДД.ММ.ГГГГ" style="padding:6px 10px;font-size:13px;width:130px;">
+    </div>
+    <div>
+      <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px;">Подразделение</label>
+      <select name="department" style="padding:6px 10px;font-size:13px;border:1px solid var(--border-color, #d1d5db);border-radius:6px;">
+        <option value="">Все</option>
+        {% for d in departments %}
+        <option value="{{ d.id }}" {% if dept_filter == d.id|stringformat:"d" %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" style="padding:6px 14px;background:#0d6efd;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;">Фильтровать</button>
+    <a href="{% url 'dashboard:forms_list' %}{% if active_type %}?type={{ active_type }}{% endif %}" style="padding:6px 14px;font-size:13px;color:var(--text-muted);text-decoration:none;">Сбросить</a>
+  </form>
+</div>
+
 <!-- Журнал документов -->
 <div class="card">
   <h3 style="margin-bottom:1rem;color:var(--text-primary);font-size:1rem;">Журнал документов</h3>
@@ -97,6 +123,7 @@
           <th>Номер</th>
           <th>Дата</th>
           <th>Создан</th>
+          <th>Статус</th>
           <th style="text-align:right;">Действия</th>
         </tr>
       </thead>
@@ -112,8 +139,20 @@
           <td>{{ doc.number|default:"—" }}</td>
           <td>{{ doc.date|date:"d.m.Y" }}</td>
           <td style="color:var(--text-muted);font-size:0.82rem;">{{ doc.created_at|date:"d.m.Y H:i" }}</td>
+          <td>
+            {% if doc.doc_status == 'posted' %}
+              <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:#d1fae5;color:#065f46;">Проведён</span>
+            {% else %}
+              <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:#f3f4f6;color:#6b7280;">Черновик</span>
+            {% endif %}
+          </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:8px;">
+              {% if doc.doc_status == 'draft' %}
+              <form method="post" action="{% url 'dashboard:document_post' doc.id %}" style="display:inline;">{% csrf_token %}<button type="submit" style="font-size:0.82rem;color:#059669;background:none;border:none;cursor:pointer;" title="Провести">&#10003; Провести</button></form>
+              {% else %}
+              <form method="post" action="{% url 'dashboard:document_unpost' doc.id %}" style="display:inline;">{% csrf_token %}<button type="submit" style="font-size:0.82rem;color:#d97706;background:none;border:none;cursor:pointer;" title="Отменить проведение">&#8635; Отменить</button></form>
+              {% endif %}
               {% if doc.doc_type == 'vacation' or doc.doc_type == 'gph_contract' or doc.doc_type == 'gph_act' or doc.doc_type == 'reference' or doc.doc_type == 'salary_change' or doc.doc_type == 'transfer' or doc.doc_type == 'dismissal' or doc.doc_type == 'bonus' or doc.doc_type == 'disciplinary' %}
               <a href="{% url 'dashboard:form_editor' doc.doc_type %}?doc_id={{ doc.id }}" style="font-size:0.82rem;color:var(--color-primary);text-decoration:none;" title="Редактировать">&#9998; Открыть</a>
               {% endif %}

@@ -1,0 +1,26 @@
+{% if education_records %}
+<table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead><tr style="background:var(--bg-secondary, #f9fafb);">
+        <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Учебное заведение</th>
+        <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Специальность</th>
+        <th style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Год</th>
+        <th style="text-align:left;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);">Диплом</th>
+        <th style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #e5e7eb);width:60px;"></th>
+    </tr></thead>
+    <tbody>
+    {% for er in education_records %}
+    <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ er.institution }}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ er.specialty }}</td>
+        <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ er.graduation_year }}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{% if er.diploma_series %}{{ er.diploma_series }} {% endif %}{{ er.diploma_number }}</td>
+        <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">
+            <button hx-post="{% url 'dashboard:education_record_delete' emp.id er.id %}" hx-target="#education-table" hx-swap="innerHTML" hx-confirm="Удалить запись?" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;">✕</button>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="color:var(--text-secondary, #9ca3af);font-size:13px;">Нет записей</p>
+{% endif %}

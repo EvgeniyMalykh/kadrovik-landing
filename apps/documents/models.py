@@ -20,6 +20,10 @@ class Document(models.Model):
         TIMESHEET = 'timesheet', 'Табель (Т-13)'
         PERSONAL_CARD = 'personal_card', 'Личная карточка (Т-2)'
 
+    class DocStatus(models.TextChoices):
+        DRAFT = 'draft', 'Черновик'
+        POSTED = 'posted', 'Проведён'
+
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='documents', verbose_name='Компания')
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='documents', verbose_name='Сотрудник')
     doc_type = models.CharField('Тип документа', max_length=50, choices=DocType.choices)
@@ -27,6 +31,7 @@ class Document(models.Model):
     date = models.DateField('Дата документа')
     extra_data = models.JSONField('Дополнительные данные', default=dict)
     pdf_file = models.FileField('PDF файл', upload_to='documents/%Y/%m/', blank=True)
+    doc_status = models.CharField('Статус', max_length=10, choices=DocStatus.choices, default=DocStatus.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

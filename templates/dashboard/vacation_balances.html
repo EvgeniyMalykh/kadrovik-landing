@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Остатки отпусков — Кадровый автопилот{% endblock %}
+{% block nav_vacation_balances %}active{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div>
+        <h2 style="font-size:20px;font-weight:600;margin:0;">Остатки отпусков</h2>
+        <p style="color:var(--text-secondary, #6b7280);font-size:13px;margin:4px 0 0;">на {{ today|date:"d.m.Y" }}</p>
+    </div>
+    <a href="{% url 'dashboard:vacation_balances_excel' %}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#059669;color:#fff;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;">Экспорт в Excel</a>
+</div>
+
+<div style="background:var(--bg-card, #fff);border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--border, #e5e7eb);">
+    {% if rows %}
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:var(--bg-secondary, #f9fafb);">
+            <th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--border, #e5e7eb);">ФИО</th>
+            <th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--border, #e5e7eb);">Должность</th>
+            <th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--border, #e5e7eb);">Дата приёма</th>
+            <th style="text-align:center;padding:8px 12px;border-bottom:2px solid var(--border, #e5e7eb);">Стаж (мес)</th>
+            <th style="text-align:center;padding:8px 12px;border-bottom:2px solid var(--border, #e5e7eb);">Положено</th>
+            <th style="text-align:center;padding:8px 12px;border-bottom:2px solid var(--border, #e5e7eb);">Использовано</th>
+            <th style="text-align:center;padding:8px 12px;border-bottom:2px solid var(--border, #e5e7eb);">Остаток</th>
+        </tr></thead>
+        <tbody>
+        {% for r in rows %}
+        <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">
+                <a href="{% url 'dashboard:employee_detail' r.employee.id %}?tab=vacations" style="color:var(--accent, #0d6efd);text-decoration:none;">{{ r.employee.full_name }}</a>
+            </td>
+            <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ r.employee.position }}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ r.employee.hire_date|date:"d.m.Y" }}</td>
+            <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ r.months_worked }}</td>
+            <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ r.entitled }}</td>
+            <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);">{{ r.used }}</td>
+            <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border, #f3f4f6);font-weight:600;
+                {% if r.remaining > 56 %}background:#fee2e2;color:#dc2626;{% elif r.remaining > 28 %}background:#fef3c7;color:#d97706;{% endif %}">
+                {{ r.remaining }}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align:center;color:var(--text-secondary, #9ca3af);padding:40px 0;">Нет активных сотрудников</p>
+    {% endif %}
+</div>
+{% endblock %}

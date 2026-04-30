@@ -44,7 +44,7 @@
     <!-- 1C Topbar -->
     <div class="topbar-1c">
         <div class="topbar-1c__left">
-            <a href="{% url 'dashboard:employees' %}" class="topbar-1c__brand">&#128203; Кадровый автопилот</a>
+            <a href="{% url 'dashboard:home' %}" class="topbar-1c__brand">&#128203; Кадровый автопилот</a>
             <div class="topbar-1c__menu">
                 <a href="{% url 'dashboard:employees' %}" class="topbar-1c__menu-item">Кадры</a>
                 <a href="{% url 'dashboard:forms_list' %}" class="topbar-1c__menu-item">Документы</a>
@@ -71,27 +71,31 @@
     <!-- Sidebar overlay (tap to close) -->
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-    <aside class="sidebar" id="sidebar">
+        <aside class="sidebar" id="sidebar">
         <nav class="sidebar-nav">
+            <!-- ГЛАВНАЯ -->
+            <a href="{% url 'dashboard:home' %}" class="nav-item {% block nav_dashboard %}{% endblock %}" onclick="closeSidebar()" style="margin-bottom:8px;font-weight:600;">
+                <span class="nav-icon">&#127968;</span>
+                Дашборд
+            </a>
+
             <!-- КАДРЫ -->
-            <div class="nav-section-label">Кадры</div>
+            <div class="nav-section-label" style="text-transform:uppercase;font-size:0.7rem;color:#6c757d;letter-spacing:0.08em;padding-top:1rem;padding-bottom:4px;font-weight:600;">Кадры</div>
             <a href="{% url 'dashboard:employees' %}" class="nav-item {% block nav_employees %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#128100;</span>
                 Сотрудники
             </a>
-            {% if member_role == 'owner' or member_role == 'admin' or member_role == 'hr' %}
-            <a href="{% url 'dashboard:team_list' %}" class="nav-item {% block nav_team %}{% endblock %}" onclick="closeSidebar()">
-                <span class="nav-icon">&#127970;</span>
-                Команда
-            </a>
-            {% endif %}
-            <a href="{% url 'dashboard:timesheet_edit' %}" class="nav-item {% block nav_timesheet %}{% endblock %}" onclick="closeSidebar()">
+            <a href="{% url 'dashboard:staff_schedule' %}" class="nav-item {% block nav_staff_schedule %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#128203;</span>
-                Табель
+                Штатное расписание
+            </a>
+            <a href="{% url 'dashboard:timesheet_edit' %}" class="nav-item {% block nav_timesheet %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#128197;</span>
+                Табель Т-13
             </a>
 
             <!-- ДОКУМЕНТЫ -->
-            <div class="nav-section-label">Документы</div>
+            <div class="nav-section-label" style="text-transform:uppercase;font-size:0.7rem;color:#6c757d;letter-spacing:0.08em;padding-top:1rem;padding-bottom:4px;font-weight:600;">Документы</div>
             <!-- История с подменю -->
             <div class="nav-group" id="nav-group-history">
               <div class="nav-item nav-group-toggle {% block nav_history %}{% endblock %}" onclick="toggleNavGroup('nav-group-history')">
@@ -125,41 +129,55 @@
                   <span>&#9888;</span> Дисц. взыскание
                 </a>
                 <a href="{% url 'dashboard:forms_list' %}?type=reference" class="nav-subitem {% if active_type == 'reference' %}active{% endif %}" onclick="closeSidebar()">
-                  <span>&#128203;</span> Справка
+                  <span>&#128203;</span> Справки
+                </a>
+                <a href="{% url 'dashboard:forms_list' %}?type=contract" class="nav-subitem {% if active_type == 'contract' %}active{% endif %}" onclick="closeSidebar()">
+                  <span>&#128196;</span> Договоры (ТД)
                 </a>
                 <a href="{% url 'dashboard:forms_list' %}?type=gph_contract" class="nav-subitem {% if active_type == 'gph_contract' %}active{% endif %}" onclick="closeSidebar()">
-                  <span>&#128196;</span> Договор ГПХ
-                </a>
-                <a href="{% url 'dashboard:forms_list' %}?type=gph_act" class="nav-subitem {% if active_type == 'gph_act' %}active{% endif %}" onclick="closeSidebar()">
-                  <span>&#9989;</span> Акт ГПХ
-                </a>
-                <a href="{% url 'dashboard:forms_list' %}?type=timesheet" class="nav-subitem {% if active_type == 'timesheet' %}active{% endif %}" onclick="closeSidebar()">
-                  <span>&#128197;</span> Табели (Т-13)
-                </a>
-                <a href="{% url 'dashboard:forms_list' %}?type=personal_card" class="nav-subitem {% if active_type == 'personal_card' %}active{% endif %}" onclick="closeSidebar()">
-                  <span>&#128100;</span> Личные карточки (Т-2)
+                  <span>&#128196;</span> Договоры (ГПХ)
                 </a>
               </div>
             </div>
+
+            <!-- ОТПУСКА -->
+            <div class="nav-section-label" style="text-transform:uppercase;font-size:0.7rem;color:#6c757d;letter-spacing:0.08em;padding-top:1rem;padding-bottom:4px;font-weight:600;">Отпуска</div>
             <a href="/vacations/" class="nav-item {% block nav_vacations %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#127958;&#65039;</span>
-                <span>Отпуска</span>
+                <span>Заявления</span>
             </a>
             <a href="/vacations/schedule/" class="nav-item {% block nav_vacation_schedule %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#128197;</span>
-                <span>График отпусков</span>
+                <span>График отпусков (Т-7)</span>
+            </a>
+            <a href="{% url 'dashboard:vacation_balances' %}" class="nav-item {% block nav_vacation_balances %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#128202;</span>
+                <span>Остатки отпусков</span>
+            </a>
+
+            <!-- ОТЧЁТЫ -->
+            <div class="nav-section-label" style="text-transform:uppercase;font-size:0.7rem;color:#6c757d;letter-spacing:0.08em;padding-top:1rem;padding-bottom:4px;font-weight:600;">Отчёты</div>
+            <a href="{% url 'dashboard:headcount_report' %}" class="nav-item {% block nav_headcount %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#128202;</span>
+                Численность
             </a>
             <a href="{% url 'dashboard:sfr_export' %}" class="nav-item {% block nav_sfr %}{% endblock %}" onclick="closeSidebar()">
-                <span class="nav-icon">&#128202;</span>
-                ЕФС-1 / СФР
+                <span class="nav-icon">&#128200;</span>
+                Выгрузка в СФР
             </a>
 
             <!-- НАСТРОЙКИ -->
-            <div class="nav-section-label">Настройки</div>
+            <div class="nav-section-label" style="text-transform:uppercase;font-size:0.7rem;color:#6c757d;letter-spacing:0.08em;padding-top:1rem;padding-bottom:4px;font-weight:600;">Настройки</div>
             {% if member_role == 'owner' or member_role == 'admin' or member_role == 'hr' %}
             <a href="{% url 'dashboard:company' %}" class="nav-item {% block nav_company %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#127963;</span>
                 Компания
+            </a>
+            {% endif %}
+            {% if member_role == 'owner' or member_role == 'admin' or member_role == 'hr' %}
+            <a href="{% url 'dashboard:team_list' %}" class="nav-item {% block nav_team %}{% endblock %}" onclick="closeSidebar()">
+                <span class="nav-icon">&#127970;</span>
+                Команда
             </a>
             {% endif %}
             {% if member_role == 'owner' %}
@@ -170,14 +188,8 @@
             {% endif %}
             <a href="{% url 'dashboard:document_templates' %}" class="nav-item {% block nav_templates %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#128196;</span>
-                Шаблоны
+                Шаблоны документов
             </a>
-            {% if member_role == 'owner' or member_role == 'admin' %}
-            <a href="{% url 'dashboard:api_settings' %}" class="nav-item {% block nav_api %}{% endblock %}" onclick="closeSidebar()">
-                <span class="nav-icon">&#128268;</span>
-                API
-            </a>
-            {% endif %}
             {% if member_role == 'owner' %}
             <a href="{% url 'dashboard:subscription' %}" class="nav-item {% block nav_subscription %}{% endblock %}" onclick="closeSidebar()">
                 <span class="nav-icon">&#128179;</span>
@@ -198,7 +210,7 @@
                 Помочь проекту
             </button>
         </nav>
-        <div class="sidebar-footer">
+<div class="sidebar-footer">
             <div class="user-info">
                 <div class="user-avatar">{{ request.user.email|first|upper }}</div>
                 <div class="user-details">
